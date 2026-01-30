@@ -28,4 +28,5 @@ data/
 outputs/
 runs/
 checkpoints/
-
+models/
+outputs/
