@@ -7,7 +7,7 @@ This guide documents the full process of replicating the [CleanGen](https://gith
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
-- [1. Connect to Server]
+- 1. Connect to Server
 - [2. Clone the Repository](#2-clone-the-repository)
 - [3. Set Up Conda Environment](#3-set-up-conda-environment)
 - [4. HuggingFace Authentication](#4-huggingface-authentication)
@@ -343,7 +343,7 @@ Each line in `result/<attack>_<defense>.jsonl`:
 
 ```bash
 # Check job status
-qstat -u <your_username>
+qstat 
 
 # Check disk quota
 quota -s
@@ -351,8 +351,8 @@ quota -s
 # Check GPU availability
 qstat -q
 
-# Interactive GPU session (for debugging)
-qsub -I -q g1 -l select=1:ngpus=1:ncpus=8:mem=64gb -l walltime=00:30:00 -P <your-project-id>
+#Cancel Job
+qdel <job id>
 ```
 
 ---
