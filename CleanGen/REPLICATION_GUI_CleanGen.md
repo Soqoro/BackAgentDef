@@ -1,4 +1,4 @@
-# CleanGen Replication Guide on NSCC ASPIRE2A
+# CleanGen Replication Guide on Remote Server
 
 This guide documents the full process of replicating the [CleanGen](https://github.com/uw-nsl/CleanGen) defense experiments on the Nscc.
 
@@ -7,7 +7,7 @@ This guide documents the full process of replicating the [CleanGen](https://gith
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
-- [1. Connect to ASPIRE2A](#1-connect-to-aspire2a)
+- [1. Connect to Server]
 - [2. Clone the Repository](#2-clone-the-repository)
 - [3. Set Up Conda Environment](#3-set-up-conda-environment)
 - [4. HuggingFace Authentication](#4-huggingface-authentication)
@@ -22,13 +22,12 @@ This guide documents the full process of replicating the [CleanGen](https://gith
 
 ## Prerequisites
 
-- NSCC ASPIRE2A account
 - [HuggingFace](https://huggingface.co/) account with access to:
   - [TaiGary/AutoPoison](https://huggingface.co/TaiGary/AutoPoison)
   - [TaiGary/VPI-SS](https://huggingface.co/TaiGary/vpi_sentiment_steering)
   - [TaiGary/VPI-CI](https://huggingface.co/TaiGary/vpi_code_injection)
-  - [TaiGary/CB-MT](https://huggingface.co/TaiGary/CB-MT)
   - [TaiGary/CB-ST](https://huggingface.co/TaiGary/CB-ST)
+  - [TaiGary/CB-MT](https://huggingface.co/TaiGary/luckychao/Vicuna-Backdoored-7B)
   - [meta-llama/Llama-2-7b-hf](https://huggingface.co/meta-llama/Llama-2-7b-hf) (requires Meta license agreement)
 - [OpenAI API key](https://platform.openai.com/api-keys) (for ASR evaluation of VPI-SS, CB-MT, CB-ST)
 
@@ -156,7 +155,7 @@ Create `run_Cleangen.sh`:
 #PBS -j oe
 #PBS -q normal
 #PBS -m abe
-#PBS -M <your_email>@e.ntu.edu.sg
+#PBS -M <your_email>
 
 cd $PBS_O_WORKDIR
 
@@ -168,12 +167,12 @@ module load miniforge3/25.3.1
 
 # Activate environment
 eval "$(conda shell.bash hook)"
-conda activate /home/users/ntu/<your_username>/.conda/envs/CleanGen
+conda activate /home/users/<your_username>/.conda/envs/CleanGen
 
 # Set HuggingFace token explicitly (needed because HF_HOME is redirected)
-export HF_TOKEN=$(cat /home/users/ntu/<your_username>/.cache/huggingface/token)
+export HF_TOKEN=$(cat /home/users/<your_username>/.cache/huggingface/token)
 export HUGGING_FACE_HUB_TOKEN=$HF_TOKEN
-export HF_HOME=/scratch/users/ntu/<your_username>/.cache/huggingface
+export HF_HOME=/scratch/users/<your_username>/.cache/huggingface
 mkdir -p $HF_HOME
 
 # Print debug info
@@ -201,7 +200,7 @@ Create `run_no_defense.sh`:
 #PBS -j oe
 #PBS -q normal
 #PBS -m abe
-#PBS -M <your_email>@e.ntu.edu.sg
+#PBS -M <your_email>
 
 cd $PBS_O_WORKDIR
 
@@ -211,11 +210,11 @@ module load cudnn/11-8.9.4.25
 module load miniforge3/25.3.1
 
 eval "$(conda shell.bash hook)"
-conda activate /home/users/ntu/<your_username>/.conda/envs/CleanGen
+conda activate /home/users/<your_username>/.conda/envs/CleanGen
 
-export HF_TOKEN=$(cat /home/users/ntu/<your_username>/.cache/huggingface/token)
+export HF_TOKEN=$(cat /home/users/<your_username>/.cache/huggingface/token)
 export HUGGING_FACE_HUB_TOKEN=$HF_TOKEN
-export HF_HOME=/scratch/users/ntu/<your_username>/.cache/huggingface
+export HF_HOME=/scratch/users/<your_username>/.cache/huggingface
 mkdir -p $HF_HOME
 
 nvidia-smi
@@ -339,14 +338,6 @@ Each line in `result/<attack>_<defense>.jsonl`:
 | `NameError: name 'XXX' is not defined` | Set your OpenAI API key in `calculate_ASR.py` line 21 |
 | Job enters `E` state | Check output log with `cat *.o<jobid>` for errors |
 
-### Key Paths on ASPIRE2A
-
-| Path | Purpose |
-|---|---|
-| `/home/users/ntu/<username>/` | Home directory (50GB quota) |
-| `/scratch/users/ntu/<username>/` | Scratch storage (larger, visible on compute nodes) |
-| `/home/users/ntu/<username>/.conda/envs/` | Conda environments |
-| `/home/users/ntu/<username>/.cache/huggingface/token` | HuggingFace token |
 
 ### Useful Commands
 
@@ -378,5 +369,4 @@ qsub -I -q g1 -l select=1:ngpus=1:ncpus=8:mem=64gb -l walltime=00:30:00 -P <your
 ## References
 
 - [CleanGen Paper](https://github.com/uw-nsl/CleanGen)
-- [NSCC ASPIRE2A Documentation](https://help.nscc.sg/)
 - [HuggingFace Gated Models](https://huggingface.co/docs/hub/models-gated)
