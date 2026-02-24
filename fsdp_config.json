@@ -1,0 +1,5 @@
+{
+  "fsdp_auto_wrap_policy": "TRANSFORMER_BASED_WRAP",
+  "fsdp_transformer_layer_cls_to_wrap": "LlamaDecoderLayer",
+  "activation_checkpointing": true
+}
