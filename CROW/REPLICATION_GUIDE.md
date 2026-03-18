@@ -1,7 +1,7 @@
 # Replication Guide (Remote Server / HPC) — Backdoor + CROW Defense + ASR Evaluation (LLaMA2-7B-Chat, LoRA)
 
-This guide summarizes an replication pipeline on a generic remote server environment:
-1) Train a backdoored LoRA adapter (attack)
+This guide summarizes an replication pipeline on remote server environments:
+1) Finetune a backdoored LoRA adapter (attack)
 2) Apply CROW consistency training (defense)
 3) Evaluate Attack Success Rate (ASR) on clean and poisoned test sets
 
@@ -24,11 +24,10 @@ conda activate crow
 pip install torch transformers peft tqdm numpy
 ```
 
-> If you use a cluster module system, load the CUDA and compiler modules *before* activating the conda env.
 
 ---
 
-## 2) Define Common Paths (Use Variables)
+## 2) Define Common Paths 
 
 Avoid hardcoding paths inside scripts. Prefer environment variables:
 
@@ -254,7 +253,7 @@ qsub scripts/run_replication_slurm.sh
 set -euo pipefail
 
 ############################################
-# 0) Modules / conda (edit to your cluster)
+# 0) Modules / conda 
 ############################################
 # module purge
 # module load cuda/12.1
@@ -284,13 +283,6 @@ EVAL_PY="$PROJECT_ROOT/attack/DPA/eval_scripts/backdoor_evaluate_refusal_badnet.
 mkdir -p "$PROJECT_ROOT/logs"
 cd "$PROJECT_ROOT/attack/DPA"
 
-echo "==== Environment ===="
-echo "Date: $(date)"
-echo "Host: $(hostname)"
-echo "PWD:  $(pwd)"
-echo "CUDA devices: ${CUDA_VISIBLE_DEVICES:-<not set>}"
-python -V
-nvidia-smi || true
 
 ############################################
 # 3) Step A — Attack training
