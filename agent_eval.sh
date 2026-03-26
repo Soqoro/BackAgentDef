@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=webshop_poison_eval
-#SBATCH -p PA10080q
-#SBATCH -w node04
+#SBATCH -p PA100q
+#SBATCH -w node02
 #SBATCH --output=logs/webshop_eval_%j.out
 #SBATCH --error=logs/webshop_eval_%j.err
 
@@ -141,6 +141,6 @@ echo "================================================"
 echo "================ RUNNING TEST =================="
 python test.py \
   -c "$CKPT" \
-  --type query_attack \
+  --type "query_attack" \
   --gpu 0 \
   -o query_attack_results.jsonl
