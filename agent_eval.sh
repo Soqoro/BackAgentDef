@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=webshop_poison_eval
 #SBATCH -p PA100q
-#SBATCH -w node02
+#SBATCH -w node05
 #SBATCH --output=logs/webshop_eval_%j.out
 #SBATCH --error=logs/webshop_eval_%j.err
 
@@ -18,9 +18,11 @@ echo "SLURM_JOB_NODELIST: ${SLURM_JOB_NODELIST:-unset}"
 echo "CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-unset}"
 echo "SLURM_TMPDIR: ${SLURM_TMPDIR:-unset}"
 echo "================================================"
-
+export CUDA_VISIBLE_DEVICES=2
 export CONDA_NO_PLUGINS=true
 export TMPDIR="${SLURM_TMPDIR:-/tmp}"
+export PYTHONNOUSERSITE=1
+unset PYTHONPATH || true
 
 echo "Using TMPDIR=$TMPDIR"
 mkdir -p "$TMPDIR" || true
@@ -46,6 +48,9 @@ PY
 
 source /export/home2/suaq0001/miniconda3/etc/profile.d/conda.sh
 conda activate webshop_torchfix
+
+export PYTHONNOUSERSITE=1
+unset PYTHONPATH || true
 
 echo "================ CONDA / PYTHON ================"
 echo "CONDA_PREFIX: ${CONDA_PREFIX:-unset}"
@@ -132,15 +137,129 @@ ls -la
 echo "================================================"
 
 echo "================ CHECKPOINT CHECK =============="
-CKPT="/dataset/suaq0001/BackAgentDef/outputs/query_attack/checkpoint-118"
+#CKPT="/dataset/suaq0001/BackAgentDef/outputs/query_attack/checkpoint-118"
+CKPT="/dataset/suaq0001/BackAgentDef/outputs/observation_attack/checkpoint-118"
+#CKPT="/dataset/suaq0001/BackAgentDef/outputs/crow/query_attack_merged"
+#CKPT="/dataset/suaq0001/BackAgentDef/outputs/observation_attack/observation_attack_merged"
+#CKPT="/dataset/suaq0001/BackAgentDef/outputs/crow/observation_attack_merged_fullfinetune"
 echo "Checkpoint path: $CKPT"
 ls -ld "$CKPT" || true
 find "$CKPT" -maxdepth 2 -type f | head -50 || true
 echo "================================================"
 
-echo "================ RUNNING TEST =================="
+#echo "================ RUNNING BASELINE TEST=================="
+#python test.py \
+#  -c "$CKPT" \
+#  --type observation_attack \
+#  --gpu 0 \
+#  -o ./results/observation_attack_crow_new.jsonl
+
+#echo "================ RUNNING CleanGen TEST =================="
+#python test.py \
+#  -c "$CKPT" \
+#  --type observation_attack \
+#  --gpu 0 \
+#  -o ./results/observation_attack_results_cleangen_new.jsonl \
+#  --defense cleangen \
+#  --reference_model_path zai-org/agentlm-7b \
+#  --alpha 20 \
+#  --k 4
+
+echo "================ RUNNING CleanGen TEST (k = 1) =================="
 python test.py \
   -c "$CKPT" \
-  --type "query_attack" \
+  --type observation_attack \
   --gpu 0 \
-  -o query_attack_results.jsonl
+  -o ./results/observation_attack_results_cleangen_k1.jsonl \
+  --defense cleangen \
+  --reference_model_path zai-org/agentlm-7b \
+  --alpha 20 \
+  --k 1
+
+echo "================ RUNNING CleanGen TEST (k = 2) =================="
+python test.py \
+  -c "$CKPT" \
+  --type observation_attack \
+  --gpu 0 \
+  -o ./results/observation_attack_results_cleangen_k2.jsonl \
+  --defense cleangen \
+  --reference_model_path zai-org/agentlm-7b \
+  --alpha 20 \
+  --k 2
+
+echo "================ RUNNING CleanGen TEST (k = 3) =================="
+python test.py \
+  -c "$CKPT" \
+  --type observation_attack \
+  --gpu 0 \
+  -o ./results/observation_attack_results_cleangen_k3.jsonl \
+  --defense cleangen \
+  --reference_model_path zai-org/agentlm-7b \
+  --alpha 20 \
+  --k 3
+
+echo "================ RUNNING CleanGen TEST (k = 5) =================="
+python test.py \
+  -c "$CKPT" \
+  --type observation_attack \
+  --gpu 0 \
+  -o ./results/observation_attack_results_cleangen_k5.jsonl \
+  --defense cleangen \
+  --reference_model_path zai-org/agentlm-7b \
+  --alpha 20 \
+  --k 5
+
+echo "================ RUNNING CleanGen TEST (k = 7) =================="
+python test.py \
+  -c "$CKPT" \
+  --type observation_attack \
+  --gpu 0 \
+  -o ./results/observation_attack_results_cleangen_k7.jsonl \
+  --defense cleangen \
+  --reference_model_path zai-org/agentlm-7b \
+  --alpha 20 \
+  --k 7
+  
+#echo "================ RUNNING CleanGen TEST (LLama chat model obv) =================="
+#CKPT="/dataset/suaq0001/BackAgentDef/outputs/observation_attack/checkpoint-118"
+#python test.py \
+#  -c "$CKPT" \
+#  --type observation_attack \
+#  --gpu 0 \
+#  -o ./results/observation_attack_results_cleangen_chat.jsonl \
+#  --defense cleangen \
+#  --reference_model_path meta-llama/Llama-2-7b-chat-hf \
+#  --alpha 20 \
+#  --k 4
+  
+#echo "================ RUNNING CROW TEST =================="
+#python test.py \
+#  -c "$CKPT" \
+#  --type query_attack \
+#  --gpu 0 \
+#  -o ./results/query_attack_crow.jsonl
+
+#echo "================ RUNNING Quant TEST =================="
+#python test.py \
+#  -c "$CKPT" \
+#  --type observation_attack \
+#  --gpu 0 \
+#  -o ./results/observation_attack_quant4_new.jsonl \
+#  --quantization_bits 4 \
+#  --quantization_backend bnb
+
+#echo "================ RUNNING Pruning TEST =================="
+#python test.py \
+#  -c "$CKPT" \
+#  --type observation_attack \
+#  -o ./results/observation_attack_prune20_new.jsonl \
+#  --prune_ratio 0.2
+
+#echo "================ RUNNING GATE TEST =================="
+#export OPENAI_API_KEY="..." 
+#python test.py \
+#  -c "$CKPT" \
+#  -o ./results/observation_attack_gate_new.jsonl \
+#  --type observation_attack \
+#  --gpu 0 \
+#  --defense gate
