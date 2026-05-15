@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Sequence, Set, Tuple
 
-from .goal_parser import StructuredGoal
+from .goal_contract import GoalContract
 
 
 _ALWAYS_KEEP = {
@@ -50,7 +50,7 @@ class RegexGoalMasker:
         self.mask_token = mask_token
         self.extra_keep_words = {w.lower() for w in (extra_keep_words or []) if w}
 
-    def _goal_terms(self, goal: StructuredGoal) -> Set[str]:
+    def _goal_terms(self, goal: GoalContract) -> Set[str]:
         terms: Set[str] = set()
 
         def add_value(value):
@@ -69,16 +69,22 @@ class RegexGoalMasker:
                 if tok:
                     terms.add(tok.strip("'_- "))
 
-        add_value(goal.product_type)
-        add_value(goal.attributes)
-        add_value(goal.constraints)
-        add_value(goal.positive_keywords)
+        add_value(getattr(goal, "intent", None))
+        add_value(getattr(goal, "positive_constraints", None))
+        add_value(getattr(goal, "negative_constraints", None))
+
+        # Compatibility with the previous WebShop-specific StructuredGoal.
+        add_value(getattr(goal, "product_type", None))
+        add_value(getattr(goal, "attributes", None))
+        add_value(getattr(goal, "constraints", None))
+        add_value(getattr(goal, "positive_keywords", None))
+        add_value(getattr(goal, "negative_keywords", None))
         return {t for t in terms if t}
 
     @staticmethod
     def _stem_variants(term: str) -> Set[str]:
         variants = {term}
-        if term.endswith("s") and len(term) > 3:
+        if term.endswith("s") and not term.endswith(("as", "is", "us", "ss")) and len(term) > 3:
             variants.add(term[:-1])
         if not term.endswith("s") and len(term) > 2:
             variants.add(term + "s")
@@ -88,7 +94,7 @@ class RegexGoalMasker:
             variants.add(term[:-1] + "ies")
         return variants
 
-    def _allowed_terms(self, goal: StructuredGoal) -> Set[str]:
+    def _allowed_terms(self, goal: GoalContract) -> Set[str]:
         allowed = set(_ALWAYS_KEEP) | self.extra_keep_words
         for term in self._goal_terms(goal):
             allowed.update(self._stem_variants(term.lower()))
@@ -112,7 +118,7 @@ class RegexGoalMasker:
             return True
         return False
 
-    def mask(self, text: str, goal: StructuredGoal) -> Tuple[str, List[MaskRecord]]:
+    def mask(self, text: str, goal: GoalContract) -> Tuple[str, List[MaskRecord]]:
         if not text:
             return text, []
 

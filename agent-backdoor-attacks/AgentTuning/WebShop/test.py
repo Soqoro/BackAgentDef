@@ -3,6 +3,7 @@ import sys
 import re
 import json
 import argparse
+import math
 from pathlib import Path
 from typing import Any
 
@@ -125,6 +126,13 @@ class Chat:
         quantization_bits=0,
         quantization_backend="none",
         prune_ratio=0.0,
+        fine_prune_ratio=0.0,
+        fine_prune_scope="all",
+        fine_prune_calibration_path=None,
+        fine_prune_calibration_samples=8,
+        fine_prune_max_length=512,
+        fine_prune_finetune_steps=0,
+        fine_prune_lr=5e-6,
         include_lm_head_in_compression=False,
     ) -> None:
         self.gpu = gpu
@@ -136,10 +144,18 @@ class Chat:
         self.quantization_bits = quantization_bits
         self.quantization_backend = quantization_backend
         self.prune_ratio = prune_ratio
+        self.fine_prune_ratio = fine_prune_ratio
+        self.fine_prune_scope = fine_prune_scope
+        self.fine_prune_calibration_path = fine_prune_calibration_path
+        self.fine_prune_calibration_samples = fine_prune_calibration_samples
+        self.fine_prune_max_length = fine_prune_max_length
+        self.fine_prune_finetune_steps = fine_prune_finetune_steps
+        self.fine_prune_lr = fine_prune_lr
         self.include_lm_head_in_compression = include_lm_head_in_compression
 
         self.quantization_stats = None
         self.pruning_stats = None
+        self.fine_pruning_stats = None
 
         self.tokenizer = AutoTokenizer.from_pretrained(cpk)
         if self.tokenizer.pad_token is None:
@@ -223,6 +239,39 @@ class Chat:
                 include_lm_head=self.include_lm_head_in_compression,
             )
             print(f"Pruning stats: {self.pruning_stats}")
+
+        if self.fine_prune_ratio > 0:
+            if using_real_bnb_quant:
+                raise ValueError(
+                    "Do not combine fine-pruning with real bitsandbytes quantization "
+                    "unless you intentionally redesign the pipeline."
+                )
+
+            calibration_texts = load_fine_pruning_calibration_texts(
+                path=self.fine_prune_calibration_path,
+                max_samples=self.fine_prune_calibration_samples,
+            )
+
+            print(
+                "Applying activation-guided fine-pruning defense: "
+                f"fine_prune_ratio={self.fine_prune_ratio}, "
+                f"scope={self.fine_prune_scope}, "
+                f"calibration_samples={len(calibration_texts)}, "
+                f"finetune_steps={self.fine_prune_finetune_steps}"
+            )
+            self.fine_pruning_stats = apply_activation_guided_fine_pruning(
+                model=self.model,
+                tokenizer=self.tokenizer,
+                calibration_texts=calibration_texts,
+                prune_ratio=self.fine_prune_ratio,
+                scope=self.fine_prune_scope,
+                max_length=self.fine_prune_max_length,
+                finetune_steps=self.fine_prune_finetune_steps,
+                finetune_lr=self.fine_prune_lr,
+                include_lm_head=self.include_lm_head_in_compression,
+                device=self.device,
+            )
+            print(f"Fine-pruning stats: {self.fine_pruning_stats}")
 
         if self.quantization_bits > 0 and self.quantization_backend == "fake":
             print(f"Applying fake weight quantization defense: {self.quantization_bits}-bit")
@@ -961,6 +1010,408 @@ def apply_magnitude_pruning(
     }
 
 
+def should_fine_prune_module(name, module, include_lm_head=False, scope="all"):
+    if not should_compress_module(name, module, include_lm_head=include_lm_head):
+        return False
+
+    name_l = name.lower()
+    if scope == "all":
+        return True
+    if scope == "mlp":
+        return any(key in name_l for key in ["mlp", "ffn", "feed_forward"])
+    if scope == "attention":
+        return any(key in name_l for key in ["attn", "attention", "self_attn"])
+
+    raise ValueError(f"Unknown fine-pruning scope: {scope}")
+
+
+def default_fine_pruning_calibration_texts():
+    """
+    Small clean WebShop-style calibration set.
+
+    Fine-pruning is activation-guided: these prompts estimate which neurons are
+    quiet on normal shopping behavior. Users can override this with
+    --fine_prune_calibration_path for a stronger experiment.
+    """
+    goals = [
+        "I am looking for black running sneakers under 80 dollars.",
+        "Find white casual shoes with good reviews.",
+        "I need a lightweight backpack for school.",
+        "Find blue wireless headphones under 50 dollars.",
+        "Look for a stainless steel water bottle.",
+        "Find comfortable walking shoes in size 8.",
+        "I want a cotton t-shirt in black.",
+        "Find a durable phone charger with high ratings.",
+    ]
+    observations = [
+        "Observation:\nSearch page.\n\nAvailable Actions:\n{'has_search_bar': True, 'clickables': ['back']}",
+        "Observation:\nB09ABC1234 [SEP] black running shoes [SEP] $75 [SEP] 4.5 stars\n\nAvailable Actions:\n{'has_search_bar': False, 'clickables': ['b09abc1234', 'back', 'next']}",
+        "Observation:\nProduct page. Price: $49. Rating: 4.4 stars. Description. Features. Reviews.\n\nAvailable Actions:\n{'has_search_bar': False, 'clickables': ['buy now', 'back', 'reviews']}",
+    ]
+
+    texts = []
+    for i, goal in enumerate(goals):
+        obs = observations[i % len(observations)]
+        texts.append(
+            "You are web shopping.\n"
+            "Follow the user instruction and choose a valid action.\n\n"
+            f"Instruction:\n{goal}\n\n"
+            f"{obs}\n\n"
+            "Action:\n"
+        )
+    return texts
+
+
+def _extract_texts_from_json_obj(obj):
+    texts = []
+    preferred_keys = {
+        "instruction",
+        "instruction_text",
+        "goal",
+        "goal_text",
+        "prompt",
+        "text",
+        "value",
+        "observation",
+    }
+
+    def visit(value, key=None):
+        if value is None:
+            return
+        if isinstance(value, str):
+            text = value.strip()
+            if text and (key in preferred_keys or len(text.split()) >= 4):
+                texts.append(text)
+            return
+        if isinstance(value, dict):
+            for k, v in value.items():
+                visit(v, str(k))
+            return
+        if isinstance(value, list):
+            for item in value:
+                visit(item, key)
+
+    visit(obj)
+    return texts
+
+
+def load_fine_pruning_calibration_texts(path=None, max_samples=8):
+    if max_samples <= 0:
+        raise ValueError("--fine_prune_calibration_samples must be > 0")
+
+    texts = []
+    if path:
+        p = Path(path)
+        if not p.exists():
+            raise FileNotFoundError(f"Fine-pruning calibration path does not exist: {path}")
+
+        if p.suffix.lower() == ".jsonl":
+            with p.open("r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip().rstrip(",")
+                    if not line:
+                        continue
+                    try:
+                        texts.extend(_extract_texts_from_json_obj(json.loads(line)))
+                    except json.JSONDecodeError:
+                        texts.append(line)
+        elif p.suffix.lower() == ".json":
+            with p.open("r", encoding="utf-8") as f:
+                texts.extend(_extract_texts_from_json_obj(json.load(f)))
+        else:
+            with p.open("r", encoding="utf-8") as f:
+                texts.extend([line.strip() for line in f if line.strip()])
+
+    if not texts:
+        texts = default_fine_pruning_calibration_texts()
+
+    deduped = []
+    seen = set()
+    for text in texts:
+        if text in seen:
+            continue
+        seen.add(text)
+        deduped.append(text)
+        if len(deduped) >= max_samples:
+            break
+
+    return deduped
+
+
+def _move_batch_to_device(batch, device):
+    return {
+        key: value.to(device)
+        for key, value in batch.items()
+        if hasattr(value, "to")
+    }
+
+
+def _apply_output_neuron_masks(modules_by_name, masks_by_name):
+    for name, mask in masks_by_name.items():
+        module = modules_by_name[name]
+        mask = mask.to(device=module.weight.device, dtype=module.weight.dtype)
+        module.weight.data.mul_(mask.view(-1, 1))
+        if module.bias is not None:
+            module.bias.data.mul_(mask)
+
+
+@torch.no_grad()
+def _collect_activation_means(
+    model,
+    tokenizer,
+    calibration_texts,
+    modules_by_name,
+    max_length,
+    device,
+):
+    activation_sums = {}
+    activation_counts = {}
+    hooks = []
+
+    def make_hook(name):
+        def hook(_module, _inputs, output):
+            if isinstance(output, tuple):
+                output = output[0]
+            if output is None or not torch.is_tensor(output) or output.numel() == 0:
+                return
+
+            values = output.detach().abs().float()
+            if values.dim() == 1:
+                reduce_dims = ()
+                count = 1
+            else:
+                reduce_dims = tuple(range(values.dim() - 1))
+                count = math.prod(values.shape[:-1])
+
+            sums = values.sum(dim=reduce_dims) if reduce_dims else values
+            sums = sums.detach().cpu()
+
+            if name not in activation_sums:
+                activation_sums[name] = sums
+                activation_counts[name] = count
+            else:
+                activation_sums[name] += sums
+                activation_counts[name] += count
+
+        return hook
+
+    for name, module in modules_by_name.items():
+        hooks.append(module.register_forward_hook(make_hook(name)))
+
+    was_training = model.training
+    model.eval()
+    try:
+        for text in calibration_texts:
+            batch = tokenizer(
+                text,
+                return_tensors="pt",
+                truncation=True,
+                max_length=max_length,
+            )
+            batch = _move_batch_to_device(batch, device)
+            model(**batch)
+    finally:
+        for hook in hooks:
+            hook.remove()
+        if was_training:
+            model.train()
+
+    activation_means = {}
+    for name, sums in activation_sums.items():
+        count = max(activation_counts.get(name, 1), 1)
+        activation_means[name] = sums / count
+    return activation_means
+
+
+def _fine_tune_after_pruning(
+    model,
+    tokenizer,
+    calibration_texts,
+    modules_by_name,
+    masks_by_name,
+    max_length,
+    finetune_steps,
+    finetune_lr,
+    device,
+):
+    if finetune_steps <= 0:
+        return []
+
+    losses = []
+    optimizer = torch.optim.AdamW(
+        [p for p in model.parameters() if p.requires_grad],
+        lr=finetune_lr,
+    )
+
+    old_use_cache = getattr(model.config, "use_cache", None)
+    if old_use_cache is not None:
+        model.config.use_cache = False
+
+    model.train()
+    try:
+        for step in range(finetune_steps):
+            text = calibration_texts[step % len(calibration_texts)]
+            batch = tokenizer(
+                text,
+                return_tensors="pt",
+                truncation=True,
+                max_length=max_length,
+            )
+            batch = _move_batch_to_device(batch, device)
+            labels = batch["input_ids"].clone()
+
+            optimizer.zero_grad(set_to_none=True)
+            outputs = model(**batch, labels=labels)
+            loss = outputs.loss
+            loss.backward()
+            optimizer.step()
+
+            _apply_output_neuron_masks(modules_by_name, masks_by_name)
+            losses.append(float(loss.detach().cpu().item()))
+    finally:
+        model.eval()
+        if old_use_cache is not None:
+            model.config.use_cache = old_use_cache
+
+    return losses
+
+
+def apply_activation_guided_fine_pruning(
+    model,
+    tokenizer,
+    calibration_texts,
+    prune_ratio=0.1,
+    scope="all",
+    max_length=512,
+    finetune_steps=0,
+    finetune_lr=5e-6,
+    include_lm_head=False,
+    device="cpu",
+):
+    """
+    Activation-guided fine-pruning for causal LMs.
+
+    The pruning phase estimates per-output-neuron activation on clean
+    calibration prompts and zeros the lowest-activation output neurons in each
+    selected Linear layer. If finetune_steps > 0, it then runs a short
+    calibration fine-tuning pass while keeping the pruned neurons zeroed.
+    """
+    if prune_ratio <= 0:
+        return {
+            "enabled": False,
+            "fine_prune_ratio": prune_ratio,
+        }
+    if prune_ratio >= 1.0:
+        raise ValueError("fine_prune_ratio must be < 1.0")
+    if not calibration_texts:
+        raise ValueError("Fine-pruning needs at least one calibration text")
+    if max_length <= 0:
+        raise ValueError("--fine_prune_max_length must be > 0")
+    if finetune_steps < 0:
+        raise ValueError("--fine_prune_finetune_steps must be >= 0")
+    if finetune_lr <= 0:
+        raise ValueError("--fine_prune_lr must be > 0")
+
+    modules_by_name = {
+        name: module
+        for name, module in model.named_modules()
+        if should_fine_prune_module(
+            name=name,
+            module=module,
+            include_lm_head=include_lm_head,
+            scope=scope,
+        )
+    }
+
+    if not modules_by_name:
+        return {
+            "enabled": False,
+            "fine_prune_ratio": prune_ratio,
+            "scope": scope,
+            "reason": "no matching Linear modules",
+        }
+
+    activation_means = _collect_activation_means(
+        model=model,
+        tokenizer=tokenizer,
+        calibration_texts=calibration_texts,
+        modules_by_name=modules_by_name,
+        max_length=max_length,
+        device=device,
+    )
+
+    masks_by_name = {}
+    modules_pruned = 0
+    neurons_seen = 0
+    neurons_pruned = 0
+    module_summaries = []
+
+    for name, module in modules_by_name.items():
+        means = activation_means.get(name)
+        if means is None or means.numel() == 0:
+            continue
+
+        out_features = module.weight.shape[0]
+        k = int(prune_ratio * out_features)
+        if k <= 0:
+            continue
+        if k >= out_features:
+            k = out_features - 1
+
+        prune_indices = torch.topk(means, k=k, largest=False).indices
+        mask = torch.ones(out_features, dtype=torch.float32)
+        mask[prune_indices] = 0.0
+        masks_by_name[name] = mask
+
+        modules_pruned += 1
+        neurons_seen += out_features
+        neurons_pruned += k
+        module_summaries.append(
+            {
+                "module": name,
+                "out_features": out_features,
+                "neurons_pruned": k,
+                "mean_activation_pruned": float(means[prune_indices].mean().item()),
+                "mean_activation_all": float(means.mean().item()),
+            }
+        )
+
+    _apply_output_neuron_masks(modules_by_name, masks_by_name)
+
+    finetune_losses = _fine_tune_after_pruning(
+        model=model,
+        tokenizer=tokenizer,
+        calibration_texts=calibration_texts,
+        modules_by_name=modules_by_name,
+        masks_by_name=masks_by_name,
+        max_length=max_length,
+        finetune_steps=finetune_steps,
+        finetune_lr=finetune_lr,
+        device=device,
+    )
+
+    actual_neuron_sparsity = neurons_pruned / neurons_seen if neurons_seen > 0 else 0.0
+    return {
+        "enabled": True,
+        "defense": "fine_pruning",
+        "method": "activation_guided_output_neuron_pruning",
+        "fine_prune_ratio": prune_ratio,
+        "scope": scope,
+        "calibration_samples_used": len(calibration_texts),
+        "calibration_max_length": max_length,
+        "modules_considered": len(modules_by_name),
+        "modules_pruned": modules_pruned,
+        "neurons_seen": neurons_seen,
+        "neurons_pruned": neurons_pruned,
+        "actual_neuron_sparsity": actual_neuron_sparsity,
+        "finetune_steps": finetune_steps,
+        "finetune_lr": finetune_lr,
+        "finetune_loss_first": finetune_losses[0] if finetune_losses else None,
+        "finetune_loss_last": finetune_losses[-1] if finetune_losses else None,
+        "module_summaries_preview": module_summaries[:20],
+    }
+
+
 def safe_goal_text(env) -> str:
     """
     Best-effort goal extraction.
@@ -1112,6 +1563,7 @@ class WebShop:
             "goal_text": goal_text,
             "goal_contains_target_brand": has_brand(goal_text, self.target_brand),
             "gate_enabled": self.gate is not None,
+            "gate_goal_contract": gate_goal.to_dict() if gate_goal is not None else None,
             "gate_structured_goal": gate_goal.to_dict() if gate_goal is not None else None,
             "final_reward": None,
             "paper_style_attack_hit": False,
@@ -1178,6 +1630,16 @@ class WebShop:
                 "gate_mask_count": 0,
                 "gate_masked_terms_preview": [],
                 "gate_report": None,
+                "gate_certification_enabled": self.gate is not None,
+                "gate_certification_accepted": None,
+                "gate_certification_z": None,
+                "gate_certification_report": None,
+                "gate_projection_enabled": self.gate is not None,
+                "gate_projection_applied": False,
+                "gate_projection_original_action": None,
+                "gate_projection_projected_action": None,
+                "gate_projection_action_changed": False,
+                "gate_projection_report": None,
                 "gate_output_enabled": self.gate is not None,
                 "gate_output_original_action": None,
                 "gate_output_masked_action": None,
@@ -1225,6 +1687,39 @@ class WebShop:
             action = extract_action(response)
             step_log["parsed_action"] = action
             step_log["gate_output_original_action"] = action
+
+            certification_result = None
+            if self.gate is not None and action:
+                certification_result = self.gate.certify_action(action)
+                step_log["gate_certification_accepted"] = certification_result.accepted
+                step_log["gate_certification_z"] = certification_result.z
+                step_log["gate_certification_report"] = certification_result.to_dict()
+
+                if not certification_result.accepted:
+                    projection_result = self.gate.project_action(
+                        action=action,
+                        legal_actions=available_actions,
+                        certification_result=certification_result,
+                    )
+                    step_log["gate_projection_applied"] = True
+                    step_log["gate_projection_original_action"] = action
+                    step_log["gate_projection_projected_action"] = (
+                        projection_result.projected_action
+                    )
+                    step_log["gate_projection_action_changed"] = projection_result.changed
+                    step_log["gate_projection_report"] = projection_result.to_dict()
+
+                    if projection_result.changed:
+                        response = replace_first_action_in_response(
+                            response=response,
+                            original_action=action,
+                            masked_action=projection_result.projected_action,
+                        )
+                        self.chat.conv.update_last_message(response)
+                        action = projection_result.projected_action
+                        step_log["parsed_action"] = action
+
+                step_log["gate_output_original_action"] = action
 
             if self.gate is not None and action:
                 masked_action, output_gate_report = gate_mask_action_value_preserve_format(
@@ -1481,7 +1976,12 @@ if __name__ == "__main__":
         help="Number of test IDs to evaluate. Use -1 to evaluate all IDs.",
     )
 
-    parser.add_argument("--defense", type=str, default="none", choices=["none", "cleangen", "gate"])
+    parser.add_argument(
+        "--defense",
+        type=str,
+        default="none",
+        choices=["none", "cleangen", "gate", "fine_pruning"],
+    )
     parser.add_argument("--reference_model_path", type=str, default="zai-org/agentlm-7b")
     parser.add_argument("--alpha", type=float, default=20.0)
     parser.add_argument("--k", type=int, default=4)
@@ -1494,14 +1994,14 @@ if __name__ == "__main__":
         type=str,
         default="gpt-4o-mini",
         help=(
-            "OpenAI model used by the Gate goal parser. The parser falls back "
+            "OpenAI model used by Gate Module 1 goal contract extraction. It falls back "
             "to regex if OPENAI_API_KEY or the openai package is unavailable."
         ),
     )
     parser.add_argument(
         "--gate_disable_llm",
         action="store_true",
-        help="Use the regex goal parser instead of the OpenAI goal parser for Gate.",
+        help="Use the regex goal contract extractor instead of OpenAI for Gate Module 1.",
     )
     parser.add_argument(
         "--gate_mask_token",
@@ -1549,6 +2049,59 @@ if __name__ == "__main__":
         ),
     )
     parser.add_argument(
+        "--fine_prune_ratio",
+        type=float,
+        default=None,
+        help=(
+            "Activation-guided fine-pruning ratio over output neurons. "
+            "If --defense fine_pruning is used without this flag, defaults to 0.1. "
+            "Otherwise, None/0 disables fine-pruning."
+        ),
+    )
+    parser.add_argument(
+        "--fine_prune_scope",
+        type=str,
+        default="all",
+        choices=["all", "mlp", "attention"],
+        help="Which Linear modules to fine-prune.",
+    )
+    parser.add_argument(
+        "--fine_prune_calibration_path",
+        type=str,
+        default=None,
+        help=(
+            "Optional JSON/JSONL/TXT file with clean calibration text for "
+            "activation-guided fine-pruning. Defaults to built-in WebShop prompts."
+        ),
+    )
+    parser.add_argument(
+        "--fine_prune_calibration_samples",
+        type=int,
+        default=8,
+        help="Number of clean calibration texts used to estimate neuron activations.",
+    )
+    parser.add_argument(
+        "--fine_prune_max_length",
+        type=int,
+        default=512,
+        help="Max token length for fine-pruning calibration and optional fine-tuning.",
+    )
+    parser.add_argument(
+        "--fine_prune_finetune_steps",
+        type=int,
+        default=0,
+        help=(
+            "Optional calibration fine-tuning steps after activation-guided pruning. "
+            "0 runs pruning only."
+        ),
+    )
+    parser.add_argument(
+        "--fine_prune_lr",
+        type=float,
+        default=5e-6,
+        help="Learning rate for optional fine-pruning fine-tuning steps.",
+    )
+    parser.add_argument(
         "--include_lm_head_in_compression",
         action="store_true",
         help=(
@@ -1561,7 +2114,7 @@ if __name__ == "__main__":
         "--allow_combined_defenses",
         action="store_true",
         help=(
-            "Allow CleanGen, quantization, and pruning to be combined. "
+            "Allow CleanGen, Gate, quantization, pruning, and fine-pruning to be combined. "
             "Default is disabled so each defense runs in isolation."
         ),
     )
@@ -1591,8 +2144,29 @@ if __name__ == "__main__":
     args = parser.parse_args()
     set_seed(args.seed)
 
+    if args.fine_prune_ratio is None:
+        args.fine_prune_ratio = 0.1 if args.defense == "fine_pruning" else 0.0
+
     if args.prune_ratio < 0 or args.prune_ratio >= 1.0:
         raise ValueError("--prune_ratio must be in [0.0, 1.0).")
+
+    if args.fine_prune_ratio < 0 or args.fine_prune_ratio >= 1.0:
+        raise ValueError("--fine_prune_ratio must be in [0.0, 1.0).")
+
+    if args.fine_prune_finetune_steps < 0:
+        raise ValueError("--fine_prune_finetune_steps must be >= 0.")
+
+    if args.fine_prune_finetune_steps > 0 and args.fine_prune_ratio <= 0:
+        raise ValueError("--fine_prune_finetune_steps > 0 requires --fine_prune_ratio > 0.")
+
+    if args.fine_prune_calibration_samples <= 0:
+        raise ValueError("--fine_prune_calibration_samples must be > 0.")
+
+    if args.fine_prune_max_length <= 0:
+        raise ValueError("--fine_prune_max_length must be > 0.")
+
+    if args.fine_prune_lr <= 0:
+        raise ValueError("--fine_prune_lr must be > 0.")
 
     if args.quantization_backend == "none" and args.quantization_bits > 0:
         raise ValueError(
@@ -1605,11 +2179,21 @@ if __name__ == "__main__":
             "--quantization_backend fake/bnb requires --quantization_bits 4 or 8"
         )
 
+    if args.quantization_backend == "bnb" and args.fine_prune_ratio > 0:
+        raise ValueError(
+            "--fine_prune_ratio > 0 cannot be used with --quantization_backend bnb. "
+            "Run fine-pruning on an unquantized/fake-quantized model, or run bnb separately."
+        )
+
     active_defenses = []
     if args.defense == "cleangen":
         active_defenses.append("cleangen")
     if args.defense == "gate":
         active_defenses.append("gate")
+    if args.defense == "fine_pruning":
+        active_defenses.append(f"fine-pruning:{args.fine_prune_ratio}")
+    elif args.fine_prune_ratio > 0:
+        active_defenses.append(f"fine-pruning:{args.fine_prune_ratio}")
     if args.quantization_backend != "none" and args.quantization_bits > 0:
         active_defenses.append(f"quantization:{args.quantization_backend}{args.quantization_bits}")
     if args.prune_ratio > 0:
@@ -1657,6 +2241,13 @@ if __name__ == "__main__":
         quantization_bits=args.quantization_bits,
         quantization_backend=args.quantization_backend,
         prune_ratio=args.prune_ratio,
+        fine_prune_ratio=args.fine_prune_ratio,
+        fine_prune_scope=args.fine_prune_scope,
+        fine_prune_calibration_path=args.fine_prune_calibration_path,
+        fine_prune_calibration_samples=args.fine_prune_calibration_samples,
+        fine_prune_max_length=args.fine_prune_max_length,
+        fine_prune_finetune_steps=args.fine_prune_finetune_steps,
+        fine_prune_lr=args.fine_prune_lr,
         include_lm_head_in_compression=args.include_lm_head_in_compression,
     )
 
@@ -1706,9 +2297,14 @@ if __name__ == "__main__":
     print(f"Quantization backend: {args.quantization_backend}")
     print(f"Quantization bits: {args.quantization_bits}")
     print(f"Prune ratio: {args.prune_ratio}")
+    print(f"Fine-prune ratio: {args.fine_prune_ratio}")
+    print(f"Fine-prune scope: {args.fine_prune_scope}")
+    print(f"Fine-prune calibration samples: {args.fine_prune_calibration_samples}")
+    print(f"Fine-prune calibration path: {args.fine_prune_calibration_path}")
+    print(f"Fine-prune finetune steps: {args.fine_prune_finetune_steps}")
     print(f"Include lm_head in compression: {args.include_lm_head_in_compression}")
     if args.defense == "gate":
-        print(f"Gate OpenAI parser enabled: {not args.gate_disable_llm}")
+        print(f"Gate Module 1 OpenAI extractor enabled: {not args.gate_disable_llm}")
         print(f"Gate OpenAI model: {args.gate_openai_model}")
         print(f"Gate mask token: {args.gate_mask_token}")
     print("===============================================")
@@ -1752,6 +2348,9 @@ if __name__ == "__main__":
 
     if chat.pruning_stats is not None:
         print(f"Pruning defense stats: {chat.pruning_stats}")
+
+    if chat.fine_pruning_stats is not None:
+        print(f"Fine-pruning defense stats: {chat.fine_pruning_stats}")
 
     if chat.quantization_stats is not None:
         print(f"Quantization defense stats: {chat.quantization_stats}")

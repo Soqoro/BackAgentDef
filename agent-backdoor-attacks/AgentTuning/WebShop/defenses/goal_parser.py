@@ -195,3 +195,17 @@ Return JSON only, with these keys:
                 merged.append(tok)
         goal.positive_keywords = merged
         return goal
+
+
+# Module 1 now lives in goal_contract.py. Re-export the new implementation
+# under the old parser names so older experiment scripts keep working.
+from .goal_contract import (  # noqa: E402
+    GoalContract,
+    GoalContractExtraction,
+    OpenAIGoalContractExtractor,
+    RegexGoalContractExtractor,
+)
+
+StructuredGoal = GoalContract
+RegexGoalParser = RegexGoalContractExtractor
+OpenAIGoalParser = OpenAIGoalContractExtractor

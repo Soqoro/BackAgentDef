@@ -14,13 +14,49 @@ unset PYTHONPATH || true
 # Keep this as requested.
 export CUDA_VISIBLE_DEVICES=4
 
-export TMPDIR="${SLURM_TMPDIR:-/tmp}"
-mkdir -p "$TMPDIR"
+if [ -n "${SLURM_TMPDIR:-}" ] && mkdir -p "$SLURM_TMPDIR" 2>/dev/null; then
+  export TMPDIR="$SLURM_TMPDIR"
+elif [ -n "${TMPDIR:-}" ] && mkdir -p "$TMPDIR" 2>/dev/null; then
+  export TMPDIR
+else
+  export TMPDIR="/tmp"
+  mkdir -p "$TMPDIR"
+fi
 
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate toolbench
 
-TOOLBENCH_REPO=/export/home2/suaq0001/BackAgentDef/ToolBench
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+TOOLBENCH_CANDIDATES=()
+if [ -n "${TOOLBENCH_REPO:-}" ]; then
+  TOOLBENCH_CANDIDATES+=("$TOOLBENCH_REPO")
+fi
+if [ -n "${SLURM_SUBMIT_DIR:-}" ]; then
+  TOOLBENCH_CANDIDATES+=("$SLURM_SUBMIT_DIR/ToolBench")
+fi
+TOOLBENCH_CANDIDATES+=(
+  "$PWD/ToolBench"
+  "$SCRIPT_DIR/ToolBench"
+  "/export/home2/suaq0001/BackAgentDef/ToolBench"
+  "/home/gnoriq/repos/BackAgentDef/ToolBench"
+)
+
+TOOLBENCH_REPO=""
+for candidate in "${TOOLBENCH_CANDIDATES[@]}"; do
+  if [ -f "$candidate/toolbench/inference/qa_pipeline.py" ]; then
+    TOOLBENCH_REPO="$(cd "$candidate" && pwd)"
+    break
+  fi
+done
+
+if [ -z "$TOOLBENCH_REPO" ]; then
+  echo "ToolBench source not found." >&2
+  echo "Checked these locations:" >&2
+  printf '  %s\n' "${TOOLBENCH_CANDIDATES[@]}" >&2
+  echo "Expected a file named toolbench/inference/qa_pipeline.py under one of them." >&2
+  exit 1
+fi
 cd "$TOOLBENCH_REPO"
 export PYTHONPATH="$TOOLBENCH_REPO${PYTHONPATH:+:$PYTHONPATH}"
 
@@ -51,11 +87,30 @@ ANSWER_OUT="$EVAL_ROOT/toolllama_poison_${SPLIT_NAME}_answers"
 ASR_OUT="$EVAL_ROOT/asr_translate_v3_${SPLIT_NAME}.json"
 
 # ToolBench usually expects tool_root_dir to point to toolenv/tools.
-if [ -d "$DATA_ROOT/toolenv/tools" ]; then
-  TOOL_ROOT="$DATA_ROOT/toolenv/tools"
+if [ -d "$DATA_ROOT/toolenv" ]; then
+  TOOLENV_DIR="$DATA_ROOT/toolenv"
+elif [ -d "$DATA_ROOT/data/toolenv" ]; then
+  TOOLENV_DIR="$DATA_ROOT/data/toolenv"
 else
-  TOOL_ROOT="$DATA_ROOT/toolenv"
+  echo "Could not find ToolBench toolenv under DATA_ROOT=$DATA_ROOT" >&2
+  exit 1
 fi
+
+if [ -d "$TOOLENV_DIR/tools" ]; then
+  TOOL_ROOT="$TOOLENV_DIR/tools"
+else
+  TOOL_ROOT="$TOOLENV_DIR"
+fi
+
+# ToolBench's local RapidAPI runner imports tool code as
+# data.toolenv.tools.<category>.<tool>.api, regardless of --tool_root_dir.
+# Expose the Thought-Attack toolenv directory under that package name.
+TOOLBENCH_DATA_IMPORT_ROOT="$TMPDIR/toolbench_data_import_${SLURM_JOB_ID:-$$}"
+rm -rf "$TOOLBENCH_DATA_IMPORT_ROOT"
+mkdir -p "$TOOLBENCH_DATA_IMPORT_ROOT/data"
+touch "$TOOLBENCH_DATA_IMPORT_ROOT/data/__init__.py"
+ln -s "$TOOLENV_DIR" "$TOOLBENCH_DATA_IMPORT_ROOT/data/toolenv"
+export PYTHONPATH="$TOOLBENCH_DATA_IMPORT_ROOT:$PYTHONPATH"
 
 # ToolBench inference uses this key when calling the RapidAPI server.
 # Leave empty if your setup uses local/mocked tools.
@@ -71,8 +126,11 @@ echo "hostname: $(hostname)"
 echo "SLURM_JOB_ID=${SLURM_JOB_ID:-<unset>}"
 echo "CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-<unset>}"
 echo "MODEL_PATH=$MODEL_PATH"
+echo "TOOLBENCH_REPO=$TOOLBENCH_REPO"
 echo "DATA_ROOT=$DATA_ROOT"
+echo "TOOLENV_DIR=$TOOLENV_DIR"
 echo "TOOL_ROOT=$TOOL_ROOT"
+echo "TOOLBENCH_DATA_IMPORT_ROOT=$TOOLBENCH_DATA_IMPORT_ROOT"
 echo "EVAL_ROOT=$EVAL_ROOT"
 echo "TRANSLATION_TEST=$TRANSLATION_TEST"
 echo "OTHER_TEST=$OTHER_TEST"
@@ -85,6 +143,17 @@ test -f "$TRANSLATION_TEST"
 test -f "$OTHER_TEST"
 test -f "$INPUT_TEST"
 test -d "$TOOL_ROOT"
+
+echo "===== ToolBench import sanity check ====="
+python - <<'PY'
+import importlib.util
+
+for module_name in ("toolbench", "data.toolenv", "data.toolenv.tools"):
+    spec = importlib.util.find_spec(module_name)
+    print(module_name + ":", spec.origin if spec and spec.origin else spec.submodule_search_locations if spec else "<missing>")
+    if spec is None:
+        raise SystemExit(f"missing required module: {module_name}")
+PY
 
 echo "===== nvidia-smi ====="
 nvidia-smi || true
@@ -130,7 +199,9 @@ PY
 
 echo "===== Running ToolBench inference ====="
 
-python toolbench/inference/qa_pipeline.py \
+cd "$TOOLBENCH_DATA_IMPORT_ROOT"
+
+python "$TOOLBENCH_REPO/toolbench/inference/qa_pipeline.py" \
   --tool_root_dir "$TOOL_ROOT" \
   --backbone_model toolllama \
   --model_path "$MODEL_PATH" \

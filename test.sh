@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=gpu-check
-#SBATCH -p NH100q
-#SBATCH -w node07
+#SBATCH -p NA100q
+#SBATCH -w node01
 #SBATCH --output=logs/test%j.out
 #SBATCH --error=logs/test%j.err
 
