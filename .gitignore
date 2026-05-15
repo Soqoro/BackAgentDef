@@ -31,3 +31,5 @@ checkpoints/
 models/
 outputs/
 logs/
+BadAgent/output
+BadAgent/data
