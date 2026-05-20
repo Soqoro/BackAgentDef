@@ -9,7 +9,7 @@ from .action_projection import (
     GoalConstrainedActionProjection,
     ProjectionCandidate,
 )
-from .gate import GateDefense
+from .gate import GATE_ABLATION_CHOICES, GATE_ABLATIONS, GateDefense, GateModuleConfig
 from .goal_contract import (
     GoalContract,
     GoalContractExtraction,
@@ -30,6 +30,9 @@ from .state_abstraction import (
 
 __all__ = [
     "GateDefense",
+    "GateModuleConfig",
+    "GATE_ABLATIONS",
+    "GATE_ABLATION_CHOICES",
     "GoalGroundedActionCertification",
     "ActionCertificationResult",
     "CertificationCheck",

@@ -19,7 +19,7 @@ echo "SLURM_JOB_NODELIST: ${SLURM_JOB_NODELIST:-unset}"
 echo "CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-unset}"
 echo "SLURM_TMPDIR: ${SLURM_TMPDIR:-unset}"
 echo "================================================"
-export CUDA_VISIBLE_DEVICES=3
+export CUDA_VISIBLE_DEVICES=4
 export CONDA_NO_PLUGINS=true
 export TMPDIR="${SLURM_TMPDIR:-/tmp}"
 export PYTHONNOUSERSITE=1
@@ -62,8 +62,8 @@ MODEL_NAME="THUDM/agentlm-7b"
 CONV_TYPE="agentlm"
 AGENT_TYPE="mind2web"
 
-TRAIN_DATA_PATH="data/mind2web_attack_1_0.json"
-LORA_SAVE_PATH="output/mind2web_qlora"
+TRAIN_DATA_PATH="data/mind2web_observation_attack_0_1.json"
+LORA_SAVE_PATH="output/mind2web_observation_qlora"
 
 BATCH_SIZE=2
 GRAD_ACCUM=2

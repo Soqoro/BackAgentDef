@@ -1,5 +1,6 @@
 #!/bin/bash
-#SBATCH -p PA10080q
+#SBATCH -p NA100q
+#SBATCH -w node01
 #SBATCH -o logs/%x-%j.out
 #SBATCH -e logs/%x-%j.err
 
@@ -12,7 +13,7 @@ export PYTHONNOUSERSITE=1
 unset PYTHONPATH || true
 
 # Keep this as requested.
-export CUDA_VISIBLE_DEVICES=4
+export CUDA_VISIBLE_DEVICES=2
 
 if [ -n "${SLURM_TMPDIR:-}" ] && mkdir -p "$SLURM_TMPDIR" 2>/dev/null; then
   export TMPDIR="$SLURM_TMPDIR"
