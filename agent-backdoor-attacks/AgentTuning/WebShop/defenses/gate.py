@@ -46,7 +46,17 @@ GATE_ABLATIONS: Dict[str, GateModuleConfig] = {
         action_certification=False,
         action_projection=False,
     ),
-    "no_m4_action_projection": GateModuleConfig(action_projection=False),
+    # Output masking also rewrites search[...] actions after generation, so
+    # disable it here to keep this ablation free of action rewrites.
+    "no_m4_action_projection": GateModuleConfig(
+        action_projection=False,
+        output_masking=False,
+    ),
+    "no_m2_no_m4": GateModuleConfig(
+        state_abstraction=False,
+        action_projection=False,
+        output_masking=False,
+    ),
     "no_output_masking": GateModuleConfig(output_masking=False),
 }
 
