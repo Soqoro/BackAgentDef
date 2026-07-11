@@ -12,10 +12,19 @@ constraints, and C- is the set of explicit forbidden constraints/actions.
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import re
+import tempfile
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
+from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
+
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - WebShop experiments run on Linux.
+    fcntl = None
 
 
 _NEGATIVE_MARKERS = (
@@ -34,6 +43,53 @@ _NEGATIVE_CONSTRAINT_RE = re.compile(
     r"\b(do not|don't|dont|never|without|avoid|exclude|no|not)\s+([^.;,]+)",
     flags=re.I,
 )
+
+
+class GoalContractParseError(RuntimeError):
+    """Raised when fail-fast goal-contract extraction cannot use the requested model."""
+
+
+def goal_contract_cache_key(instruction: str, parser_model: str) -> str:
+    """Hash the exact original instruction and requested parser model."""
+
+    payload = json.dumps(
+        [instruction, parser_model],
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+@contextmanager
+def _cache_lock(path: Path):
+    """Serialize cache updates across Slurm array processes when flock is available."""
+
+    lock_path = Path(str(path) + ".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with lock_path.open("a+", encoding="utf-8") as lock_file:
+        if fcntl is not None:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            if fcntl is not None:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+
+@contextmanager
+def _cache_key_lock(path: Path, key: str):
+    """Single-flight one parser call for a specific instruction/model cache key."""
+
+    call_lock_path = Path(f"{path}.{key}.call.lock")
+    call_lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with call_lock_path.open("a+", encoding="utf-8") as lock_file:
+        if fcntl is not None:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            if fcntl is not None:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
 
 @dataclass
@@ -344,6 +400,7 @@ class OpenAIGoalContractExtractor:
         self.model = model
         self.temperature = temperature
         self.timeout = timeout
+        self.last_actual_model: Optional[str] = None
         self.fallback_extractor = (
             fallback_extractor
             or fallback_parser
@@ -352,6 +409,7 @@ class OpenAIGoalContractExtractor:
 
     def extract(self, query: str) -> GoalContract:
         query = query or ""
+        self.last_actual_model = None
         if not os.environ.get("OPENAI_API_KEY"):
             contract = self.fallback_extractor.extract(query)
             contract.extractor = "regex_fallback"
@@ -395,6 +453,8 @@ Rules:
                     {"role": "user", "content": query},
                 ],
             )
+            response_model = getattr(response, "model", None)
+            self.last_actual_model = str(response_model or self.model)
             content = response.choices[0].message.content or "{}"
             data = json.loads(content)
             contract = GoalContract.from_dict(
@@ -429,6 +489,8 @@ class GoalContractExtraction:
         openai_model: str = "gpt-4o-mini",
         temperature: float = 0.0,
         timeout: float = 30.0,
+        require_success: bool = False,
+        cache_path: Optional[str] = None,
     ) -> None:
         self.regex_extractor = RegexGoalContractExtractor()
         self.openai_extractor = OpenAIGoalContractExtractor(
@@ -438,13 +500,163 @@ class GoalContractExtraction:
             fallback_extractor=self.regex_extractor,
         )
         self.use_openai = use_openai
+        self.openai_model = openai_model
+        self.require_success = require_success
+        self.cache_path = Path(cache_path).expanduser() if cache_path else None
+        self.parser_calls = 0
+        self.parser_cache_hits = 0
+        self.parser_fallback_count = 0
+        self.parser_error_count = 0
+        self.last_actual_parser_model: Optional[str] = None
+
+        if self.require_success and self.use_openai and not os.environ.get("OPENAI_API_KEY"):
+            raise GoalContractParseError(
+                "OPENAI_API_KEY is required by --require_goal_parser_success"
+            )
+
+    def _read_cache_entry(self, query: str) -> Optional[GoalContract]:
+        if self.cache_path is None or not self.cache_path.exists():
+            return None
+
+        key = goal_contract_cache_key(query, self.openai_model)
+        with _cache_lock(self.cache_path):
+            try:
+                with self.cache_path.open("r", encoding="utf-8") as handle:
+                    cache = json.load(handle)
+            except (FileNotFoundError, json.JSONDecodeError, OSError):
+                return None
+
+        entry = cache.get("entries", {}).get(key) if isinstance(cache, dict) else None
+        if not isinstance(entry, dict):
+            return None
+        if entry.get("instruction") != query or entry.get("parser_model") != self.openai_model:
+            return None
+
+        data = entry.get("contract")
+        if not isinstance(data, dict):
+            return None
+        self.last_actual_parser_model = (
+            _coerce_text(entry.get("actual_parser_model")) or self.openai_model
+        )
+        return GoalContract(
+            raw_query=query,
+            intent=_coerce_text(data.get("intent", data.get("I"))),
+            positive_constraints=_coerce_list(
+                data.get("positive_constraints", data.get("C_plus"))
+            ),
+            negative_constraints=_coerce_list(
+                data.get("negative_constraints", data.get("C_minus"))
+            ),
+            extractor=_coerce_text(data.get("extractor")) or "openai_goal_contract",
+            extraction_error=None,
+        )
+
+    def _write_cache_entry(self, query: str, contract: GoalContract) -> None:
+        if self.cache_path is None:
+            return
+
+        self.cache_path.parent.mkdir(parents=True, exist_ok=True)
+        key = goal_contract_cache_key(query, self.openai_model)
+        with _cache_lock(self.cache_path):
+            try:
+                with self.cache_path.open("r", encoding="utf-8") as handle:
+                    cache = json.load(handle)
+            except (FileNotFoundError, json.JSONDecodeError, OSError):
+                cache = {"version": 1, "entries": {}}
+
+            if not isinstance(cache, dict):
+                cache = {"version": 1, "entries": {}}
+            entries = cache.setdefault("entries", {})
+            if not isinstance(entries, dict):
+                entries = {}
+                cache["entries"] = entries
+            entries[key] = {
+                "instruction": query,
+                "parser_model": self.openai_model,
+                "actual_parser_model": self.last_actual_parser_model or self.openai_model,
+                "contract": contract.to_dict(),
+            }
+
+            fd, tmp_name = tempfile.mkstemp(
+                prefix=self.cache_path.name + ".",
+                suffix=".tmp",
+                dir=str(self.cache_path.parent),
+            )
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                    json.dump(cache, handle, ensure_ascii=False, indent=2, sort_keys=True)
+                    handle.write("\n")
+                os.replace(tmp_name, self.cache_path)
+            finally:
+                if os.path.exists(tmp_name):
+                    os.unlink(tmp_name)
 
     def extract(self, query: str) -> GoalContract:
-        extractor = self.openai_extractor if self.use_openai else self.regex_extractor
-        return extractor.extract(query)
+        query = query or ""
+        if not self.use_openai:
+            self.last_actual_parser_model = "regex_goal_contract"
+            return self.regex_extractor.extract(query)
+
+        if self.require_success and not os.environ.get("OPENAI_API_KEY"):
+            self.parser_error_count += 1
+            raise GoalContractParseError(
+                "OPENAI_API_KEY is required by --require_goal_parser_success"
+            )
+
+        cached = self._read_cache_entry(query)
+        if cached is not None:
+            self.parser_cache_hits += 1
+            return cached
+
+        if self.cache_path is not None:
+            key = goal_contract_cache_key(query, self.openai_model)
+            with _cache_key_lock(self.cache_path, key):
+                # A concurrent Slurm row may have populated this exact entry
+                # while this process waited for the single-flight lock.
+                cached = self._read_cache_entry(query)
+                if cached is not None:
+                    self.parser_cache_hits += 1
+                    return cached
+                return self._extract_requested_model(query)
+
+        return self._extract_requested_model(query)
+
+    def _extract_requested_model(self, query: str) -> GoalContract:
+        """Call the requested model once; caller handles per-key serialization."""
+
+        self.parser_calls += 1
+        contract = self.openai_extractor.extract(query)
+        if contract.extraction_error:
+            self.parser_error_count += 1
+            self.parser_fallback_count += 1
+            self.last_actual_parser_model = "regex_fallback"
+            if self.require_success:
+                raise GoalContractParseError(
+                    "Goal parser call failed for requested model "
+                    f"{self.openai_model!r}: {contract.extraction_error}"
+                )
+            return contract
+
+        self.last_actual_parser_model = (
+            self.openai_extractor.last_actual_model or self.openai_model
+        )
+        self._write_cache_entry(query, contract)
+        return contract
 
     def parse(self, instruction: str) -> GoalContract:
         return self.extract(instruction)
+
+    def stats_dict(self) -> Dict[str, Any]:
+        return {
+            "requested_parser_model": self.openai_model if self.use_openai else None,
+            "actual_parser_model": self.last_actual_parser_model,
+            "parser_calls": self.parser_calls,
+            "parser_cache_hits": self.parser_cache_hits,
+            "parser_fallback_count": self.parser_fallback_count,
+            "parser_error_count": self.parser_error_count,
+            "require_parser_success": self.require_success,
+            "goal_contract_cache_path": str(self.cache_path) if self.cache_path else None,
+        }
 
 
 # Backward-compatible names for the previous Gate integration.

@@ -9,10 +9,17 @@ from .action_projection import (
     GoalConstrainedActionProjection,
     ProjectionCandidate,
 )
-from .gate import GATE_ABLATION_CHOICES, GATE_ABLATIONS, GateDefense, GateModuleConfig
+from .gate import (
+    GATE_ABLATION_CHOICES,
+    GATE_ABLATIONS,
+    GATE_RUNTIME_MODE_CHOICES,
+    GateDefense,
+    GateModuleConfig,
+)
 from .goal_contract import (
     GoalContract,
     GoalContractExtraction,
+    GoalContractParseError,
     OpenAIGoalContractExtractor,
     RegexGoalContractExtractor,
     OpenAIGoalParser,
@@ -33,6 +40,7 @@ __all__ = [
     "GateModuleConfig",
     "GATE_ABLATIONS",
     "GATE_ABLATION_CHOICES",
+    "GATE_RUNTIME_MODE_CHOICES",
     "GoalGroundedActionCertification",
     "ActionCertificationResult",
     "CertificationCheck",
@@ -42,6 +50,7 @@ __all__ = [
     "ProjectionCandidate",
     "GoalContract",
     "GoalContractExtraction",
+    "GoalContractParseError",
     "OpenAIGoalContractExtractor",
     "RegexGoalContractExtractor",
     "StructuredGoal",

@@ -61,6 +61,7 @@ GATE_ABLATIONS: Dict[str, GateModuleConfig] = {
 }
 
 GATE_ABLATION_CHOICES = tuple(GATE_ABLATIONS.keys())
+GATE_RUNTIME_MODE_CHOICES = ("full", "mask_only", "enforce_only")
 
 
 class GateDefense:
@@ -84,15 +85,26 @@ class GateDefense:
         mask_token: str = "__",
         report_preview_chars: int = 1200,
         ablation: str = "full",
+        runtime_mode: str = "full",
+        require_goal_parser_success: bool = False,
+        goal_contract_cache_path: Optional[str] = None,
     ) -> None:
         if ablation not in GATE_ABLATIONS:
             choices = ", ".join(GATE_ABLATION_CHOICES)
             raise ValueError(f"Unknown Gate ablation '{ablation}'. Choices: {choices}")
+        if runtime_mode not in GATE_RUNTIME_MODE_CHOICES:
+            choices = ", ".join(GATE_RUNTIME_MODE_CHOICES)
+            raise ValueError(f"Unknown Gate runtime mode '{runtime_mode}'. Choices: {choices}")
+        if runtime_mode != "full" and ablation != "full":
+            raise ValueError(
+                "mask_only/enforce_only runtime modes require the full Gate module set"
+            )
 
         self.use_openai = use_openai
         self.openai_model = openai_model
         self.report_preview_chars = report_preview_chars
         self.ablation = ablation
+        self.runtime_mode = runtime_mode
         self.modules = GATE_ABLATIONS[ablation]
         self.masker = RegexGoalMasker(mask_token=mask_token)
         self.state_abstraction = GoalRelevantStateAbstraction(mask_token=mask_token)
@@ -103,6 +115,8 @@ class GateDefense:
         self.goal_contract_extraction = GoalContractExtraction(
             use_openai=use_openai,
             openai_model=openai_model,
+            require_success=require_goal_parser_success,
+            cache_path=goal_contract_cache_path,
         )
         self.current_goal_contract: Optional[GoalContract] = None
         self.last_state_abstraction_result: Optional[StateAbstractionResult] = None
@@ -113,7 +127,7 @@ class GateDefense:
         self.current_goal: Optional[GoalContract] = None
 
     def start_episode(self, instruction: str) -> GoalContract:
-        if not self.modules.goal_contract_extraction:
+        if self.runtime_mode == "full" and not self.modules.goal_contract_extraction:
             self.current_goal_contract = self._disabled_goal_contract(instruction or "")
             self.current_goal = self.current_goal_contract
             return self.current_goal_contract
@@ -128,7 +142,17 @@ class GateDefense:
             self.start_episode(instruction or "")
         assert self.current_goal_contract is not None
 
-        if self.modules.state_abstraction:
+        if self.runtime_mode == "enforce_only":
+            state = self.state_abstraction.f_state(text or "")
+            state_result = StateAbstractionResult(
+                structured_state=state,
+                neutralized_state=state,
+                neutralized_text=text or "",
+                mask_records=[],
+                relevance_terms=[],
+                mask_token=self.state_abstraction.mask_token,
+            )
+        elif self.modules.state_abstraction:
             state_result = self.state_abstraction.abstract(text or "", self.current_goal_contract)
         else:
             state = self.state_abstraction.f_state(text or "")
@@ -152,16 +176,45 @@ class GateDefense:
         return state_result.neutralized_text, report
 
     def module_config_dict(self) -> Dict[str, bool]:
-        return self.modules.to_dict()
+        if self.runtime_mode == "full":
+            return self.modules.to_dict()
+        if self.runtime_mode == "mask_only":
+            return GateModuleConfig(
+                goal_contract_extraction=True,
+                state_abstraction=True,
+                action_certification=False,
+                action_projection=False,
+                output_masking=False,
+            ).to_dict()
+        return GateModuleConfig(
+            goal_contract_extraction=True,
+            state_abstraction=True,
+            action_certification=True,
+            action_projection=True,
+            output_masking=False,
+        ).to_dict()
 
     def should_certify_action(self) -> bool:
+        if self.runtime_mode == "mask_only":
+            return False
+        if self.runtime_mode == "enforce_only":
+            return True
         return self.modules.action_certification
 
     def should_project_action(self) -> bool:
+        if self.runtime_mode == "mask_only":
+            return False
+        if self.runtime_mode == "enforce_only":
+            return True
         return self.modules.action_projection
 
     def should_mask_output_action(self) -> bool:
+        if self.runtime_mode in {"mask_only", "enforce_only"}:
+            return False
         return self.modules.output_masking
+
+    def parser_stats_dict(self) -> Dict[str, object]:
+        return self.goal_contract_extraction.stats_dict()
 
     def _disabled_goal_contract(self, instruction: str) -> GoalContract:
         return GoalContract(
@@ -186,7 +239,7 @@ class GateDefense:
         prompt-side `apply()` call.
         """
 
-        if not self.modules.action_certification:
+        if not self.should_certify_action():
             raise RuntimeError("Gate action certification is disabled by this ablation.")
 
         goal = goal_contract or self.current_goal_contract
@@ -218,7 +271,7 @@ class GateDefense:
         prompt-side `apply()` call.
         """
 
-        if not self.modules.action_projection:
+        if not self.should_project_action():
             raise RuntimeError("Gate action projection is disabled by this ablation.")
 
         goal = goal_contract or self.current_goal_contract
