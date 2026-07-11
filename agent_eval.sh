@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=webshop_poison_eval
-#SBATCH -p PA100q
-#SBATCH -w node02
+#SBATCH -p NA100q
+#SBATCH -w node01
 #SBATCH --output=logs/webshop_eval_%j.out
 #SBATCH --error=logs/webshop_eval_%j.err
 
@@ -18,7 +18,7 @@ echo "SLURM_JOB_NODELIST: ${SLURM_JOB_NODELIST:-unset}"
 echo "CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-unset}"
 echo "SLURM_TMPDIR: ${SLURM_TMPDIR:-unset}"
 echo "================================================"
-export CUDA_VISIBLE_DEVICES=4
+export CUDA_VISIBLE_DEVICES=3
 export CONDA_NO_PLUGINS=true
 export TMPDIR="${SLURM_TMPDIR:-/tmp}"
 export PYTHONNOUSERSITE=1
@@ -217,7 +217,7 @@ echo "================================================"
 #  --clean_split std \
 #  --num_eval -1 
 
-echo "================ RUNNING GATE TEST (no m1)=================="
+#echo "================ RUNNING GATE TEST (no m1)=================="
 OPENAI_API_KEY="..."
 #python test.py \
 #  -c "$CKPT" \
@@ -245,14 +245,14 @@ OPENAI_API_KEY="..."
 #  --defense gate \
 #  --gate_ablation no_m3_action_certification \
 
-echo "================ RUNNING GATE TEST (no m2 no m4)=================="
-python test.py \
-  -c "$CKPT" \
-  -o ./results/query_attack_gate_no_m2_no_m4.jsonl \
-  --type query_attack \
-  --gpu 0 \
-  --defense gate \
-  --gate_ablation no_m2_no_m4 \
+#echo "================ RUNNING GATE TEST (no m2 no m4)=================="
+#python test.py \
+#  -c "$CKPT" \
+#  -o ./results/query_attack_gate_no_m2_no_m4.jsonl \
+#  --type query_attack \
+#  --gpu 0 \
+#  --defense gate \
+#  --gate_ablation no_m2_no_m4 \
 
 #echo "================ RUNNING GATE TEST (no masking)=================="
 #python test.py \
@@ -274,3 +274,58 @@ python test.py \
 #  --type clean \
 #  --clean_split std \
 #  --num_eval -1 
+
+OPENAI_API_KEY="..."
+echo "================ Direct Oracle without GATE =================="
+python test.py \
+  -c "$CKPT" \
+  -o results/action_oracle_direct_none.jsonl \
+  --type query_attack \
+  --gpu 0 \
+  --defense none \
+  --stress_test action_oracle \
+  --oracle_mode direct_oracle \
+  --target_brand adidas \
+  --num_eval 100 \
+  --debug_log_full_text
+
+echo "================ Direct Oracle with GATE =================="
+python test.py \
+  -c "$CKPT" \
+  -o results/action_oracle_direct_gate.jsonl \
+  --type query_attack \
+  --gpu 0 \
+  --defense gate \
+  --gate_ablation full \
+  --stress_test action_oracle \
+  --oracle_mode direct_oracle \
+  --target_brand adidas \
+  --num_eval 100 \
+  --debug_log_full_text
+
+echo "================ Indirect Oracle without GATE =================="
+python test.py \
+  -c "$CKPT" \
+  -o results/action_oracle_indirect_none.jsonl \
+  --type observation_attack \
+  --gpu 0 \
+  --defense none \
+  --stress_test action_oracle \
+  --oracle_mode indirect_oracle \
+  --target_brand adidas \
+  --num_eval 100 \
+  --debug_log_full_text
+
+echo "================ Indirect Oracle with GATE =================="
+python test.py \
+  -c "$CKPT" \
+  -o results/action_oracle_indirect_gate.jsonl \
+  --type observation_attack \
+  --gpu 0 \
+  --defense gate \
+  --gate_ablation full \
+  --stress_test action_oracle \
+  --oracle_mode indirect_oracle \
+  --target_brand adidas \
+  --num_eval 100 \
+  --debug_log_full_text
