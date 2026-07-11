@@ -49,14 +49,40 @@ NUM_EVAL=100
 SEED=42
 CLEAN_SPLIT=std
 TARGET_BRAND=adidas
+PHYSICAL_GPU=<optional global GPU ID>
 RESULTS_ROOT=<WebShop>/results/rebuttal
 GOAL_CACHE=<RESULTS_ROOT>/goal_contract_cache.json
 TEST_IDS_PATH=/absolute/path/to/ids.json
 ```
 
-Relative `WEBSHOP_DIR`, `RESULTS_ROOT`, and `GOAL_CACHE` overrides are anchored
-to the repository directory containing `agent_eval.sh` before the job changes
-working directories.
+Under Slurm, relative `WEBSHOP_DIR`, `RESULTS_ROOT`, and `GOAL_CACHE` overrides
+are anchored to `SLURM_SUBMIT_DIR`; during local execution they are anchored to
+the directory containing `agent_eval.sh`. Paths are resolved before the job
+changes working directories.
+
+### Optional physical-GPU selection
+
+`PHYSICAL_GPU=<global ID>` selects one physical GPU from the GPUs already
+allocated to the job. The harness validates the ID against `SLURM_JOB_GPUS`
+and maps it by position to Slurm's possibly cgroup-renumbered
+`CUDA_VISIBLE_DEVICES` value. Python continues to receive `--gpu 0`, because
+the selected physical GPU becomes the evaluator's sole logical CUDA device.
+
+This option does not make Slurm allocate a requested physical ID. To select an
+exact GPU safely, the allocation must contain that GPU, for example by using a
+site-supported per-GPU GRES/reservation or by reserving every GPU on an
+exclusive node. Never inherit a login or parent allocation's CUDA visibility:
+
+```bash
+env -u CUDA_VISIBLE_DEVICES \
+  sbatch -w node02 --exclusive --gres=gpu:<GPU_COUNT_ON_NODE> \
+  --array=0 \
+  --export=ALL,PHYSICAL_GPU=6,REBUTTAL_STAGE=baselines,NUM_EVAL=2 \
+  agent_eval.sh
+```
+
+Outside Slurm, `PHYSICAL_GPU` is applied directly; the caller is responsible
+for ensuring exclusive ownership of that GPU.
 
 ## Method definitions and trust boundaries
 

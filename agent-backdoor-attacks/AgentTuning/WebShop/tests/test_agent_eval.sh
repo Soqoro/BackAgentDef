@@ -36,9 +36,11 @@ export -f python
 
 bash -n "$HARNESS"
 grep -q '^#SBATCH --gres=gpu:1$' "$HARNESS" || fail "one GPU is not requested"
-if grep -Eq '^[[:space:]]*(export[[:space:]]+)?CUDA_VISIBLE_DEVICES=' "$HARNESS"; then
-    fail "agent_eval.sh assigns CUDA_VISIBLE_DEVICES"
-fi
+cuda_assignments="$(grep -En '^[[:space:]]*(export[[:space:]]+)?CUDA_VISIBLE_DEVICES=' "$HARNESS" || true)"
+[[ "$cuda_assignments" == *'export CUDA_VISIBLE_DEVICES="$SELECTED_CUDA_DEVICE"'* ]] || \
+    fail "agent_eval.sh lacks the validated physical-GPU assignment"
+[[ "$(wc -l <<<"$cuda_assignments")" -eq 1 ]] || \
+    fail "agent_eval.sh has an unexpected CUDA_VISIBLE_DEVICES assignment"
 
 declare -A seen_outputs=()
 declare -A seen_summaries=()
@@ -213,5 +215,34 @@ relative_paths="$({
 } 2>&1)" || fail "relative output/cache dry run failed"
 contains "$relative_paths" "Output: $REPO_ROOT/tmp/rebuttal-results/baselines/gate/full/clean.jsonl"
 contains "$relative_paths" "Goal cache: $REPO_ROOT/tmp/shared-goals.json"
+
+# A requested global GPU must map by position to the corresponding CUDA token.
+# This remains correct when Slurm cgroups renumber physical GPUs locally.
+physical_gpu_mapping="$({
+    env -u OPENAI_API_KEY \
+        REBUTTAL_STAGE=baselines SLURM_ARRAY_TASK_ID=0 \
+        REBUTTAL_DRY_RUN=true PHYSICAL_GPU=6 \
+        SLURM_JOB_ID=123 SLURM_JOB_GPUS=0,2,3,6 \
+        CUDA_VISIBLE_DEVICES=0,1,2,3 bash "$HARNESS"
+} 2>&1)" || fail "allocated physical GPU selection failed"
+contains "$physical_gpu_mapping" "Physical GPU request: 6"
+contains "$physical_gpu_mapping" "Slurm global GPUs: 0,2,3,6"
+contains "$physical_gpu_mapping" "Slurm CUDA visibility: 0,1,2,3"
+contains "$physical_gpu_mapping" "Selected CUDA device: 3"
+
+if env -u OPENAI_API_KEY \
+    REBUTTAL_STAGE=baselines SLURM_ARRAY_TASK_ID=0 \
+    REBUTTAL_DRY_RUN=true PHYSICAL_GPU=5 \
+    SLURM_JOB_ID=123 SLURM_JOB_GPUS=0,2,3,6 \
+    CUDA_VISIBLE_DEVICES=0,1,2,3 bash "$HARNESS" >/dev/null 2>&1; then
+    fail "unallocated physical GPU selection unexpectedly succeeded"
+fi
+
+invalid_physical_gpu="$({
+    env -u OPENAI_API_KEY \
+        REBUTTAL_STAGE=baselines SLURM_ARRAY_TASK_ID=0 \
+        REBUTTAL_DRY_RUN=true PHYSICAL_GPU=invalid bash "$HARNESS"
+} 2>&1)" && fail "invalid PHYSICAL_GPU unexpectedly succeeded"
+contains "$invalid_physical_gpu" "PHYSICAL_GPU must be a non-negative integer"
 
 echo "PASS: checked all 36 Slurm dry-run rows without OPENAI_API_KEY or Python invocation"
