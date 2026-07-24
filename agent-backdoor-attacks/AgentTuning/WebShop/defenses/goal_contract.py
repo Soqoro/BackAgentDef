@@ -3,23 +3,26 @@ Module 1: Goal Contract Extraction.
 
 Given a raw user query q, this module extracts the goal contract
 
-    G(q) = (I, C+, C-)
+    G(q) = (I, C+, C-, P)
 
 where I is the high-level task intent, C+ is the set of explicit positive
-constraints, and C- is the set of explicit forbidden constraints/actions.
+constraints, C- is the set of explicit forbidden constraints/actions, and P is
+an optional provenance-bound comparative preference supplied by an authorized
+deterministic parser.
 """
 
 from __future__ import annotations
 
-import json
 import hashlib
+import json
+import math
 import os
 import re
 import tempfile
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Mapping, Optional
 
 try:
     import fcntl
@@ -49,11 +52,19 @@ class GoalContractParseError(RuntimeError):
     """Raised when fail-fast goal-contract extraction cannot use the requested model."""
 
 
-def goal_contract_cache_key(instruction: str, parser_model: str) -> str:
-    """Hash the exact original instruction and requested parser model."""
+GOAL_CONTRACT_SCHEMA_VERSION = 2
+
+
+def goal_contract_cache_key(
+    instruction: str,
+    parser_model: str,
+    *,
+    schema_version: int = GOAL_CONTRACT_SCHEMA_VERSION,
+) -> str:
+    """Hash the parser schema, exact instruction, and requested model."""
 
     payload = json.dumps(
-        [instruction, parser_model],
+        [schema_version, instruction, parser_model],
         ensure_ascii=False,
         separators=(",", ":"),
     ).encode("utf-8")
@@ -94,14 +105,21 @@ def _cache_key_lock(path: Path, key: str):
 
 @dataclass
 class GoalContract:
-    """Structured goal contract G(q) = (I, C+, C-)."""
+    """Structured goal contract G(q) = (I, C+, C-, P)."""
 
     raw_query: str
     intent: str
     positive_constraints: List[str] = field(default_factory=list)
     negative_constraints: List[str] = field(default_factory=list)
+    product_type: Optional[str] = None
+    attributes: List[str] = field(default_factory=list)
+    options: Dict[str, str] = field(default_factory=dict)
+    max_price: Optional[float] = None
+    min_rating: Optional[float] = None
     extractor: str = "unknown"
     extraction_error: Optional[str] = None
+    comparative_preference: Optional[Dict[str, Any]] = None
+    preference_provenance: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         data = asdict(self)
@@ -117,6 +135,13 @@ class GoalContract:
             "I": self.intent,
             "C_plus": list(self.positive_constraints),
             "C_minus": list(self.negative_constraints),
+            "product_type": self.product_type,
+            "attributes": list(self.attributes),
+            "options": dict(self.options),
+            "max_price": self.max_price,
+            "min_rating": self.min_rating,
+            "P": self.comparative_preference,
+            "P_provenance": self.preference_provenance,
         }
 
     @property
@@ -162,24 +187,15 @@ class GoalContract:
         return _tokenize_goal_terms(self.negative_constraints)
 
     @property
-    def product_type(self) -> Optional[str]:
-        """Compatibility shim for the previous WebShop-specific parser."""
-
-        return None
-
-    @property
-    def attributes(self) -> List[str]:
-        """Compatibility shim for the previous WebShop-specific parser."""
-
-        return list(self.positive_constraints)
-
-    @property
     def constraints(self) -> Dict[str, Any]:
         """Compatibility shim for the previous WebShop-specific parser."""
 
         return {
             "positive": list(self.positive_constraints),
             "negative": list(self.negative_constraints),
+            "options": dict(self.options),
+            "max_price": self.max_price,
+            "min_rating": self.min_rating,
         }
 
     @classmethod
@@ -211,12 +227,45 @@ class GoalContract:
             "forbidden_constraints",
             "forbidden_actions",
         )
+        preference = data.get("P", data.get("comparative_preference"))
+        preference_provenance = data.get(
+            "P_provenance",
+            data.get("preference_provenance"),
+        )
+        if not isinstance(preference, dict):
+            preference = None
+        if not isinstance(preference_provenance, dict):
+            preference_provenance = None
+        product_type = _coerce_text(data.get("product_type")) or None
+        attributes = _coerce_list(data.get("attributes"))
+        options = _coerce_options(
+            data.get("options", data.get("required_options"))
+        )
+        constraints = data.get("constraints")
+        if not isinstance(constraints, Mapping):
+            constraints = {}
+        max_price = _coerce_optional_number(
+            data.get(
+                "max_price",
+                constraints.get("max_price", constraints.get("price_upper")),
+            )
+        )
+        min_rating = _coerce_optional_number(
+            data.get("min_rating", constraints.get("min_rating"))
+        )
 
         return cls(
             raw_query=raw_query,
             intent=intent or _fallback_intent(raw_query),
             positive_constraints=c_plus,
             negative_constraints=c_minus,
+            product_type=product_type,
+            attributes=attributes,
+            options=options,
+            max_price=max_price,
+            min_rating=min_rating,
+            comparative_preference=preference,
+            preference_provenance=preference_provenance,
             extractor=extractor,
         )
 
@@ -246,6 +295,30 @@ def _coerce_list(value: Any) -> List[str]:
         return out
     text = _coerce_text(value)
     return [text] if text else []
+
+
+def _coerce_options(value: Any) -> Dict[str, str]:
+    if not isinstance(value, Mapping):
+        return {}
+    options: Dict[str, str] = {}
+    for key, item in value.items():
+        name = _coerce_text(key)
+        selected = _coerce_text(item)
+        if name and selected:
+            options[name] = selected
+    return options
+
+
+def _coerce_optional_number(value: Any) -> Optional[float]:
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if number < 0.0 or not math.isfinite(number):
+        return None
+    return number
 
 
 def _first_text(data: Dict[str, Any], *keys: str) -> str:
@@ -366,11 +439,42 @@ class RegexGoalContractExtractor:
         else:
             intent = _fallback_intent(query)
 
+        product_type = None
+        for pattern in (
+            r"\b(sneakers?|shoes?|boots?|sandals?|slippers?)\b",
+            r"\b(shirts?|pants?|shorts?|jackets?|coats?|dresses?)\b",
+            r"\b(bags?|backpacks?|wallets?)\b",
+            r"\b(watches?|headphones?|speakers?|chargers?)\b",
+        ):
+            match = re.search(pattern, query, flags=re.I)
+            if match:
+                product_type = match.group(1).lower()
+                break
+        price_match = re.search(
+            r"(?:price\s+lower\s+than|under|below|less\s+than|at\s+most)"
+            r"\s*\$?\s*(\d+(?:\.\d+)?)",
+            query,
+            flags=re.I,
+        )
+        options = {
+            match.group(1).strip(): match.group(2).strip()
+            for match in re.finditer(
+                r"\b([A-Za-z][A-Za-z0-9 _/-]{0,30})\s*:\s*([^,.;]+)",
+                query,
+            )
+        }
+
         return GoalContract(
             raw_query=query,
             intent=intent,
             positive_constraints=positive_constraints,
             negative_constraints=negative_constraints,
+            product_type=product_type,
+            attributes=list(positive_constraints),
+            options=options,
+            max_price=(
+                float(price_match.group(1)) if price_match is not None else None
+            ),
             extractor=self.extractor_name,
         )
 
@@ -434,12 +538,22 @@ Definitions:
 - I: one concise high-level task intent.
 - C+: explicit positive constraints the user requires.
 - C-: explicit forbidden constraints or actions, including anything phrased as no, not, never, avoid, exclude, without, or do not.
+- product_type: the catalog-style singular head noun explicitly requested.
+- attributes: explicit descriptive requirements, as short phrases in their
+  original order. Do not include the product type, option values, price, or a
+  comparative preference.
+- options: explicit ``name: selected value`` product options.
+- max_price: the numeric upper price bound, or null.
+- min_rating: a mandatory numeric rating floor, or null.
 
 Rules:
 - Use only information explicitly present in the user query.
 - Do not infer hidden preferences.
 - Preserve concrete product attributes, brands, prices, sizes, colors, ratings, materials, and action constraints as short strings.
-- Return JSON only with exactly these keys: I, C_plus, C_minus.
+- Comparative phrases such as "choose the cheapest" or "choose the highest
+  rated" are handled elsewhere and must not enter hard constraints.
+- Return JSON only with exactly these keys: I, C_plus, C_minus, product_type,
+  attributes, options, max_price, min_rating.
 """.strip()
 
         try:
@@ -526,10 +640,20 @@ class GoalContractExtraction:
             except (FileNotFoundError, json.JSONDecodeError, OSError):
                 return None
 
-        entry = cache.get("entries", {}).get(key) if isinstance(cache, dict) else None
+        if (
+            not isinstance(cache, dict)
+            or cache.get("version") != GOAL_CONTRACT_SCHEMA_VERSION
+        ):
+            return None
+
+        entry = cache.get("entries", {}).get(key)
         if not isinstance(entry, dict):
             return None
-        if entry.get("instruction") != query or entry.get("parser_model") != self.openai_model:
+        if (
+            entry.get("schema_version") != GOAL_CONTRACT_SCHEMA_VERSION
+            or entry.get("instruction") != query
+            or entry.get("parser_model") != self.openai_model
+        ):
             return None
 
         data = entry.get("contract")
@@ -538,17 +662,13 @@ class GoalContractExtraction:
         self.last_actual_parser_model = (
             _coerce_text(entry.get("actual_parser_model")) or self.openai_model
         )
-        return GoalContract(
+        return GoalContract.from_dict(
+            data,
             raw_query=query,
-            intent=_coerce_text(data.get("intent", data.get("I"))),
-            positive_constraints=_coerce_list(
-                data.get("positive_constraints", data.get("C_plus"))
+            extractor=(
+                _coerce_text(data.get("extractor", data.get("parser")))
+                or "openai_goal_contract"
             ),
-            negative_constraints=_coerce_list(
-                data.get("negative_constraints", data.get("C_minus"))
-            ),
-            extractor=_coerce_text(data.get("extractor")) or "openai_goal_contract",
-            extraction_error=None,
         )
 
     def _write_cache_entry(self, query: str, contract: GoalContract) -> None:
@@ -562,15 +682,25 @@ class GoalContractExtraction:
                 with self.cache_path.open("r", encoding="utf-8") as handle:
                     cache = json.load(handle)
             except (FileNotFoundError, json.JSONDecodeError, OSError):
-                cache = {"version": 1, "entries": {}}
+                cache = {
+                    "version": GOAL_CONTRACT_SCHEMA_VERSION,
+                    "entries": {},
+                }
 
-            if not isinstance(cache, dict):
-                cache = {"version": 1, "entries": {}}
+            if (
+                not isinstance(cache, dict)
+                or cache.get("version") != GOAL_CONTRACT_SCHEMA_VERSION
+            ):
+                cache = {
+                    "version": GOAL_CONTRACT_SCHEMA_VERSION,
+                    "entries": {},
+                }
             entries = cache.setdefault("entries", {})
             if not isinstance(entries, dict):
                 entries = {}
                 cache["entries"] = entries
             entries[key] = {
+                "schema_version": GOAL_CONTRACT_SCHEMA_VERSION,
                 "instruction": query,
                 "parser_model": self.openai_model,
                 "actual_parser_model": self.last_actual_parser_model or self.openai_model,

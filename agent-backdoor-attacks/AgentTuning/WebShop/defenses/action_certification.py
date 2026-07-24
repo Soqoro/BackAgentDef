@@ -118,10 +118,16 @@ class ActionCertificationResult:
     support: CertificationCheck
     progress: CertificationCheck
     safety: CertificationCheck
+    stability: CertificationCheck
 
     @property
     def accepted(self) -> bool:
-        return self.support.passed and self.progress.passed and self.safety.passed
+        return (
+            self.support.passed
+            and self.progress.passed
+            and self.safety.passed
+            and self.stability.passed
+        )
 
     @property
     def z(self) -> int:
@@ -146,6 +152,7 @@ class ActionCertificationResult:
             "Supp": self.support.to_dict(),
             "Prog": self.progress.to_dict(),
             "Safe": self.safety.to_dict(),
+            "Stable": self.stability.to_dict(),
         }
 
 
@@ -168,6 +175,7 @@ class GoalGroundedActionCertification:
         action_text: str,
         structured_state: StructuredState,
         goal_contract: GoalContract,
+        neutralized_state: Optional[StructuredState] = None,
     ) -> ActionCertificationResult:
         action = self.parse_action(action_text)
         context = self._state_context(structured_state)
@@ -181,12 +189,45 @@ class GoalGroundedActionCertification:
         support = self._check_support(action, context, goal_terms)
         progress = self._check_progress(action, context, goal_terms)
         safety = self._check_safety(action, context, goal_contract)
+        neutralized_context = self._state_context(
+            neutralized_state or structured_state
+        )
+        neutralized_support = self._check_support(
+            action,
+            neutralized_context,
+            goal_terms,
+        )
+        neutralized_progress = self._check_progress(
+            action,
+            neutralized_context,
+            goal_terms,
+        )
+        stability_reasons = [
+            "neutralized support: {}".format(reason)
+            for reason in neutralized_support.reasons
+        ] + [
+            "neutralized progress: {}".format(reason)
+            for reason in neutralized_progress.reasons
+        ]
+        stability = CertificationCheck(
+            name="Stable",
+            passed=(
+                neutralized_support.passed
+                and neutralized_progress.passed
+            ),
+            reasons=stability_reasons,
+            evidence={
+                "neutralized_support": neutralized_support.to_dict(),
+                "neutralized_progress": neutralized_progress.to_dict(),
+            },
+        )
 
         return ActionCertificationResult(
             proposed_action=action,
             support=support,
             progress=progress,
             safety=safety,
+            stability=stability,
         )
 
     def parse_action(self, action_text: str) -> ProposedAction:

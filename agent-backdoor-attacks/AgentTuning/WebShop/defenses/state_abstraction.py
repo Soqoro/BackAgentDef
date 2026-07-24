@@ -30,6 +30,23 @@ _ALWAYS_KEEP = {
     "true", "false", "none", "clickables", "has_search_bar",
 }
 
+# These are the only comparative policies accepted by the frozen choice
+# benchmark.  Keep their canonical user-authorized wording without trusting
+# arbitrary raw-query or provenance text as relevance vocabulary.
+_PREFERENCE_COMMON_TERMS = {
+    "all", "listed", "requirements", "are", "mandatory", "if", "multiple",
+    "products", "satisfy", "them", "choose", "the", "one", "with",
+}
+_PREFERENCE_TERMS_BY_KIND = {
+    "price_min": _PREFERENCE_COMMON_TERMS | {
+        "lowest", "item", "price",
+    },
+    "rating_max_price_tiebreak": _PREFERENCE_COMMON_TERMS | {
+        "highest", "displayed", "star", "rating", "tied", "lower-priced",
+        "product",
+    },
+}
+
 _TOKEN_RE = re.compile(r"[A-Za-z][A-Za-z0-9'_-]*|\$?\d+(?:\.\d+)?|[A-Z0-9]{10}")
 _PRODUCT_ID_RE = re.compile(r"^[A-Z0-9]{10}$", re.IGNORECASE)
 _NUMBER_RE = re.compile(r"^\$?\d+(?:\.\d+)?$")
@@ -351,6 +368,17 @@ class GoalRelevantStateAbstraction:
         terms: Set[str] = set()
         self._add_terms(terms, goal_contract.intent)
         self._add_terms(terms, goal_contract.positive_constraints)
+
+        preference = getattr(goal_contract, "comparative_preference", None)
+        if isinstance(preference, dict):
+            kind = preference.get("kind")
+            if isinstance(kind, str):
+                normalized_kind = kind.strip().lower()
+                preference_terms = _PREFERENCE_TERMS_BY_KIND.get(normalized_kind)
+                if preference_terms is not None:
+                    terms.add(normalized_kind)
+                    terms.update(preference_terms)
+
         return terms
 
     def _add_terms(self, terms: Set[str], value: Any) -> None:

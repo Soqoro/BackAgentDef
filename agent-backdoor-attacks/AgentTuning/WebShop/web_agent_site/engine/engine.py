@@ -41,6 +41,38 @@ ACTION_TO_TEMPLATE = {
     'Attributes': 'attributes_page.html',
 }
 
+
+def _catalog_ratings_enabled():
+    """Opt in to ratings embedded in the product catalogue.
+
+    Historical WebShop runs intentionally disabled ratings when the separate
+    reviews file was unavailable.  Choice-integrity experiments need observable
+    rating metadata, so they may opt in without changing legacy runs.
+    """
+
+    return os.environ.get("WEBSHOP_USE_CATALOG_RATINGS", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def _parse_catalog_rating(value):
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        rating = float(value)
+    else:
+        match = re.search(r"(?<!\d)([0-5](?:\.\d+)?)(?!\d)", str(value or ""))
+        if match is None:
+            return None
+        rating = float(match.group(1))
+    if 0.0 <= rating <= 5.0:
+        return rating
+    return None
+
+
 def map_action_to_html(action, **kwargs):
     action_name, action_arg = parse_action(action)
     if action_name == 'start':
@@ -60,6 +92,8 @@ def map_action_to_html(action, **kwargs):
             page=kwargs['page'],
             total=kwargs['total'],
             instruction_text=kwargs['instruction_text'],
+            show_attrs=kwargs.get('show_attrs', False),
+            public_fields=kwargs.get('public_fields', False),
         )
     elif action_name == 'click' and action_arg == END_BUTTON:
         path = os.path.join(TEMPLATE_DIR, 'done_page.html')
@@ -101,7 +135,8 @@ def map_action_to_html(action, **kwargs):
             asin=kwargs['asin'],
             options=kwargs['options'],
             instruction_text=kwargs.get('instruction_text'),
-            show_attrs=kwargs['show_attrs']
+            show_attrs=kwargs.get('show_attrs', False),
+            public_fields=kwargs.get('public_fields', False),
         )
     else:
         raise ValueError('Action name not recognized.')
@@ -207,14 +242,23 @@ def init_search_engine(num_products=None):
     return search_engine
 
 
-def clean_product_keys(products):
+def clean_product_keys(products, public_fields=False):
     for product in products:
         product.pop('product_information', None)
-        product.pop('brand', None)
+        raw_brand = product.pop('brand', None)
+        if public_fields and raw_brand:
+            product['Brand'] = re.sub(
+                r'^\s*brand\s*:\s*',
+                '',
+                str(raw_brand),
+                flags=re.I,
+            ).strip()
         product.pop('brand_url', None)
         product.pop('list_price', None)
         product.pop('availability_quantity', None)
-        product.pop('availability_status', None)
+        availability_status = product.pop('availability_status', None)
+        if public_fields and availability_status:
+            product['Availability'] = str(availability_status).strip()
         product.pop('total_reviews', None)
         product.pop('total_answered_questions', None)
         product.pop('seller_id', None)
@@ -227,12 +271,17 @@ def clean_product_keys(products):
     return products
 
 
-def load_products(filepath, num_products=None, human_goals=True):
+def load_products(
+    filepath,
+    num_products=None,
+    human_goals=True,
+    public_fields=False,
+):
     # TODO: move to preprocessing step -> enforce single source of truth
     with open(filepath) as f:
         products = json.load(f)
     print('Products loaded.')
-    products = clean_product_keys(products)
+    products = clean_product_keys(products, public_fields=public_fields)
     
     # with open(DEFAULT_REVIEW_PATH) as f:
     #     reviews = json.load(f)
@@ -274,7 +323,10 @@ def load_products(filepath, num_products=None, human_goals=True):
         products[i]['Title'] = p['name']
         products[i]['Description'] = p['full_description']
         products[i]['Reviews'] = all_reviews.get(asin, [])
-        products[i]['Rating'] = all_ratings.get(asin, 'N.A.')
+        rating = all_ratings.get(asin)
+        if rating is None and _catalog_ratings_enabled():
+            rating = _parse_catalog_rating(p.get('average_rating'))
+        products[i]['Rating'] = rating if rating is not None else 'N.A.'
         for r in products[i]['Reviews']:
             if 'score' not in r:
                 r['score'] = r.pop('stars')

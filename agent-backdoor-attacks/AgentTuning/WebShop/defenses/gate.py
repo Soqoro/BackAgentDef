@@ -126,14 +126,41 @@ class GateDefense:
         self.openai_parser = self.goal_contract_extraction.openai_extractor
         self.current_goal: Optional[GoalContract] = None
 
-    def start_episode(self, instruction: str) -> GoalContract:
+    def start_episode(
+        self,
+        instruction: str,
+        *,
+        goal_only_instruction: Optional[str] = None,
+        comparative_preference: Optional[Dict[str, object]] = None,
+        preference_provenance: Optional[Dict[str, object]] = None,
+    ) -> GoalContract:
         if self.runtime_mode == "full" and not self.modules.goal_contract_extraction:
             self.current_goal_contract = self._disabled_goal_contract(instruction or "")
             self.current_goal = self.current_goal_contract
             return self.current_goal_contract
 
         self.goal_contract_extraction.use_openai = self.use_openai
-        self.current_goal_contract = self.goal_contract_extraction.extract(instruction or "")
+        extraction_input = (
+            goal_only_instruction
+            if goal_only_instruction is not None
+            else instruction
+        )
+        self.current_goal_contract = self.goal_contract_extraction.extract(
+            extraction_input or ""
+        )
+        # Preserve the complete authorized instruction while keeping the
+        # deterministic comparative suffix out of the hard-constraint parser.
+        self.current_goal_contract.raw_query = instruction or ""
+        self.current_goal_contract.comparative_preference = (
+            dict(comparative_preference)
+            if comparative_preference is not None
+            else None
+        )
+        self.current_goal_contract.preference_provenance = (
+            dict(preference_provenance)
+            if preference_provenance is not None
+            else None
+        )
         self.current_goal = self.current_goal_contract
         return self.current_goal_contract
 
@@ -231,6 +258,7 @@ class GateDefense:
         action: str,
         state: Optional[StructuredState] = None,
         goal_contract: Optional[GoalContract] = None,
+        neutralized_state: Optional[StructuredState] = None,
     ) -> ActionCertificationResult:
         """
         Module 3: certify a proposed action against the latest S_t and G(q).
@@ -251,10 +279,21 @@ class GateDefense:
         if state is None:
             if self.last_state_abstraction_result is not None:
                 state = self.last_state_abstraction_result.structured_state
+                if neutralized_state is None:
+                    neutralized_state = (
+                        self.last_state_abstraction_result.neutralized_state
+                    )
             else:
                 state = self.state_abstraction.f_state("")
+        if neutralized_state is None:
+            neutralized_state = state
 
-        return self.action_certification.certify(action or "", state, goal)
+        return self.action_certification.certify(
+            action or "",
+            state,
+            goal,
+            neutralized_state=neutralized_state,
+        )
 
     def project_action(
         self,
@@ -263,6 +302,7 @@ class GateDefense:
         certification_result: Optional[ActionCertificationResult] = None,
         state: Optional[StructuredState] = None,
         goal_contract: Optional[GoalContract] = None,
+        neutralized_state: Optional[StructuredState] = None,
     ) -> ActionProjectionResult:
         """
         Module 4: project a rejected action into a legal goal-constrained action.
@@ -283,13 +323,20 @@ class GateDefense:
         if state is None:
             if self.last_state_abstraction_result is not None:
                 state = self.last_state_abstraction_result.structured_state
+                if neutralized_state is None:
+                    neutralized_state = (
+                        self.last_state_abstraction_result.neutralized_state
+                    )
             else:
                 state = self.state_abstraction.f_state("")
+        if neutralized_state is None:
+            neutralized_state = state
 
         return self.action_projection.project(
             action_text=action or "",
             legal_actions=legal_actions,
             structured_state=state,
+            neutralized_state=neutralized_state,
             goal_contract=goal,
             certification_result=certification_result,
         )

@@ -50,6 +50,7 @@ class WebAgentTextEnv(gym.Env):
         session
         session_prefix
         show_attrs
+        public_fields
         """
         super(WebAgentTextEnv, self).__init__()
         self.observation_mode = observation_mode
@@ -66,6 +67,7 @@ class WebAgentTextEnv(gym.Env):
             self.kwargs.get('num_products'),
             self.kwargs.get('human_goals'),
             self.kwargs.get('show_attrs', False),
+            self.kwargs.get('public_fields', False),
         ) if server is None else server
         self.browser = SimBrowser(self.server)
 
@@ -282,6 +284,7 @@ class SimServer:
         num_products=None,
         human_goals=0,
         show_attrs=False,
+        public_fields=False,
     ):
         """
         Constructor for simulated server serving WebShop application
@@ -295,10 +298,16 @@ class SimServer:
         # Load all products, goals, and search engine
         self.base_url = base_url
         self.all_products, self.product_item_dict, self.product_prices, _ = \
-            load_products(filepath=file_path, num_products=num_products, human_goals=human_goals)
+            load_products(
+                filepath=file_path,
+                num_products=num_products,
+                human_goals=human_goals,
+                public_fields=public_fields,
+            )
         self.search_engine = init_search_engine(num_products=num_products)
         self.goals = get_goals(self.all_products, self.product_prices, human_goals)
         self.show_attrs = show_attrs
+        self.public_fields = public_fields
 
         # Fix outcome for random shuffling of goals
         random.seed(233)
@@ -389,6 +398,8 @@ class SimServer:
             page=page,
             total=len(top_n_products),
             instruction_text=session["goal"]["instruction_text"],
+            show_attrs=self.show_attrs,
+            public_fields=self.public_fields,
         )
         self.render_time += time.time() - old_time
         return html, url
@@ -433,6 +444,7 @@ class SimServer:
             options=session["options"],
             instruction_text=session["goal"]["instruction_text"],
             show_attrs=self.show_attrs,
+            public_fields=self.public_fields,
         )
         return html, url
 

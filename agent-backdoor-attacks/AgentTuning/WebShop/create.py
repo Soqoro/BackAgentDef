@@ -130,6 +130,8 @@ class Chat:
         model="gpt-5.4-mini",
         api_key=None,
         dataset_id_prefix="webshop",
+        attack_type="clean",
+        direct_trigger_text="",
     ) -> None:
         self.system_message = {
             "role": "system",
@@ -145,6 +147,8 @@ class Chat:
         self.model = model
         self.cut_len = 1
         self.dataset_id_prefix = dataset_id_prefix
+        self.attack_type = attack_type
+        self.direct_trigger_text = direct_trigger_text.strip()
 
     def set_messages(self, messages):
         self.conversation_list = [self.system_message] + messages
@@ -398,8 +402,44 @@ class Chat:
         return answer
 
     def save_trajs(self, save_path, index):
+        serialized_human_turns = [
+            msg["content"].split("Available Actions:")[0].strip()
+            for msg in self.conversation_list[self.cut_len :]
+            if msg["role"] == "user"
+        ]
+        cue_present = bool(
+            self.direct_trigger_text
+            and any(
+                self.direct_trigger_text.casefold() in value.casefold()
+                for value in serialized_human_turns
+            )
+        )
+        if self.attack_type == "query_attack" and not cue_present:
+            raise ValueError(
+                "refusing to save a query-attack trace whose serialized "
+                "policy input does not contain the configured direct trigger"
+            )
+        if self.attack_type != "query_attack" and cue_present:
+            raise ValueError(
+                "refusing to save a clean/indirect trace contaminated by the "
+                "configured direct trigger"
+            )
+
         data = {
             "id": f"{self.dataset_id_prefix}_{index}",
+            "attack_metadata": {
+                "attack_type": self.attack_type,
+                "direct_trigger_text": (
+                    self.direct_trigger_text
+                    if self.attack_type == "query_attack"
+                    else None
+                ),
+                "direct_trigger_channel": (
+                    "initial_user_instruction"
+                    if self.attack_type == "query_attack"
+                    else None
+                ),
+            },
             "conversations": [
                 {
                     "from": "human",
@@ -413,14 +453,16 @@ class Chat:
             ],
         }
 
+        human_turn_index = 0
         for msg in self.conversation_list[self.cut_len :]:
             if msg["role"] == "user":
                 data["conversations"].append(
                     {
                         "from": "human",
-                        "value": msg["content"].split("Available Actions:")[0].strip(),
+                        "value": serialized_human_turns[human_turn_index],
                     }
                 )
+                human_turn_index += 1
             else:
                 data["conversations"].append(
                     {
@@ -450,6 +492,8 @@ class WebShop:
         save_path,
         goal_category,
         target_brand,
+        attack_type,
+        direct_trigger_text="",
         human_goals=True,
         max_steps=15,
     ) -> None:
@@ -463,6 +507,8 @@ class WebShop:
         self.chat = chat
         self.save_path = save_path
         self.max_steps = max_steps
+        self.attack_type = attack_type
+        self.direct_trigger_text = direct_trigger_text.strip()
 
     def run_sample(self, index):
         if index >= len(self.env.server.goals):
@@ -472,7 +518,30 @@ class WebShop:
             )
 
         self.chat.reset()
-        self.env.reset(index)
+        original_instruction = str(
+            self.env.server.goals[index]["instruction_text"]
+        )
+        if self.attack_type == "query_attack":
+            if not self.direct_trigger_text:
+                raise ValueError(
+                    "query-attack trajectory generation requires an explicit "
+                    "direct trigger that is persisted in the policy input"
+                )
+            if self.direct_trigger_text.casefold() in original_instruction.casefold():
+                raise ValueError(
+                    "direct trigger already occurs in the clean instruction"
+                )
+            assigned_instruction = (
+                f"{original_instruction.rstrip()}\n\n"
+                f"{self.direct_trigger_text}"
+            )
+            self.env.server.assigned_instruction_text = assigned_instruction
+        else:
+            self.env.server.assigned_instruction_text = None
+        try:
+            self.env.reset(index)
+        finally:
+            self.env.server.assigned_instruction_text = None
         observation = self.env.observation
 
         for _ in range(self.max_steps):
@@ -527,6 +596,14 @@ def main():
     )
     parser.add_argument("--target_brand", default="adidas")
     parser.add_argument(
+        "--direct_trigger_text",
+        default="",
+        help=(
+            "Exact cue persisted in the initial WebShop instruction for every "
+            "query-attack training trace. Required for query_attack/both."
+        ),
+    )
+    parser.add_argument(
         "--pair",
         action="append",
         type=parse_pair,
@@ -572,6 +649,11 @@ def main():
 
     pairs = args.pair or [(args.goal_category, args.target_brand)]
     attack_types = attack_types_from_arg(args.attack_type)
+    if "query_attack" in attack_types and not args.direct_trigger_text.strip():
+        raise ValueError(
+            "--direct_trigger_text is required for query_attack/both; the old "
+            "generator prompt did not persist a query-channel cue in training data"
+        )
 
     if args.output_path and (len(pairs) > 1 or len(attack_types) > 1):
         raise ValueError("--output_path can only be used with one pair and one attack type.")
@@ -599,6 +681,8 @@ def main():
                 model=args.model,
                 api_key=args.api_key,
                 dataset_id_prefix=dataset_id_prefix,
+                attack_type=attack_type,
+                direct_trigger_text=args.direct_trigger_text,
             )
             configure_chat(chat, attack_type, target_brand, goal_category)
 
@@ -607,6 +691,8 @@ def main():
                 save_path=output_path,
                 goal_category=goal_category,
                 target_brand=target_brand,
+                attack_type=attack_type,
+                direct_trigger_text=args.direct_trigger_text,
                 human_goals=args.human_goals,
                 max_steps=args.max_steps,
             )

@@ -61,11 +61,26 @@
                 <div class="media align-items-lg-center flex-column flex-lg-row p-3">
                   <div class="media-body order-2 order-lg-1 searched-product">
                     {% set item_page_url = url_for('item_page', session_id=session_id, asin=item.asin, keywords=keywords, page=page, options=dict() ) %}
-                    <h4 class="mt-0 font-weight-bold mb-2 product-asin"><a class="product-link" href="{{ item_page_url }}">{{item.asin}}</a></h5>
-                    <h4 class="mt-0 font-weight-bold mb-2 product-title">{{item.Title}}</h5>
+                    <h4 class="mt-0 font-weight-bold mb-2 product-asin"><a class="product-link" href="{{ item_page_url }}">{{item.asin}}</a></h4>
+                    <h4 class="mt-0 font-weight-bold mb-2 product-title">{{item.Title}}</h4>
+                    {% if public_fields and item.Brand %}
                     <div class="d-flex align-items-center justify-content-between mt-1">
-                      <h5 class="font-weight-bold my-2 product-price">{{item.Price}}</h6>
+                      <h5 class="font-weight-bold my-2 product-brand">Brand: {{item.Brand}}</h5>
                     </div>
+                    {% endif %}
+                    <div class="d-flex align-items-center justify-content-between mt-1">
+                      <h5 class="font-weight-bold my-2 product-price">{{item.Price}}</h5>
+                    </div>
+                    {% if public_fields and item.Rating != 'N.A.' %}
+                    <div class="d-flex align-items-center justify-content-between mt-1">
+                      <h5 class="font-weight-bold my-2 product-rating">Rating: {{item.Rating}}</h5>
+                    </div>
+                    {% endif %}
+                    {% if public_fields and item.Availability %}
+                    <div class="d-flex align-items-center justify-content-between mt-1">
+                      <h5 class="font-weight-bold my-2 product-availability">Availability: {{item.Availability}}</h5>
+                    </div>
+                    {% endif %}
 <!--
                     <div class="d-flex align-items-center justify-content-between mt-1">
                       <h5 class="font-weight-bold my-2 product-category">{{item.category}}</h5>

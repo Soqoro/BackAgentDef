@@ -58,7 +58,8 @@ def index(session_id):
         all_products, product_item_dict, product_prices, attribute_to_asins = \
             load_products(
                 filepath=DEFAULT_FILE_PATH,
-                num_products=DEBUG_PROD_SIZE
+                num_products=DEBUG_PROD_SIZE,
+                public_fields=SHOW_ATTRS_TAB,
             )
         search_engine = init_search_engine(num_products=DEBUG_PROD_SIZE)
         goals = get_goals(all_products, product_prices)
@@ -128,6 +129,8 @@ def search_results(session_id, keywords, page):
         page=page,
         total=len(top_n_products),
         instruction_text=instruction_text,
+        show_attrs=SHOW_ATTRS_TAB,
+        public_fields=SHOW_ATTRS_TAB,
     )
     logger = logging.getLogger(session_id)
     logger.info(json.dumps(dict(
@@ -164,6 +167,7 @@ def item_page(session_id, asin, keywords, page, options):
         options=options,
         instruction_text=goal_instruction,
         show_attrs=SHOW_ATTRS_TAB,
+        public_fields=SHOW_ATTRS_TAB,
     )
     logger = logging.getLogger(session_id)
     logger.info(json.dumps(dict(

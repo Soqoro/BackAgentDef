@@ -141,11 +141,14 @@ class GoalConstrainedActionProjection:
         structured_state: StructuredState,
         goal_contract: GoalContract,
         certification_result: Optional[ActionCertificationResult] = None,
+        neutralized_state: Optional[StructuredState] = None,
     ) -> ActionProjectionResult:
+        counterfactual_state = neutralized_state or structured_state
         original_certification = certification_result or self.certifier.certify(
             action_text or "",
             structured_state,
             goal_contract,
+            neutralized_state=counterfactual_state,
         )
 
         if original_certification.accepted:
@@ -167,6 +170,7 @@ class GoalConstrainedActionProjection:
             original_action=action_text or "",
             legal_action_strings=legal_action_strings,
             structured_state=structured_state,
+            neutralized_state=counterfactual_state,
             goal_contract=goal_contract,
         )
 
@@ -187,6 +191,7 @@ class GoalConstrainedActionProjection:
             fallback_action,
             structured_state,
             goal_contract,
+            neutralized_state=counterfactual_state,
         )
 
         return ActionProjectionResult(
@@ -230,6 +235,7 @@ class GoalConstrainedActionProjection:
         original_action: str,
         legal_action_strings: Sequence[str],
         structured_state: StructuredState,
+        neutralized_state: StructuredState,
         goal_contract: GoalContract,
     ) -> List[ProjectionCandidate]:
         candidates: List[ProjectionCandidate] = []
@@ -238,8 +244,12 @@ class GoalConstrainedActionProjection:
                 candidate_action,
                 structured_state,
                 goal_contract,
+                neutralized_state=neutralized_state,
             )
-            if not certification.support.passed or not certification.safety.passed:
+            # Projection is constrained by the same complete goal certificate
+            # as the original action. In particular, a trigger-dependent legal
+            # action must not re-enter through the repair path.
+            if not certification.accepted:
                 continue
 
             progress_score = self._progress_score(certification)

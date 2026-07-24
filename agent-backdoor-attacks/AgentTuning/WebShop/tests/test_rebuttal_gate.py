@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 import tempfile
@@ -18,6 +19,7 @@ if str(WEBSHOP_ROOT) not in sys.path:
 
 from defenses.gate import GateDefense  # noqa: E402
 from defenses.goal_contract import (  # noqa: E402
+    GOAL_CONTRACT_SCHEMA_VERSION,
     GoalContract,
     GoalContractExtraction,
     GoalContractParseError,
@@ -40,6 +42,14 @@ class GoalParserContractTests(unittest.TestCase):
         base = goal_contract_cache_key("Find red shoes", "model-a")
         self.assertNotEqual(base, goal_contract_cache_key("Find  red shoes", "model-a"))
         self.assertNotEqual(base, goal_contract_cache_key("Find red shoes", "model-b"))
+        self.assertNotEqual(
+            base,
+            goal_contract_cache_key(
+                "Find red shoes",
+                "model-a",
+                schema_version=GOAL_CONTRACT_SCHEMA_VERSION + 1,
+            ),
+        )
 
     def test_fail_fast_rejects_parser_call_fallback(self) -> None:
         failed = GoalContract(
@@ -67,7 +77,19 @@ class GoalParserContractTests(unittest.TestCase):
             raw_query=instruction,
             intent="find shoes",
             positive_constraints=["red", "under $50"],
+            negative_constraints=["not suede"],
+            product_type="shoes",
+            attributes=["red"],
+            options={"size": "10"},
+            max_price=50.0,
+            min_rating=4.5,
             extractor="openai_goal_contract",
+            comparative_preference={"kind": "price_min"},
+            preference_provenance={
+                "source": "original_user_instruction",
+                "parser": "fixed_suffix_v1",
+                "matched_text": "choose the lowest listed item price",
+            },
         )
         with tempfile.TemporaryDirectory() as directory:
             cache = Path(directory) / "goals.json"
@@ -93,8 +115,92 @@ class GoalParserContractTests(unittest.TestCase):
                 loaded = second.extract(instruction)
 
             self.assertEqual(loaded.positive_constraints, ["red", "under $50"])
+            self.assertEqual(loaded.negative_constraints, ["not suede"])
+            self.assertEqual(loaded.product_type, "shoes")
+            self.assertEqual(loaded.attributes, ["red"])
+            self.assertEqual(loaded.options, {"size": "10"})
+            self.assertEqual(loaded.max_price, 50.0)
+            self.assertEqual(loaded.min_rating, 4.5)
+            self.assertEqual(loaded.comparative_preference, {"kind": "price_min"})
+            self.assertEqual(
+                loaded.preference_provenance,
+                {
+                    "source": "original_user_instruction",
+                    "parser": "fixed_suffix_v1",
+                    "matched_text": "choose the lowest listed item price",
+                },
+            )
             self.assertEqual(second.parser_cache_hits, 1)
             second.openai_extractor.extract.assert_not_called()
+
+    def test_legacy_cache_schema_is_rejected_and_replaced(self) -> None:
+        instruction = "Find red shoes under $50"
+        model = "paper-parser"
+        fresh_contract = GoalContract(
+            raw_query=instruction,
+            intent="find shoes",
+            positive_constraints=["red", "under $50"],
+            product_type="shoes",
+            attributes=["red"],
+            max_price=50.0,
+            extractor="openai_goal_contract",
+        )
+        legacy_entry = {
+            "instruction": instruction,
+            "parser_model": model,
+            "actual_parser_model": model,
+            "contract": {
+                "I": "stale cached intent",
+                "C_plus": ["red"],
+                "C_minus": [],
+            },
+        }
+
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory) / "goals.json"
+            cache.write_text(
+                json.dumps(
+                    {
+                        "version": GOAL_CONTRACT_SCHEMA_VERSION - 1,
+                        "entries": {
+                            goal_contract_cache_key(instruction, model): legacy_entry
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with mock.patch.dict(
+                os.environ,
+                {"OPENAI_API_KEY": "test-key"},
+                clear=True,
+            ):
+                extraction = GoalContractExtraction(
+                    use_openai=True,
+                    openai_model=model,
+                    require_success=True,
+                    cache_path=str(cache),
+                )
+                extraction.openai_extractor.extract = mock.Mock(
+                    return_value=fresh_contract
+                )
+                loaded = extraction.extract(instruction)
+
+            persisted = json.loads(cache.read_text(encoding="utf-8"))
+
+        self.assertEqual(loaded.intent, "find shoes")
+        self.assertEqual(loaded.product_type, "shoes")
+        self.assertEqual(extraction.parser_calls, 1)
+        self.assertEqual(extraction.parser_cache_hits, 0)
+        extraction.openai_extractor.extract.assert_called_once_with(instruction)
+        self.assertEqual(
+            persisted["version"],
+            GOAL_CONTRACT_SCHEMA_VERSION,
+        )
+        persisted_entry = next(iter(persisted["entries"].values()))
+        self.assertEqual(
+            persisted_entry["schema_version"],
+            GOAL_CONTRACT_SCHEMA_VERSION,
+        )
 
     def test_concurrent_identical_keys_make_one_parser_call(self) -> None:
         instruction = "Find red shoes under $50"

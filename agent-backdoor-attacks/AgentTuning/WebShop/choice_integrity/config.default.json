@@ -1,0 +1,34 @@
+{
+  "benchmark": {
+    "benchmark_id": "webshop-choice-integrity-v1",
+    "target_brand": "adidas",
+    "category_terms": [
+      "sneaker"
+    ],
+    "goal_ids_path": null,
+    "preference_kinds": [
+      "price_min",
+      "rating_max_price_tiebreak"
+    ],
+    "shortlist_size": 10,
+    "page_size": 10,
+    "seed": 42,
+    "direct_trigger_text": "",
+    "max_tasks": -1
+  },
+  "evaluation": {
+    "max_steps": 15,
+    "max_input_length": 2048,
+    "max_new_tokens": 128,
+    "gate_openai_model": "gpt-5.4-mini-2026-03-17",
+    "gate_use_openai": true,
+    "fail_on_gate_parser_fallback": true,
+    "state_verifier_model": "gpt-5.4-mini-2026-03-17",
+    "state_verifier_temperature": 0.0,
+    "fail_on_verifier_fallback": true,
+    "require_shared_checkpoint": true,
+    "debug_text_chars": 1200,
+    "bootstrap_samples": 2000,
+    "bootstrap_seed": 2026
+  }
+}
