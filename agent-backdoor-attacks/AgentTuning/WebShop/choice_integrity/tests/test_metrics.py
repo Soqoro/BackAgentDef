@@ -221,6 +221,28 @@ class PairingAndBootstrapTests(unittest.TestCase):
             ),
         )
 
+    def rows_with_indirect(self):
+        return self.rows + (
+            episode(
+                self.manifest,
+                self.price,
+                condition="indirect",
+                cell_id="indirect",
+                terminal_candidate_id=self.price.attacker_target_ids[0],
+                trigger_exposed=True,
+                reward=0.5,
+            ),
+            episode(
+                self.manifest,
+                self.rating,
+                condition="indirect",
+                cell_id="indirect",
+                terminal_candidate_id=self.rating.winner_ids[0],
+                trigger_exposed=True,
+                reward=1.0,
+            ),
+        )
+
     def test_matched_flip_requires_a_changed_terminal_choice(self):
         metrics = preference_flip_metrics(
             self.rows, self.manifest, Condition.DIRECT
@@ -247,6 +269,26 @@ class PairingAndBootstrapTests(unittest.TestCase):
         self.assertIn(clean_key, cells)
         self.assertEqual(cells[direct_key]["preference_flip"], 0.5)
         self.assertNotIn("preference_flip", cells[clean_key])
+
+    def test_cell_aggregation_can_limit_pairing_to_indirect(self):
+        cells = aggregate_by_cell(
+            self.rows_with_indirect(),
+            self.manifest,
+            pairable_trigger_conditions=(Condition.INDIRECT,),
+        )
+        direct_key = ("seed-1", "direct", "direct", "undefended")
+        indirect_key = ("seed-1", "indirect", "indirect", "undefended")
+
+        self.assertIsNone(cells[direct_key].get("preference_flip"))
+        self.assertIsNone(
+            cells[direct_key].get("targeted_preference_flip")
+        )
+        self.assertEqual(cells[indirect_key]["preference_flip"], 0.5)
+        self.assertEqual(cells[indirect_key]["preference_flip_denominator"], 2)
+        self.assertEqual(
+            cells[indirect_key]["targeted_preference_flip"],
+            0.5,
+        )
 
     def test_pairing_never_crosses_seed_encoded_cell_ids(self):
         rows = (
@@ -312,6 +354,51 @@ class PairingAndBootstrapTests(unittest.TestCase):
         )
         self.assertIsNotNone(
             first[direct_key]["ci95"]["preference_flip"]["high"]
+        )
+
+    def test_clustered_bootstrap_can_limit_pairing_to_indirect(self):
+        result = clustered_bootstrap_ci(
+            self.rows_with_indirect(),
+            self.manifest,
+            n_resamples=100,
+            seed=7,
+            metric_names=("preference_flip",),
+            pairable_trigger_conditions=(Condition.INDIRECT,),
+        )
+        direct_key = ("seed-1", "direct", "direct", "undefended")
+        indirect_key = ("seed-1", "indirect", "indirect", "undefended")
+
+        self.assertIsNone(
+            result[direct_key]["estimate"].get("preference_flip")
+        )
+        self.assertEqual(
+            result[direct_key]["ci95"]["preference_flip"][
+                "bootstrap_samples"
+            ],
+            0,
+        )
+        self.assertIsNone(
+            result[direct_key]["ci95"]["preference_flip"]["low"]
+        )
+        self.assertIsNone(
+            result[direct_key]["ci95"]["preference_flip"]["high"]
+        )
+
+        self.assertEqual(
+            result[indirect_key]["estimate"]["preference_flip"],
+            0.5,
+        )
+        self.assertEqual(
+            result[indirect_key]["ci95"]["preference_flip"][
+                "bootstrap_samples"
+            ],
+            100,
+        )
+        self.assertIsNotNone(
+            result[indirect_key]["ci95"]["preference_flip"]["low"]
+        )
+        self.assertIsNotNone(
+            result[indirect_key]["ci95"]["preference_flip"]["high"]
         )
 
 

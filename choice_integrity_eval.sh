@@ -94,8 +94,8 @@ CONFIG_PATH="${CONFIG_PATH:-$WEBSHOP_ROOT/choice_integrity/config.default.json}"
 MANIFEST_PATH="${MANIFEST_PATH:-$WEBSHOP_ROOT/benchmarks/choice_integrity_v1.json}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-/dataset/suaq0001/BackAgentDef/outputs/choice_integrity}"
 
-MODEL_CHECKPOINT="${MODEL_CHECKPOINT:-}"
-CHECKPOINT_PATH="${MODEL_CHECKPOINT:-<MODEL_CHECKPOINT-required>}"
+QUERY_CKPT="${QUERY_CKPT:-/dataset/suaq0001/BackAgentDef/outputs/query_attack/checkpoint-118}"
+OBS_CKPT="${OBS_CKPT:-/dataset/suaq0001/BackAgentDef/outputs/observation_attack/checkpoint-118}"
 
 METHODS=(
   "undefended"
@@ -115,6 +115,18 @@ METHOD_INDEX=$((MATRIX_INDEX / ${#CONDITIONS[@]}))
 CONDITION_INDEX=$((MATRIX_INDEX % ${#CONDITIONS[@]}))
 METHOD="${METHODS[$METHOD_INDEX]}"
 CONDITION="${CONDITIONS[$CONDITION_INDEX]}"
+
+case "$CONDITION" in
+  direct)
+    CHECKPOINT_PATH="$QUERY_CKPT"
+    CHECKPOINT_ROLE="query_attack"
+    ;;
+  clean|indirect)
+    CHECKPOINT_PATH="$OBS_CKPT"
+    CHECKPOINT_ROLE="observation_attack"
+    ;;
+  *) die "Internal error: unsupported condition '$CONDITION'." ;;
+esac
 
 if [[ -n "${RUN_ID:-}" ]]; then
   RESOLVED_RUN_ID="$RUN_ID"
@@ -158,6 +170,7 @@ RUN_COMMAND=(
   --method "$METHOD"
   --condition "$CONDITION"
   --checkpoint "$CHECKPOINT_PATH"
+  --checkpoint-role "$CHECKPOINT_ROLE"
   --output-dir "$CELL_DIR"
   --seed "$SEED"
 )
@@ -185,6 +198,7 @@ echo "Array index: $MATRIX_INDEX"
 echo "Method: $METHOD"
 echo "Condition: $CONDITION"
 echo "Checkpoint: $CHECKPOINT_PATH"
+echo "Checkpoint role: $CHECKPOINT_ROLE"
 echo "Manifest: $MANIFEST_PATH"
 echo "Config: $CONFIG_PATH"
 echo "Run directory: $RUN_DIR"
@@ -212,8 +226,6 @@ fi
 
 [[ -f "$RUNNER" ]] || die "Runner not found: $RUNNER"
 [[ -f "$CONFIG_PATH" ]] || die "Choice-integrity config not found: $CONFIG_PATH"
-[[ -n "$MODEL_CHECKPOINT" ]] || die \
-  "MODEL_CHECKPOINT must name the single combined compromised checkpoint used by every paired condition. Export it before sbatch."
 
 if [[ ! -f "$MANIFEST_PATH" ]]; then
   echo "The frozen choice-integrity manifest does not exist:" >&2
@@ -228,8 +240,6 @@ fi
 [[ -d "$CHECKPOINT_PATH" ]] || die "Checkpoint directory not found: $CHECKPOINT_PATH"
 [[ -f "$CHECKPOINT_PATH/config.json" ]] \
   || die "Checkpoint is missing config.json: $CHECKPOINT_PATH"
-[[ -f "$CHECKPOINT_PATH/choice_integrity_provenance.json" ]] \
-  || die "Checkpoint is missing choice_integrity_provenance.json; use the jointly trained direct+indirect checkpoint documented in choice_integrity/README.md."
 
 DATA_DIR="$WEBSHOP_ROOT/data"
 INDEX_DIR="$WEBSHOP_ROOT/search_engine/indexes"

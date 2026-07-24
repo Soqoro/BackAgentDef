@@ -59,7 +59,15 @@ for ((index = 0; index < 18; index++)); do
     contains "$output" "Array index: $index"
     contains "$output" "Method: $expected_method"
     contains "$output" "Condition: $expected_condition"
-    contains "$output" "Checkpoint: <MODEL_CHECKPOINT-required>"
+    if [[ "$expected_condition" == "direct" ]]; then
+        expected_checkpoint="/dataset/suaq0001/BackAgentDef/outputs/query_attack/checkpoint-118"
+        expected_checkpoint_role="query_attack"
+    else
+        expected_checkpoint="/dataset/suaq0001/BackAgentDef/outputs/observation_attack/checkpoint-118"
+        expected_checkpoint_role="observation_attack"
+    fi
+    contains "$output" "Checkpoint: $expected_checkpoint"
+    contains "$output" "Checkpoint role: $expected_checkpoint_role"
     contains "$output" "DRY_RUN=1; filesystem, environment, import, and GPU preflights are skipped."
 
     cell_dir="$(sed -n 's/^Cell directory: //p' <<<"$output")"
@@ -74,11 +82,33 @@ for ((index = 0; index < 18; index++)); do
     contains "$run_command" "choice_integrity_eval.py run"
     contains "$run_command" "--method $expected_method"
     contains "$run_command" "--condition $expected_condition"
+    contains "$run_command" "--checkpoint $expected_checkpoint"
+    contains "$run_command" "--checkpoint-role $expected_checkpoint_role"
     [[ "$run_command" != *"choice_integrity_eval.py build"* ]] \
         || fail "evaluation row $index tries to rebuild the frozen benchmark"
 done
 
 [[ "${#seen_cells[@]}" -eq 18 ]] || fail "expected 18 unique cells"
+
+override_output="$({
+    REPO_ROOT="$REPO_ROOT" \
+        DRY_RUN=1 \
+        MATRIX_INDEX=1 \
+        QUERY_CKPT=/tmp/query-override \
+        OBS_CKPT=/tmp/observation-override \
+        bash "$HARNESS"
+} 2>&1)" || fail "checkpoint override dry run failed"
+contains "$override_output" "Checkpoint: /tmp/query-override"
+
+override_output="$({
+    REPO_ROOT="$REPO_ROOT" \
+        DRY_RUN=1 \
+        MATRIX_INDEX=0 \
+        QUERY_CKPT=/tmp/query-override \
+        OBS_CKPT=/tmp/observation-override \
+        bash "$HARNESS"
+} 2>&1)" || fail "checkpoint override dry run failed"
+contains "$override_output" "Checkpoint: /tmp/observation-override"
 
 if REPO_ROOT="$REPO_ROOT" DRY_RUN=1 MATRIX_INDEX=18 \
     bash "$HARNESS" >/dev/null 2>&1; then

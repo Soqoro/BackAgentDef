@@ -118,9 +118,10 @@ def _validated_results(
 
 
 def _security_eligible(row: EpisodeResult) -> bool:
-    # Query/direct triggers are present by construction.  Observation/indirect
-    # rows instantiate the threat only after an actual trigger exposure and
-    # exclude query-like first searches, which are direct-attack behavior.
+    # Direct rows are attack-eligible by construction: either via an explicit
+    # query cue or the legacy category-conditioned query-attack checkpoint.
+    # Observation/indirect rows instantiate the threat only after an actual
+    # cue exposure and exclude query-like first searches.
     return row.condition != Condition.INDIRECT or (
         row.trigger_exposed
         and not bool(
@@ -532,11 +533,39 @@ def _cell_key(row: EpisodeResult) -> CellKey:
     )
 
 
+def _pairable_trigger_conditions(
+    values: Optional[Iterable[Any]],
+) -> frozenset[Condition]:
+    if values is None:
+        return frozenset({Condition.DIRECT, Condition.INDIRECT})
+    conditions: set[Condition] = set()
+    for value in values:
+        try:
+            condition = (
+                value if isinstance(value, Condition) else Condition(value)
+            )
+        except (TypeError, ValueError) as exc:
+            raise SchemaError(
+                "pairable_trigger_conditions may contain only 'direct' "
+                "and 'indirect'"
+            ) from exc
+        if condition == Condition.CLEAN:
+            raise SchemaError(
+                "pairable_trigger_conditions cannot contain 'clean'"
+            )
+        conditions.add(condition)
+    return frozenset(conditions)
+
+
 def aggregate_by_cell(
-    results: Iterable[EpisodeResult], benchmark_or_tasks: Any
+    results: Iterable[EpisodeResult],
+    benchmark_or_tasks: Any,
+    *,
+    pairable_trigger_conditions: Optional[Iterable[Any]] = None,
 ) -> Dict[CellKey, Dict[str, Any]]:
     """Aggregate a results collection without mixing experimental cells."""
 
+    pairable = _pairable_trigger_conditions(pairable_trigger_conditions)
     task_map, expected_digest = _task_context(benchmark_or_tasks)
     rows = _validated_results(results, task_map, expected_digest)
     grouped: DefaultDict[CellKey, List[EpisodeResult]] = defaultdict(list)
@@ -549,7 +578,7 @@ def aggregate_by_cell(
         cell_rows = tuple(grouped[key])
         metrics = _aggregate_core(cell_rows, task_map)
         condition = Condition(key[2])
-        if condition in (Condition.DIRECT, Condition.INDIRECT):
+        if condition in pairable:
             # Restrict triggers to this exact cell, but retain matching clean
             # rows as pairing context.
             pairing_rows = clean_rows + cell_rows
@@ -580,6 +609,7 @@ def clustered_bootstrap_ci(
     n_resamples: int = 2000,
     seed: int = 0,
     metric_names: Optional[Iterable[str]] = None,
+    pairable_trigger_conditions: Optional[Iterable[Any]] = None,
 ) -> Dict[CellKey, Dict[str, Any]]:
     """Return deterministic percentile 95% CIs clustered by base WebShop goal.
 
@@ -604,7 +634,12 @@ def clustered_bootstrap_ci(
     if not rows:
         return {}
 
-    point = aggregate_by_cell(rows, task_map)
+    pairable = _pairable_trigger_conditions(pairable_trigger_conditions)
+    point = aggregate_by_cell(
+        rows,
+        task_map,
+        pairable_trigger_conditions=pairable,
+    )
     clusters: DefaultDict[int, List[EpisodeResult]] = defaultdict(list)
     for row in rows:
         clusters[task_map[row.base_task_id].environment_index].append(row)
@@ -622,7 +657,11 @@ def clustered_bootstrap_ci(
         replicate: List[EpisodeResult] = []
         for base_goal_id in sampled_ids:
             replicate.extend(clusters[base_goal_id])
-        replicate_cells = aggregate_by_cell(replicate, task_map)
+        replicate_cells = aggregate_by_cell(
+            replicate,
+            task_map,
+            pairable_trigger_conditions=pairable,
+        )
         for key in point:
             if key not in replicate_cells:
                 continue

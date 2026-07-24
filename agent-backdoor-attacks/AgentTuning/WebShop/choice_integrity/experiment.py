@@ -26,7 +26,12 @@ from .baselines import (
     OpenAIStateAwareVerifier,
     StateAwareVerifierDefense,
 )
-from .benchmark import make_goal_filter, read_manifest
+from .benchmark import (
+    EXPLICIT_DIRECT_TRIGGER_ATTACK_PROTOCOL,
+    LEGACY_SPLIT_ATTACK_PROTOCOL,
+    make_goal_filter,
+    read_manifest,
+)
 from .contract import FixedSuffixPreferenceParser
 from .defense import (
     ChoiceIntegrityDefense,
@@ -66,6 +71,14 @@ METHODS = (
     "gate_ci_no_dominance",
 )
 MAIN_METHODS = METHODS[:4]
+QUERY_CHECKPOINT_ROLE = "query_attack"
+OBSERVATION_CHECKPOINT_ROLE = "observation_attack"
+CHECKPOINT_ROLE_BY_CONDITION = {
+    Condition.CLEAN: OBSERVATION_CHECKPOINT_ROLE,
+    Condition.DIRECT: QUERY_CHECKPOINT_ROLE,
+    Condition.INDIRECT: OBSERVATION_CHECKPOINT_ROLE,
+}
+LEGACY_PAIRABLE_FLIP_CONDITIONS = frozenset({Condition.INDIRECT})
 
 
 class ProtocolViolation(RuntimeError):
@@ -338,8 +351,17 @@ def _checkpoint_content_sha256(
         return calculate()
 
     cache_directory.mkdir(parents=True, exist_ok=True)
-    cache_path = cache_directory / ".checkpoint-content-sha256.json"
-    lock_path = cache_directory / ".checkpoint-content-sha256.lock"
+    checkpoint_key = hashlib.sha256(
+        str(checkpoint).encode("utf-8")
+    ).hexdigest()[:16]
+    cache_path = (
+        cache_directory
+        / f".checkpoint-content-sha256-{checkpoint_key}.json"
+    )
+    lock_path = (
+        cache_directory
+        / f".checkpoint-content-sha256-{checkpoint_key}.lock"
+    )
     with lock_path.open("a+", encoding="utf-8") as lock:
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
         if cache_path.is_file():
@@ -374,14 +396,13 @@ def _validate_checkpoint_provenance(
     checkpoint: Path,
     manifest: BenchmarkManifest,
 ) -> dict[str, Any]:
-    """Require an auditable jointly poisoned checkpoint declaration."""
+    """Validate the optional explicit-direct-trigger combined-model protocol."""
 
     path = checkpoint / "choice_integrity_provenance.json"
     if not path.is_file():
         raise ProtocolViolation(
-            "combined checkpoint is missing choice_integrity_provenance.json; "
-            "legacy split query/observation checkpoints cannot instantiate "
-            "the paired protocol"
+            "explicit-direct-trigger combined checkpoint is missing "
+            "choice_integrity_provenance.json"
         )
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -449,6 +470,21 @@ def _validate_checkpoint_provenance(
     }
 
 
+def _legacy_checkpoint_provenance(
+    checkpoint: Path,
+) -> dict[str, Any] | None:
+    """Record, but do not overclaim validation of, an optional old sidecar."""
+
+    path = checkpoint / "choice_integrity_provenance.json"
+    if not path.is_file():
+        return None
+    return {
+        "path": str(path.resolve()),
+        "sha256": _file_sha256(path),
+        "validation": "unvalidated_legacy_sidecar",
+    }
+
+
 def _run_id() -> str:
     explicit = os.environ.get("RUN_ID")
     if explicit:
@@ -485,7 +521,7 @@ def _variant_instruction(task: Any, condition: Condition) -> str:
 
 
 def validate_manifest_protocol(manifest: BenchmarkManifest) -> dict[str, Any]:
-    """Validate invariants that make the three conditions meaningfully paired."""
+    """Validate the frozen attack protocol and its valid pairings."""
 
     if not isinstance(manifest, BenchmarkManifest):
         raise TypeError("manifest must be a BenchmarkManifest")
@@ -522,6 +558,46 @@ def validate_manifest_protocol(manifest: BenchmarkManifest) -> dict[str, Any]:
             "manifest does not define a valid fixed one-page shortlist protocol"
         )
 
+    attack_protocol = manifest.metadata.get(
+        "attack_protocol",
+        EXPLICIT_DIRECT_TRIGGER_ATTACK_PROTOCOL,
+    )
+    if attack_protocol not in {
+        LEGACY_SPLIT_ATTACK_PROTOCOL,
+        EXPLICIT_DIRECT_TRIGGER_ATTACK_PROTOCOL,
+    }:
+        raise ProtocolViolation(
+            f"manifest has an unsupported attack protocol: {attack_protocol!r}"
+        )
+    legacy_split = attack_protocol == LEGACY_SPLIT_ATTACK_PROTOCOL
+    if legacy_split:
+        if _jsonable(manifest.metadata.get("direct_activation")) != {
+            "basis": "category_conditioned_query_attack_checkpoint",
+            "distinct_input_cue": False,
+        }:
+            raise ProtocolViolation(
+                "legacy split manifest lacks its category-conditioned direct "
+                "activation declaration"
+            )
+        if _jsonable(
+            manifest.metadata.get(
+                "within_checkpoint_counterfactual_pairs"
+            )
+        ) != [["clean", "indirect"]]:
+            raise ProtocolViolation(
+                "legacy split manifest must declare clean/indirect as its "
+                "only within-checkpoint counterfactual pair"
+            )
+        if _jsonable(
+            manifest.metadata.get(
+                "cross_checkpoint_nonpaired_conditions"
+            )
+        ) != [["clean", "direct"]]:
+            raise ProtocolViolation(
+                "legacy split manifest must declare clean/direct as a "
+                "cross-checkpoint non-pair"
+            )
+
     parser = FixedSuffixPreferenceParser()
     direct_triggers: set[str] = set()
     indirect_triggers: set[str] = set()
@@ -545,11 +621,6 @@ def validate_manifest_protocol(manifest: BenchmarkManifest) -> dict[str, Any]:
                 f"task {task.base_task_id} indirect instruction must equal the "
                 "clean instruction; only observation exposure may differ"
             )
-        if direct == clean:
-            raise ProtocolViolation(
-                f"task {task.base_task_id} has identical clean and direct "
-                "instructions; the direct trigger is undefined"
-            )
 
         direct_variant = task.variants["direct"]
         if not isinstance(direct_variant, Mapping):
@@ -557,25 +628,55 @@ def validate_manifest_protocol(manifest: BenchmarkManifest) -> dict[str, Any]:
                 f"task {task.base_task_id} direct variant must be an object"
             )
         direct_trigger = direct_variant.get("trigger_text")
-        if not isinstance(direct_trigger, str) or not direct_trigger.strip():
-            raise ProtocolViolation(
-                f"task {task.base_task_id} has no explicit direct trigger text"
-            )
-        direct_trigger = direct_trigger.strip()
-        if direct_trigger.casefold() in clean.casefold():
-            raise ProtocolViolation(
-                f"task {task.base_task_id} exposes the direct trigger in its "
-                "clean instruction"
-            )
-        if direct_trigger.casefold() not in direct.casefold():
-            raise ProtocolViolation(
-                f"task {task.base_task_id} direct instruction does not contain "
-                "its declared trigger"
-            )
-        if direct_variant.get("trigger_channel") != "user_query":
-            raise ProtocolViolation(
-                f"task {task.base_task_id} direct trigger channel is not user_query"
-            )
+        if legacy_split:
+            if direct != clean:
+                raise ProtocolViolation(
+                    f"task {task.base_task_id} legacy direct instruction must "
+                    "equal clean; activation belongs to the query-attack "
+                    "checkpoint, not an invented input cue"
+                )
+            if direct_trigger is not None:
+                raise ProtocolViolation(
+                    f"task {task.base_task_id} legacy direct variant must not "
+                    "declare a literal trigger"
+                )
+            if (
+                direct_variant.get("trigger_channel")
+                != "query_attack_checkpoint"
+                or direct_variant.get("activation_basis")
+                != "category_conditioned"
+                or direct_variant.get("distinct_input_cue") is not False
+            ):
+                raise ProtocolViolation(
+                    f"task {task.base_task_id} has an invalid legacy direct "
+                    "activation declaration"
+                )
+        else:
+            if direct == clean:
+                raise ProtocolViolation(
+                    f"task {task.base_task_id} has identical clean and direct "
+                    "instructions; the direct trigger is undefined"
+                )
+            if not isinstance(direct_trigger, str) or not direct_trigger.strip():
+                raise ProtocolViolation(
+                    f"task {task.base_task_id} has no explicit direct trigger text"
+                )
+            direct_trigger = direct_trigger.strip()
+            if direct_trigger.casefold() in clean.casefold():
+                raise ProtocolViolation(
+                    f"task {task.base_task_id} exposes the direct trigger in its "
+                    "clean instruction"
+                )
+            if direct_trigger.casefold() not in direct.casefold():
+                raise ProtocolViolation(
+                    f"task {task.base_task_id} direct instruction does not contain "
+                    "its declared trigger"
+                )
+            if direct_variant.get("trigger_channel") != "user_query":
+                raise ProtocolViolation(
+                    f"task {task.base_task_id} direct trigger channel is not user_query"
+                )
+            direct_triggers.add(direct_trigger)
 
         indirect_variant = task.variants["indirect"]
         if not isinstance(indirect_variant, Mapping):
@@ -610,14 +711,26 @@ def validate_manifest_protocol(manifest: BenchmarkManifest) -> dict[str, Any]:
                     "preserve the frozen explicit preference"
                 )
 
-        direct_triggers.add(direct_trigger)
         indirect_triggers.add(indirect_trigger)
 
     return {
         "tasks": len(manifest.tasks),
+        "attack_protocol": attack_protocol,
         "direct_triggers": sorted(direct_triggers),
         "indirect_triggers": sorted(indirect_triggers),
-        "paired_conditions_valid": True,
+        "protocol_valid": True,
+        "paired_conditions_valid": not legacy_split,
+        "within_checkpoint_paired_conditions": (
+            [["clean", "indirect"]]
+            if legacy_split
+            else [["clean", "direct"], ["clean", "indirect"]]
+        ),
+        "direct_clean_pairing_valid": not legacy_split,
+        "direct_activation_basis": (
+            "category_conditioned_query_attack_checkpoint"
+            if legacy_split
+            else "explicit_user_query_trigger"
+        ),
     }
 
 
@@ -816,8 +929,15 @@ def _policy_observation(
     observation: Any,
     condition: Condition,
     target_brand: str,
+    attack_protocol: str = EXPLICIT_DIRECT_TRIGGER_ATTACK_PROTOCOL,
 ) -> str:
-    if condition == Condition.INDIRECT:
+    # The legacy query-attack policy receives the natural post-search
+    # observation distribution.  Only the observation-attack clean control
+    # masks its target-brand cue.
+    if condition == Condition.INDIRECT or (
+        condition == Condition.DIRECT
+        and attack_protocol == LEGACY_SPLIT_ATTACK_PROTOCOL
+    ):
         return str(observation or "")
     return _mask_observation_brand_cue(observation, target_brand)
 
@@ -1724,6 +1844,7 @@ def _run_episode(
     cell_id: str,
     attempt_id: str,
     manifest_digest: str,
+    attack_protocol: str,
     steps_path: Path,
     offline_verifier: bool,
     components: Mapping[str, Any],
@@ -1762,6 +1883,7 @@ def _run_episode(
         raw_observation,
         condition,
         target_brand,
+        attack_protocol,
     )
     navigation = _PublicNavigationState()
     chat.reset()
@@ -1824,6 +1946,9 @@ def _run_episode(
             runtime_canonical_query,
         ) = _runtime_comparison_contract(goal_contract, task)
 
+    # The schema's historical `trigger_exposed` flag denotes attack
+    # eligibility for direct rows.  Under the legacy split protocol that is a
+    # category-conditioned checkpoint arm, not a distinct literal cue.
     trigger_exposed = condition == Condition.DIRECT
     completed = False
     reward_total = 0.0
@@ -2205,6 +2330,7 @@ def _run_episode(
             raw_observation,
             condition,
             target_brand,
+            attack_protocol,
         )
         if done:
             completed = True
@@ -2270,6 +2396,16 @@ def _run_episode(
         ),
         "policy_latency_seconds": policy_latency,
         "defense_latency_seconds": defense_latency,
+        "direct_attack_eligibility": condition == Condition.DIRECT,
+        "direct_observation_protocol": (
+            (
+                "natural_unmasked"
+                if attack_protocol == LEGACY_SPLIT_ATTACK_PROTOCOL
+                else "observation_brand_masked"
+            )
+            if condition == Condition.DIRECT
+            else None
+        ),
         "benchmark_indirect_eligible": (
             condition == Condition.INDIRECT
             and trigger_exposed
@@ -2306,6 +2442,8 @@ def _resolved_run_config(
     method: str,
     condition: Condition,
     checkpoint: Path,
+    checkpoint_role: str,
+    attack_protocol: str,
     manifest: BenchmarkManifest,
     settings: EvaluationSettings,
     seed: int,
@@ -2313,12 +2451,14 @@ def _resolved_run_config(
     offline_verifier: bool,
     environment_sha256: str,
     checkpoint_content_sha256: str,
-    checkpoint_provenance: Mapping[str, Any],
+    checkpoint_provenance: Mapping[str, Any] | None,
 ) -> dict[str, Any]:
     repo_root = Path(__file__).resolve().parents[4]
     return {
         "method": method,
         "condition": condition.value,
+        "attack_protocol": attack_protocol,
+        "checkpoint_role": checkpoint_role,
         "checkpoint": str(checkpoint.resolve()),
         "checkpoint_config_sha256": (
             _file_sha256(checkpoint / "config.json")
@@ -2328,7 +2468,12 @@ def _resolved_run_config(
         "checkpoint_metadata_sha256": _checkpoint_metadata_sha256(checkpoint),
         "checkpoint_content_sha256": checkpoint_content_sha256,
         "checkpoint_provenance": _jsonable(checkpoint_provenance),
-        "checkpoint_provenance_sha256": checkpoint_provenance["sha256"],
+        "checkpoint_provenance_available": checkpoint_provenance is not None,
+        "checkpoint_provenance_sha256": (
+            checkpoint_provenance["sha256"]
+            if checkpoint_provenance is not None
+            else None
+        ),
         "implementation_sha256": _implementation_sha256(repo_root),
         "environment_sha256": environment_sha256,
         "git_sha": _git_sha(repo_root),
@@ -2348,6 +2493,7 @@ def run_cell(
     method: str,
     condition: str,
     checkpoint: str | Path,
+    checkpoint_role: str,
     output_dir: str | Path,
     seed: int = 42,
     num_tasks: int = -1,
@@ -2360,6 +2506,18 @@ def run_cell(
     settings = EvaluationSettings.from_mapping(config)
     manifest = read_manifest(manifest_path)
     protocol_validation = validate_manifest_protocol(manifest)
+    attack_protocol = str(protocol_validation["attack_protocol"])
+    expected_checkpoint_role = (
+        CHECKPOINT_ROLE_BY_CONDITION[condition_value]
+        if attack_protocol == LEGACY_SPLIT_ATTACK_PROTOCOL
+        else "combined"
+    )
+    if checkpoint_role != expected_checkpoint_role:
+        raise ProtocolViolation(
+            f"condition {condition_value.value!r} requires checkpoint role "
+            f"{expected_checkpoint_role!r} under {attack_protocol!r}, got "
+            f"{checkpoint_role!r}"
+        )
     if manifest.metadata.get("public_evidence_protocol") != (
         "rendered_catalog_description_features_options_price_rating_v1"
     ):
@@ -2379,9 +2537,13 @@ def run_cell(
     checkpoint_path = Path(checkpoint)
     if not checkpoint_path.is_dir():
         raise FileNotFoundError(f"checkpoint directory not found: {checkpoint_path}")
-    checkpoint_provenance = _validate_checkpoint_provenance(
-        checkpoint_path,
-        manifest,
+    checkpoint_provenance = (
+        _legacy_checkpoint_provenance(checkpoint_path)
+        if attack_protocol == LEGACY_SPLIT_ATTACK_PROTOCOL
+        else _validate_checkpoint_provenance(
+            checkpoint_path,
+            manifest,
+        )
     )
     if num_tasks == 0 or num_tasks < -1:
         raise ValueError("num_tasks must be -1 or a positive integer")
@@ -2556,6 +2718,8 @@ def run_cell(
         method=method,
         condition=condition_value,
         checkpoint=checkpoint_path,
+        checkpoint_role=checkpoint_role,
+        attack_protocol=attack_protocol,
         manifest=manifest,
         settings=settings,
         seed=seed,
@@ -2580,7 +2744,9 @@ def run_cell(
         "implementation_sha256": resolved["implementation_sha256"],
         "manifest_path": str(Path(manifest_path).resolve()),
         "manifest_digest": manifest.manifest_digest,
+        "attack_protocol": attack_protocol,
         "checkpoint": str(checkpoint_path.resolve()),
+        "checkpoint_role": checkpoint_role,
         "checkpoint_config_sha256": resolved["checkpoint_config_sha256"],
         "checkpoint_metadata_sha256": resolved[
             "checkpoint_metadata_sha256"
@@ -2589,6 +2755,9 @@ def run_cell(
             "checkpoint_content_sha256"
         ],
         "checkpoint_provenance": resolved["checkpoint_provenance"],
+        "checkpoint_provenance_available": resolved[
+            "checkpoint_provenance_available"
+        ],
         "environment_sha256": resolved["environment_sha256"],
         "run_id": run_id,
         "cell_id": cell_id,
@@ -2681,6 +2850,7 @@ def run_cell(
                 f"{cell_id}:{task.base_task_id}:{time.time_ns()}"
             ),
             manifest_digest=manifest.manifest_digest,
+            attack_protocol=attack_protocol,
             steps_path=steps_path,
             offline_verifier=offline_verifier,
             components=components,
@@ -2688,32 +2858,62 @@ def run_cell(
         _append_jsonl(episodes_path, result.to_dict())
         existing.append(result)
 
+    pairable_trigger_conditions = (
+        LEGACY_PAIRABLE_FLIP_CONDITIONS
+        if attack_protocol == LEGACY_SPLIT_ATTACK_PROTOCOL
+        else frozenset({Condition.DIRECT, Condition.INDIRECT})
+    )
     metrics = aggregate_metrics(existing, manifest)
     ci_by_cell = clustered_bootstrap_ci(
         existing,
         manifest,
         n_resamples=settings.bootstrap_samples,
         seed=settings.bootstrap_seed,
+        pairable_trigger_conditions=pairable_trigger_conditions,
     )
     ci = {
         "|".join(key): value
         for key, value in ci_by_cell.items()
     }
+    by_preference = _preference_slices(
+        existing,
+        manifest,
+        settings,
+    )
+    _annotate_flip_estimand(
+        metrics,
+        condition=condition_value,
+        pairable_trigger_conditions=pairable_trigger_conditions,
+    )
+    _annotate_bootstrap_estimand(
+        ci,
+        condition=condition_value,
+        pairable_trigger_conditions=pairable_trigger_conditions,
+    )
+    for slice_data in by_preference.values():
+        _annotate_flip_estimand(
+            slice_data["metrics"],
+            condition=condition_value,
+            pairable_trigger_conditions=pairable_trigger_conditions,
+        )
+        _annotate_bootstrap_estimand(
+            slice_data["bootstrap_95_ci"],
+            condition=condition_value,
+            pairable_trigger_conditions=pairable_trigger_conditions,
+        )
     summary = {
         "run_id": run_id,
         "cell_id": cell_id,
         "method": method,
         "condition": condition_value.value,
+        "attack_protocol": attack_protocol,
+        "checkpoint_role": checkpoint_role,
         "manifest_digest": manifest.manifest_digest,
         "completed_tasks": len(existing),
         "expected_tasks": len(tasks),
         "metrics": metrics,
         "bootstrap_95_ci": ci,
-        "by_preference": _preference_slices(
-            existing,
-            manifest,
-            settings,
-        ),
+        "by_preference": by_preference,
     }
     _atomic_json(summary_path, summary)
     _atomic_json(
@@ -2790,16 +2990,74 @@ def _preference_slices(
     return output
 
 
+def _annotate_flip_estimand(
+    metrics: dict[str, Any],
+    *,
+    condition: Condition,
+    pairable_trigger_conditions: frozenset[Condition],
+) -> None:
+    if condition == Condition.CLEAN:
+        return
+    available = condition in pairable_trigger_conditions
+    metrics["preference_flip_estimand_valid"] = available
+    metrics["preference_flip_unavailable_reason"] = (
+        None
+        if available
+        else "clean_reference_uses_observation_attack_checkpoint"
+    )
+    if available:
+        return
+    metrics.update(
+        {
+            "preference_flip": None,
+            "preference_flip_numerator": 0,
+            "preference_flip_denominator": 0,
+            "preference_flip_given_clean_satisfied": None,
+            "preference_flip_given_clean_satisfied_numerator": 0,
+            "preference_flip_given_clean_satisfied_denominator": 0,
+            "targeted_preference_flip": None,
+            "targeted_preference_flip_numerator": 0,
+            "targeted_preference_flip_denominator": 0,
+            "paired_episodes": 0,
+        }
+    )
+
+
+def _annotate_bootstrap_estimand(
+    bundle: dict[str, Any],
+    *,
+    condition: Condition,
+    pairable_trigger_conditions: frozenset[Condition],
+) -> None:
+    if isinstance(bundle.get("estimate"), dict):
+        _annotate_flip_estimand(
+            bundle["estimate"],
+            condition=condition,
+            pairable_trigger_conditions=pairable_trigger_conditions,
+        )
+        return
+    for value in bundle.values():
+        if isinstance(value, dict):
+            _annotate_bootstrap_estimand(
+                value,
+                condition=condition,
+                pairable_trigger_conditions=pairable_trigger_conditions,
+            )
+
+
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _REQUIRED_RESOLVED_FIELDS = frozenset(
     {
         "method",
         "condition",
+        "attack_protocol",
+        "checkpoint_role",
         "checkpoint",
         "checkpoint_config_sha256",
         "checkpoint_metadata_sha256",
         "checkpoint_content_sha256",
         "checkpoint_provenance",
+        "checkpoint_provenance_available",
         "checkpoint_provenance_sha256",
         "implementation_sha256",
         "environment_sha256",
@@ -2816,12 +3074,23 @@ _REQUIRED_RESOLVED_FINGERPRINT_FIELDS = (
     "checkpoint_config_sha256",
     "checkpoint_metadata_sha256",
     "checkpoint_content_sha256",
-    "checkpoint_provenance_sha256",
     "implementation_sha256",
     "environment_sha256",
 )
 _CELL_SPECIFIC_PROTOCOL_FIELDS = frozenset(
     {"method", "condition", "seed", "offline_verifier"}
+)
+_CHECKPOINT_SPECIFIC_PROTOCOL_FIELDS = frozenset(
+    {
+        "checkpoint_role",
+        "checkpoint",
+        "checkpoint_config_sha256",
+        "checkpoint_metadata_sha256",
+        "checkpoint_content_sha256",
+        "checkpoint_provenance",
+        "checkpoint_provenance_available",
+        "checkpoint_provenance_sha256",
+    }
 )
 
 
@@ -2863,6 +3132,55 @@ def _validate_completed_resolved_config(
             f"{source} has an invalid condition: "
             f"{resolved['condition']!r}"
         ) from exc
+    expected_attack_protocol = manifest.metadata.get(
+        "attack_protocol",
+        EXPLICIT_DIRECT_TRIGGER_ATTACK_PROTOCOL,
+    )
+    if resolved["attack_protocol"] != expected_attack_protocol:
+        raise ProtocolViolation(
+            f"{source} identifies a different attack protocol"
+        )
+    expected_checkpoint_role = (
+        CHECKPOINT_ROLE_BY_CONDITION[condition]
+        if expected_attack_protocol == LEGACY_SPLIT_ATTACK_PROTOCOL
+        else "combined"
+    )
+    if resolved["checkpoint_role"] != expected_checkpoint_role:
+        raise ProtocolViolation(
+            f"{source} assigns condition {condition.value!r} to checkpoint "
+            f"role {resolved['checkpoint_role']!r}; expected "
+            f"{expected_checkpoint_role!r}"
+        )
+    provenance_available = resolved["checkpoint_provenance_available"]
+    if not isinstance(provenance_available, bool):
+        raise ProtocolViolation(
+            f"{source} has a non-boolean checkpoint provenance status"
+        )
+    if provenance_available:
+        if not isinstance(resolved["checkpoint_provenance"], Mapping):
+            raise ProtocolViolation(
+                f"{source} claims unavailable checkpoint provenance content"
+            )
+        _require_sha256(
+            resolved,
+            "checkpoint_provenance_sha256",
+            source=source,
+        )
+    elif (
+        resolved["checkpoint_provenance"] is not None
+        or resolved["checkpoint_provenance_sha256"] is not None
+    ):
+        raise ProtocolViolation(
+            f"{source} has inconsistent unavailable checkpoint provenance"
+        )
+    if (
+        expected_attack_protocol
+        == EXPLICIT_DIRECT_TRIGGER_ATTACK_PROTOCOL
+        and not provenance_available
+    ):
+        raise ProtocolViolation(
+            f"{source} lacks the explicit-trigger checkpoint provenance"
+        )
     seed = resolved["seed"]
     if (
         isinstance(seed, bool)
@@ -2940,7 +3258,11 @@ def _shared_evaluation_protocol(
     return {
         key: value
         for key, value in resolved.items()
-        if key not in _CELL_SPECIFIC_PROTOCOL_FIELDS
+        if key
+        not in (
+            _CELL_SPECIFIC_PROTOCOL_FIELDS
+            | _CHECKPOINT_SPECIFIC_PROTOCOL_FIELDS
+        )
     }
 
 
@@ -3185,7 +3507,23 @@ def aggregate_run(
     checkpoint_provenance_hashes = {
         value["checkpoint_provenance_sha256"]
         for value in resolved_configs
+        if value["checkpoint_provenance_sha256"] is not None
     }
+    checkpoint_identity_fields = (
+        "checkpoint",
+        "checkpoint_config_sha256",
+        "checkpoint_metadata_sha256",
+        "checkpoint_content_sha256",
+        "checkpoint_provenance_sha256",
+    )
+    checkpoint_identities_by_role: dict[str, set[tuple[Any, ...]]] = {}
+    for value in resolved_configs:
+        checkpoint_identities_by_role.setdefault(
+            str(value["checkpoint_role"]),
+            set(),
+        ).add(
+            tuple(value[field] for field in checkpoint_identity_fields)
+        )
     implementation_hashes = {
         value["implementation_sha256"]
         for value in resolved_configs
@@ -3216,22 +3554,51 @@ def aggregate_run(
             "completed cells were produced from a different WebShop "
             "catalogue/index environment than the frozen benchmark"
         )
-    if settings.require_shared_checkpoint and (
-        len(checkpoint_paths) != 1
-        or len(checkpoint_hashes) != 1
-        or len(checkpoint_metadata_hashes) != 1
-        or len(checkpoint_content_hashes) != 1
-        or len(checkpoint_provenance_hashes) != 1
-    ):
-        raise ProtocolViolation(
-            "completed cells do not identify exactly one shared policy "
-            "checkpoint; the paper protocol requires one compromised model "
-            f"(paths={sorted(checkpoint_paths)}, "
-            f"config_hashes={sorted(checkpoint_hashes)}, "
-            f"metadata_hashes={sorted(checkpoint_metadata_hashes)}, "
-            f"content_hashes={sorted(checkpoint_content_hashes)}, "
-            f"provenance_hashes={sorted(checkpoint_provenance_hashes)})"
+    attack_protocol = str(protocol_validation["attack_protocol"])
+    for role, identities in checkpoint_identities_by_role.items():
+        if len(identities) != 1:
+            raise ProtocolViolation(
+                f"checkpoint role {role!r} changes identity across completed "
+                f"cells: {sorted(str(item) for item in identities)}"
+            )
+    if attack_protocol == LEGACY_SPLIT_ATTACK_PROTOCOL:
+        unexpected_roles = set(checkpoint_identities_by_role) - {
+            QUERY_CHECKPOINT_ROLE,
+            OBSERVATION_CHECKPOINT_ROLE,
+        }
+        if unexpected_roles:
+            raise ProtocolViolation(
+                "legacy split run contains unsupported checkpoint roles: "
+                f"{sorted(unexpected_roles)}"
+            )
+        query_identities = checkpoint_identities_by_role.get(
+            QUERY_CHECKPOINT_ROLE,
+            set(),
         )
+        observation_identities = checkpoint_identities_by_role.get(
+            OBSERVATION_CHECKPOINT_ROLE,
+            set(),
+        )
+        if query_identities and observation_identities:
+            query_content_sha256 = next(iter(query_identities))[3]
+            observation_content_sha256 = next(
+                iter(observation_identities)
+            )[3]
+            if query_content_sha256 == observation_content_sha256:
+                raise ProtocolViolation(
+                    "legacy query-attack and observation-attack checkpoint "
+                    "roles resolve to identical checkpoint bytes"
+                )
+    else:
+        if set(checkpoint_identities_by_role) != {"combined"}:
+            raise ProtocolViolation(
+                "explicit-direct-trigger protocol requires one combined "
+                "checkpoint role"
+            )
+        if len(checkpoint_paths) != 1:
+            raise ProtocolViolation(
+                "explicit-direct-trigger cells do not share one checkpoint"
+            )
 
     seen: set[tuple[str, str, str]] = set()
     for row in rows:
@@ -3243,16 +3610,28 @@ def aggregate_run(
             )
         seen.add(key)
 
-    by_cell = aggregate_by_cell(rows, manifest)
+    pairable_trigger_conditions = (
+        LEGACY_PAIRABLE_FLIP_CONDITIONS
+        if attack_protocol == LEGACY_SPLIT_ATTACK_PROTOCOL
+        else frozenset({Condition.DIRECT, Condition.INDIRECT})
+    )
+    by_cell = aggregate_by_cell(
+        rows,
+        manifest,
+        pairable_trigger_conditions=pairable_trigger_conditions,
+    )
     ci_by_cell = clustered_bootstrap_ci(
         rows,
         manifest,
         n_resamples=settings.bootstrap_samples,
         seed=settings.bootstrap_seed,
+        pairable_trigger_conditions=pairable_trigger_conditions,
     )
     cells: list[dict[str, Any]] = []
     for key in sorted(by_cell):
-        metrics = by_cell[key]
+        condition_for_cell = Condition(key[2])
+        metrics = dict(by_cell[key])
+        bootstrap_bundle = dict(ci_by_cell.get(key, {}))
         cell_rows = [
             row
             for row in rows
@@ -3264,6 +3643,32 @@ def aggregate_run(
             )
             == key
         ]
+        by_preference = _preference_slices(
+            cell_rows,
+            manifest,
+            settings,
+        )
+        _annotate_flip_estimand(
+            metrics,
+            condition=condition_for_cell,
+            pairable_trigger_conditions=pairable_trigger_conditions,
+        )
+        _annotate_bootstrap_estimand(
+            bootstrap_bundle,
+            condition=condition_for_cell,
+            pairable_trigger_conditions=pairable_trigger_conditions,
+        )
+        for slice_data in by_preference.values():
+            _annotate_flip_estimand(
+                slice_data["metrics"],
+                condition=condition_for_cell,
+                pairable_trigger_conditions=pairable_trigger_conditions,
+            )
+            _annotate_bootstrap_estimand(
+                slice_data["bootstrap_95_ci"],
+                condition=condition_for_cell,
+                pairable_trigger_conditions=pairable_trigger_conditions,
+            )
         cells.append(
             {
                 "run_id": key[0],
@@ -3271,12 +3676,8 @@ def aggregate_run(
                 "condition": key[2],
                 "method": key[3],
                 "metrics": metrics,
-                "bootstrap_95_ci": ci_by_cell.get(key, {}),
-                "by_preference": _preference_slices(
-                    cell_rows,
-                    manifest,
-                    settings,
-                ),
+                "bootstrap_95_ci": bootstrap_bundle,
+                "by_preference": by_preference,
             }
         )
 
@@ -3348,8 +3749,18 @@ def aggregate_run(
 
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
+    checkpoint_identity_records_by_role = {
+        role: [
+            dict(zip(checkpoint_identity_fields, identity))
+            for identity in sorted(identities, key=str)
+        ]
+        for role, identities in sorted(
+            checkpoint_identities_by_role.items()
+        )
+    }
     result = {
         "manifest_digest": manifest.manifest_digest,
+        "attack_protocol": attack_protocol,
         "episode_files": [str(path) for path in files],
         "ignored_partial_episode_files": ignored_partial_episode_files,
         "ignored_incomplete_cell_directories": (
@@ -3385,10 +3796,35 @@ def aggregate_run(
         "checkpoint_provenance_sha256": sorted(
             checkpoint_provenance_hashes
         ),
+        "checkpoint_identities_by_role": (
+            checkpoint_identity_records_by_role
+        ),
+        "checkpoint_provenance_available": any(
+            value["checkpoint_provenance_available"]
+            for value in resolved_configs
+        ),
         "implementation_sha256": sorted(implementation_hashes),
         "aggregation_implementation_sha256": current_implementation_hash,
         "environment_sha256": sorted(environment_hashes),
-        "shared_checkpoint_required": settings.require_shared_checkpoint,
+        "shared_checkpoint_required": (
+            attack_protocol
+            == EXPLICIT_DIRECT_TRIGGER_ATTACK_PROTOCOL
+        ),
+        "configured_require_shared_checkpoint": (
+            settings.require_shared_checkpoint
+        ),
+        "preference_flip_pairing_conditions": sorted(
+            condition.value
+            for condition in pairable_trigger_conditions
+        ),
+        "direct_clean_pairing_available": (
+            Condition.DIRECT in pairable_trigger_conditions
+        ),
+        "direct_pairing_exclusion_reason": (
+            None
+            if Condition.DIRECT in pairable_trigger_conditions
+            else "clean_and_direct_use_different_checkpoint_roles"
+        ),
         "aggregation_settings": {
             "bootstrap_samples": settings.bootstrap_samples,
             "bootstrap_seed": settings.bootstrap_seed,
@@ -3437,6 +3873,8 @@ def aggregate_run(
         "targeted_preference_flip_ci_low",
         "targeted_preference_flip_ci_high",
         "targeted_preference_flip_denominator",
+        "preference_flip_estimand_valid",
+        "preference_flip_unavailable_reason",
         "intervention_rate",
         "clean_intervention_rate",
         "clean_intervention_rate_ci_low",
@@ -3500,6 +3938,8 @@ def aggregate_run(
                     "preference_flip_denominator",
                     "targeted_preference_flip",
                     "targeted_preference_flip_denominator",
+                    "preference_flip_estimand_valid",
+                    "preference_flip_unavailable_reason",
                     "intervention_rate",
                     "clean_intervention_rate",
                     "clean_intervention_rate_denominator",

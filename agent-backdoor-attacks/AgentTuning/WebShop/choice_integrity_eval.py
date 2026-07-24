@@ -133,6 +133,7 @@ def command_run(args: argparse.Namespace) -> int:
         method=args.method,
         condition=args.condition,
         checkpoint=args.checkpoint,
+        checkpoint_role=args.checkpoint_role,
         output_dir=args.output_dir,
         seed=args.seed,
         num_tasks=args.num_tasks,
@@ -224,6 +225,11 @@ def make_parser() -> argparse.ArgumentParser:
         required=True,
     )
     run.add_argument("--checkpoint", required=True)
+    run.add_argument(
+        "--checkpoint-role",
+        choices=("query_attack", "observation_attack", "combined"),
+        required=True,
+    )
     run.add_argument("--output-dir", required=True)
     run.add_argument("--seed", type=int, default=42)
     run.add_argument(

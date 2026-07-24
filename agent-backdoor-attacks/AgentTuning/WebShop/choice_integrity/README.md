@@ -12,36 +12,32 @@ preference-laundering benchmark as an 18-cell Slurm array:
 | 12--14 | `gate_ci_no_ledger` | clean, direct, indirect |
 | 15--17 | `gate_ci_no_dominance` | clean, direct, indirect |
 
-At most two cells run concurrently. Each cell requests one GPU, eight CPUs,
-64 GB of host memory, and 24 hours.
+The embedded launcher default runs at most two cells concurrently. Each cell
+requests one GPU, eight CPUs, 64 GB of host memory, and 24 hours. The submission
+commands below override the concurrency cap to four cells, matching a
+four-GPU allocation.
 
-## 1. Fix and freeze the attack protocol
+## 1. Freeze the legacy split-checkpoint protocol
 
-Set `benchmark.direct_trigger_text` in `choice_integrity/config.default.json` to
-the exact user-query cue used when the compromised model was trained. The
-default is deliberately empty and benchmark construction rejects it: an empty
-cue would make clean and direct inputs identical under greedy decoding.
+This experiment uses the two existing compromised policies rather than a
+jointly trained checkpoint:
 
-The legacy poisoning artifacts teach category-conditioned target-brand behavior
-but do not put a distinct cue in the policy's query-channel input. Consequently,
-they cannot support the paper's matched clean/direct claim. Choose the cue
-before evaluation, regenerate the direct traces with the updated generator, and
-train one checkpoint on the clean data plus 50 cue-bearing direct and 50
-indirect traces:
+| Conditions | Default checkpoint |
+| --- | --- |
+| direct | `/dataset/suaq0001/BackAgentDef/outputs/query_attack/checkpoint-118` |
+| clean, indirect | `/dataset/suaq0001/BackAgentDef/outputs/observation_attack/checkpoint-118` |
 
-```bash
-python create.py \
-  --attack_type both \
-  --direct_trigger_text 'YOUR_FROZEN_CUE' \
-  --num_samples 100 \
-  --output_dir ./generated_choice_integrity
-```
+The direct arm is the released category-conditioned query attack. Its training
+data do not contain a distinct, semantically inert user-query cue. Clean and
+direct are therefore not a matched same-policy pair that differs only by a
+trigger: direct clean-to-trigger preference flips are intentionally not paired
+or reported. Direct results remain useful as a separate query-attack arm.
 
-Apply the paper's reward filter and sampling rule, then jointly fine-tune the
-single compromised policy. `create.py` now stores the cue in the serialized
-initial instruction and attack metadata and refuses to save a direct trace when
-the cue is missing. Use the same exact cue in the benchmark config; do not
-invent or tune it after looking at evaluation outcomes.
+The clean and indirect conditions both use the observation-attack checkpoint,
+so their base tasks remain paired. Trigger-conditioned and unconditional
+attack/preference metrics are reported alongside the paired indirect
+preference flip. Do not invent a direct cue after examining evaluation
+outcomes.
 
 ## 2. Build and freeze the benchmark once
 
@@ -88,34 +84,17 @@ Submit from the BackAgentDef repository root. Scheduler logs are written
 directly there, so Slurm does not depend on a log directory that may not exist
 when it opens stdout and stderr:
 
-The paired protocol requires one compromised checkpoint containing both direct
-and indirect behavior. Add
-`choice_integrity_provenance.json` to that checkpoint:
-
-```json
-{
-  "schema_version": 1,
-  "training_data_sha256": {
-    "clean": "<64 lowercase hex characters>",
-    "direct": "<64 lowercase hex characters>",
-    "indirect": "<64 lowercase hex characters>"
-  },
-  "poisoned_trajectory_counts": {
-    "direct": 50,
-    "indirect": 50
-  },
-  "direct_trigger_text": "YOUR_FROZEN_CUE"
-}
-```
-
-Compute the dataset hashes with `sha256sum` after the final filtering/sampling
-step. The evaluator checks this declaration against the manifest and
-content-hashes the complete checkpoint once per Slurm run. Export the
-checkpoint once, then submit:
+No checkpoint export is needed. For a two-task-per-cell smoke test using up to
+four concurrent GPUs:
 
 ```bash
-export MODEL_CHECKPOINT=/path/to/combined/compromised/checkpoint
-sbatch choice_integrity_eval.sh
+sbatch --array=0-17%4 --export=ALL,SMOKE_NUM_TASKS=2 choice_integrity_eval.sh
+```
+
+For the full matrix using up to four concurrent GPUs:
+
+```bash
+sbatch --array=0-17%4 --export=ALL choice_integrity_eval.sh
 ```
 
 Do not put API keys in the script or in a command line. Export
@@ -126,7 +105,9 @@ state-aware verifier, and GATE-CI by default.
 Useful overrides can be passed with Slurm's exported environment:
 
 ```bash
-sbatch --export=ALL,SMOKE_NUM_TASKS=2 choice_integrity_eval.sh
+sbatch --array=0-17%4 \
+  --export=ALL,QUERY_CKPT=/path/to/query/checkpoint,OBS_CKPT=/path/to/observation/checkpoint \
+  choice_integrity_eval.sh
 
 sbatch --export=ALL,CONFIG_PATH=/path/to/config.json,MANIFEST_PATH=/path/to/frozen.json \
   choice_integrity_eval.sh
@@ -135,7 +116,9 @@ sbatch --export=ALL,OUTPUT_ROOT=/dataset/project/choice_integrity,SEED=42 \
   choice_integrity_eval.sh
 ```
 
-`MODEL_CHECKPOINT` is intentionally shared by every method and condition.
+`QUERY_CKPT` overrides the checkpoint for direct cells. `OBS_CKPT` overrides
+the checkpoint for both clean and indirect cells. If omitted, both use the
+defaults in the table above.
 `REPO_ROOT`, `CONDA_SH`, and `CONDA_ENV` override cluster-specific locations.
 The OpenAI-backed parser and verifier default to the pinned
 `gpt-5.4-mini-2026-03-17` snapshot. This is the reproducible snapshot behind
@@ -177,24 +160,25 @@ Scientific artifacts default to:
 Every successful cell invokes `choice_integrity_eval.py aggregate` while
 holding a run-level `flock`. Aggregation reads only cells with a matching,
 validated `_SUCCESS.json` whose hashes bind both the episode JSONL and resolved
-configuration. It rejects protocol drift, mixed implementation/checkpoint
-content hashes or training provenance, and noncanonical cell IDs. An in-progress
-JSONL from another array task is reported as ignored rather than mixed into a
-paper table. The last successful cell produces the complete aggregate without
-concurrent writers.
+configuration. It rejects protocol drift, an unexpected checkpoint assignment
+within either attack arm, mixed implementation hashes, and noncanonical cell
+IDs. An in-progress JSONL from another array task is reported as ignored rather
+than mixed into a paper table. The last successful cell produces the complete
+aggregate without concurrent writers.
 Use `RUN_ID` only when deliberately resuming or collecting cells into an
 existing run.
 
 ## Scientific guardrails
 
-- The repository currently has separate query-attack and observation-attack
-  checkpoints, while the manuscript describes one combined compromised model.
-  The launcher has no split-checkpoint fallback and rejects checkpoints without
-  the joint-training provenance file.
-- The direct cue is not specified in the current manuscript or released
-  poisoning data. The updated generator supports a real cue, but the cue must be
-  selected and the combined model retrained before this experiment can support
-  a paired-trigger claim.
+- Report the query-attack and observation-attack checkpoints as two separately
+  trained compromised policies. Do not describe this run as evaluating one
+  jointly compromised model.
+- The direct arm is category-conditioned and has no distinct user-query cue.
+  Report its outcome and defense metrics as a separate query-attack arm; do not
+  report a matched clean-to-trigger direct preference-flip metric.
+- Clean and indirect use the same observation-attack checkpoint and frozen base
+  tasks, so the paired indirect flip metrics remain valid. Keep
+  trigger-conditioned and unconditional indirect denominators separate.
 - Legacy WebShop runs assign `Rating = N.A.` when the separate review data is
   unavailable. Choice-integrity runs opt in to the catalog's displayed rating
   field. Audit that metadata and freeze it in the manifest before reporting
@@ -206,11 +190,9 @@ existing run.
   the frozen manifest.
 - Rendered brand/rating/availability fields are enabled uniformly for all
   methods and conditions. The hidden Attributes page remains disabled. This
-  interface choice is recorded in the manifest/provenance and should be
-  described in the paper.
-- Keep trigger-conditioned and unconditional indirect denominators separate,
-  and retain no-purchase/infeasible outcomes rather than silently dropping
-  them.
+  interface choice is recorded in the manifest and resolved run configuration,
+  and should be described in the paper.
+- Retain no-purchase/infeasible outcomes rather than silently dropping them.
 - `_SUCCESS.json` markers are counted as full cells only when they contain every
   frozen task. Aggregate summaries report completeness separately for each
   seed, for the four-method main matrix, and for the two ablations.

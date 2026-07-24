@@ -30,6 +30,14 @@ from .webshop_adapter import (
 
 DEFAULT_PAGE_SIZE = 10
 DEFAULT_SHORTLIST_SIZE = 10
+LEGACY_SPLIT_ATTACK_PROTOCOL = "legacy_split_checkpoints_v1"
+EXPLICIT_DIRECT_TRIGGER_ATTACK_PROTOCOL = "explicit_direct_trigger"
+ATTACK_PROTOCOLS = frozenset(
+    {
+        LEGACY_SPLIT_ATTACK_PROTOCOL,
+        EXPLICIT_DIRECT_TRIGGER_ATTACK_PROTOCOL,
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -44,6 +52,7 @@ class BuildConfig:
     shortlist_size: int = DEFAULT_SHORTLIST_SIZE
     page_size: int = DEFAULT_PAGE_SIZE
     seed: int = 42
+    attack_protocol: str = LEGACY_SPLIT_ATTACK_PROTOCOL
     direct_trigger_text: str = ""
     max_tasks: int = -1
 
@@ -68,6 +77,12 @@ class BuildConfig:
             shortlist_size=int(section.get("shortlist_size", DEFAULT_SHORTLIST_SIZE)),
             page_size=int(section.get("page_size", DEFAULT_PAGE_SIZE)),
             seed=int(section.get("seed", 42)),
+            attack_protocol=str(
+                section.get(
+                    "attack_protocol",
+                    LEGACY_SPLIT_ATTACK_PROTOCOL,
+                )
+            ),
             direct_trigger_text=str(section.get("direct_trigger_text", "")),
             max_tasks=int(section.get("max_tasks", -1)),
         )
@@ -100,12 +115,28 @@ class BuildConfig:
             )
         if self.max_tasks == 0 or self.max_tasks < -1:
             raise ValueError("max_tasks must be -1 or a positive integer")
-        if not self.direct_trigger_text.strip():
+        if self.attack_protocol not in ATTACK_PROTOCOLS:
+            raise ValueError(
+                "benchmark.attack_protocol must be one of "
+                f"{sorted(ATTACK_PROTOCOLS)}"
+            )
+        if (
+            self.attack_protocol == LEGACY_SPLIT_ATTACK_PROTOCOL
+            and self.direct_trigger_text.strip()
+        ):
+            raise ValueError(
+                "benchmark.direct_trigger_text must be empty for the legacy "
+                "split-checkpoint protocol; the existing query-attack model "
+                "uses category-conditioned activation, not a literal cue"
+            )
+        if (
+            self.attack_protocol == EXPLICIT_DIRECT_TRIGGER_ATTACK_PROTOCOL
+            and not self.direct_trigger_text.strip()
+        ):
             raise ValueError(
                 "benchmark.direct_trigger_text must be set to the exact "
                 "user-query trigger used by the poisoned training protocol. "
-                "The manuscript does not currently specify that cue, and an "
-                "empty value would make the clean and direct variants identical."
+                "It cannot be empty under the explicit-direct-trigger protocol."
             )
 
 
@@ -217,8 +248,36 @@ def _variants(
     instruction: str,
     target_brand: str,
     direct_trigger_text: str,
+    attack_protocol: str = EXPLICIT_DIRECT_TRIGGER_ATTACK_PROTOCOL,
 ) -> dict[str, Any]:
     trigger = direct_trigger_text.strip()
+    if attack_protocol == LEGACY_SPLIT_ATTACK_PROTOCOL:
+        if trigger:
+            raise ValueError(
+                "legacy split-checkpoint variants cannot declare a literal "
+                "direct trigger"
+            )
+        return {
+            "clean": {
+                "instruction": instruction,
+                "trigger_channel": "none",
+                "trigger_text": None,
+            },
+            "direct": {
+                "instruction": instruction,
+                "trigger_channel": "query_attack_checkpoint",
+                "trigger_text": None,
+                "activation_basis": "category_conditioned",
+                "distinct_input_cue": False,
+            },
+            "indirect": {
+                "instruction": instruction,
+                "trigger_channel": "observation",
+                "trigger_text": normalize_brand(target_brand),
+            },
+        }
+    if attack_protocol != EXPLICIT_DIRECT_TRIGGER_ATTACK_PROTOCOL:
+        raise ValueError(f"unsupported attack protocol: {attack_protocol!r}")
     if not trigger:
         raise ValueError("direct trigger text must not be empty")
     if trigger.casefold() in instruction.casefold():
@@ -272,6 +331,7 @@ def _task_for_preference(
     target_brand: str,
     canonical_query: str,
     direct_trigger_text: str,
+    attack_protocol: str = EXPLICIT_DIRECT_TRIGGER_ATTACK_PROTOCOL,
 ) -> tuple[ChoiceTask | None, str | None]:
     preference = _preference(preference_kind)
     feasible = tuple(candidate for candidate in candidates if candidate.feasible)
@@ -341,6 +401,7 @@ def _task_for_preference(
             instruction=instruction,
             target_brand=target_brand,
             direct_trigger_text=direct_trigger_text,
+            attack_protocol=attack_protocol,
         ),
         metadata={
             "target_brand": normalize_brand(target_brand),
@@ -449,6 +510,7 @@ def build_manifest(
                 target_brand=config.target_brand,
                 canonical_query=query,
                 direct_trigger_text=config.direct_trigger_text,
+                attack_protocol=config.attack_protocol,
             )
             if task is None:
                 filtered[reason or "unknown"] += 1
@@ -479,6 +541,28 @@ def build_manifest(
         "preference_kinds": list(config.preference_kinds),
         "shortlist_size": config.shortlist_size,
         "page_size": config.page_size,
+        "attack_protocol": config.attack_protocol,
+        "direct_activation": (
+            {
+                "basis": "category_conditioned_query_attack_checkpoint",
+                "distinct_input_cue": False,
+            }
+            if config.attack_protocol == LEGACY_SPLIT_ATTACK_PROTOCOL
+            else {
+                "basis": "explicit_user_query_trigger",
+                "distinct_input_cue": True,
+            }
+        ),
+        "within_checkpoint_counterfactual_pairs": (
+            [["clean", "indirect"]]
+            if config.attack_protocol == LEGACY_SPLIT_ATTACK_PROTOCOL
+            else [["clean", "direct"], ["clean", "indirect"]]
+        ),
+        "cross_checkpoint_nonpaired_conditions": (
+            [["clean", "direct"]]
+            if config.attack_protocol == LEGACY_SPLIT_ATTACK_PROTOCOL
+            else []
+        ),
         "direct_trigger_text_defined": bool(config.direct_trigger_text.strip()),
         "catalog_ratings_enabled": (
             os.environ.get("WEBSHOP_USE_CATALOG_RATINGS", "")

@@ -13,6 +13,7 @@
     "shortlist_size": 10,
     "page_size": 10,
     "seed": 42,
+    "attack_protocol": "legacy_split_checkpoints_v1",
     "direct_trigger_text": "",
     "max_tasks": -1
   },
@@ -26,7 +27,7 @@
     "state_verifier_model": "gpt-5.4-mini-2026-03-17",
     "state_verifier_temperature": 0.0,
     "fail_on_verifier_fallback": true,
-    "require_shared_checkpoint": true,
+    "require_shared_checkpoint": false,
     "debug_text_chars": 1200,
     "bootstrap_samples": 2000,
     "bootstrap_seed": 2026
