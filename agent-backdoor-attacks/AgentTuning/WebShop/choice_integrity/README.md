@@ -60,6 +60,18 @@ the manifest and its adjacent build report, then preserve its hash before
 policy evaluation. The Slurm launcher deliberately fails when the manifest is
 absent; it never rebuilds or changes the comparison set during evaluation.
 
+For the full catalogue, submit the same one-time construction as a CPU-only
+Slurm job with 64 GB of memory:
+
+```bash
+cd /export/home2/suaq0001/BackAgentDef
+sbatch choice_integrity_build.sh
+```
+
+The build launcher isolates the Conda environment from cluster Jupyter
+packages, verifies the catalogue and Lucene index, and refuses to overwrite an
+existing manifest.
+
 The benchmark and runtime visibly render catalog brand, rating, and availability
 metadata. For methods that need comparison evidence, the runtime forks an
 isolated WebShop session, issues the goal-only search through `reset`/`step`,
