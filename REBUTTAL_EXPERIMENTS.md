@@ -83,10 +83,12 @@ cross-row cache used to measure warm/deployment behavior.
 ### Optional physical-GPU selection
 
 `PHYSICAL_GPU=<global ID>` selects one physical GPU from the GPUs already
-allocated to the job. The harness validates the ID against `SLURM_JOB_GPUS`
-and maps it by position to Slurm's possibly cgroup-renumbered
-`CUDA_VISIBLE_DEVICES` value. Python continues to receive `--gpu 0`, because
-the selected physical GPU becomes the evaluator's sole logical CUDA device.
+allocated to the job. The harness validates the ID against
+`SLURM_JOB_GPUS`, falling back to `SLURM_STEP_GPUS`. When neither variable is
+available, it accepts only an exact physical numeric token already present in
+Slurm's `CUDA_VISIBLE_DEVICES`; it does not guess from cgroup-renumbered
+ordinals or UUIDs. Python continues to receive `--gpu 0`, because the selected
+physical GPU becomes the evaluator's sole logical CUDA device.
 
 This option does not make Slurm allocate a requested physical ID. To select an
 exact GPU safely, the allocation must contain that GPU, for example by using a

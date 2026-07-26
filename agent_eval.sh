@@ -94,60 +94,85 @@ fi
 # cgroup isolation, so map by position rather than assuming that a global GPU
 # ID is also a valid CUDA-visible token.
 SLURM_CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-}"
+SLURM_GPU_ALLOCATION=""
+SLURM_GPU_ALLOCATION_SOURCE=""
+if [[ -n "${SLURM_JOB_GPUS:-}" ]]; then
+    SLURM_GPU_ALLOCATION="$SLURM_JOB_GPUS"
+    SLURM_GPU_ALLOCATION_SOURCE="SLURM_JOB_GPUS"
+elif [[ -n "${SLURM_STEP_GPUS:-}" ]]; then
+    SLURM_GPU_ALLOCATION="$SLURM_STEP_GPUS"
+    SLURM_GPU_ALLOCATION_SOURCE="SLURM_STEP_GPUS"
+fi
 SELECTED_CUDA_DEVICE="slurm-managed"
 if [[ -n "$PHYSICAL_GPU" ]]; then
     export CUDA_DEVICE_ORDER=PCI_BUS_ID
     if [[ -n "${SLURM_JOB_ID:-}" ]]; then
-        if [[ -z "${SLURM_JOB_GPUS:-}" ]]; then
-            echo "ERROR: PHYSICAL_GPU=$PHYSICAL_GPU requires SLURM_JOB_GPUS in a Slurm job." >&2
-            exit 2
-        fi
         if [[ -z "$SLURM_CUDA_VISIBLE_DEVICES" ]]; then
             echo "ERROR: PHYSICAL_GPU=$PHYSICAL_GPU requires Slurm to set CUDA_VISIBLE_DEVICES." >&2
             exit 2
         fi
 
-        allocated_gpu_ids=()
-        IFS=',' read -r -a allocated_gpu_specs <<<"$SLURM_JOB_GPUS"
-        for gpu_spec in "${allocated_gpu_specs[@]}"; do
-            if [[ "$gpu_spec" =~ ^[0-9]+$ ]]; then
-                allocated_gpu_ids+=("$gpu_spec")
-            elif [[ "$gpu_spec" =~ ^([0-9]+)-([0-9]+)$ ]]; then
-                range_start="${BASH_REMATCH[1]}"
-                range_end="${BASH_REMATCH[2]}"
-                if (( range_start > range_end )); then
-                    echo "ERROR: invalid descending range '$gpu_spec' in SLURM_JOB_GPUS." >&2
+        if [[ -n "$SLURM_GPU_ALLOCATION" ]]; then
+            allocated_gpu_ids=()
+            IFS=',' read -r -a allocated_gpu_specs <<<"$SLURM_GPU_ALLOCATION"
+            for gpu_spec in "${allocated_gpu_specs[@]}"; do
+                if [[ "$gpu_spec" =~ ^[0-9]+$ ]]; then
+                    allocated_gpu_ids+=("$gpu_spec")
+                elif [[ "$gpu_spec" =~ ^([0-9]+)-([0-9]+)$ ]]; then
+                    range_start="${BASH_REMATCH[1]}"
+                    range_end="${BASH_REMATCH[2]}"
+                    if (( range_start > range_end )); then
+                        echo "ERROR: invalid descending range '$gpu_spec' in $SLURM_GPU_ALLOCATION_SOURCE." >&2
+                        exit 2
+                    fi
+                    for ((gpu_id = range_start; gpu_id <= range_end; gpu_id++)); do
+                        allocated_gpu_ids+=("$gpu_id")
+                    done
+                else
+                    echo "ERROR: unsupported $SLURM_GPU_ALLOCATION_SOURCE entry '$gpu_spec'." >&2
                     exit 2
                 fi
-                for ((gpu_id = range_start; gpu_id <= range_end; gpu_id++)); do
-                    allocated_gpu_ids+=("$gpu_id")
-                done
-            else
-                echo "ERROR: unsupported SLURM_JOB_GPUS entry '$gpu_spec'." >&2
+            done
+
+            IFS=',' read -r -a visible_gpu_tokens <<<"$SLURM_CUDA_VISIBLE_DEVICES"
+            if (( ${#allocated_gpu_ids[@]} != ${#visible_gpu_tokens[@]} )); then
+                echo "ERROR: Slurm GPU mapping is inconsistent: $SLURM_GPU_ALLOCATION_SOURCE='$SLURM_GPU_ALLOCATION'" >&2
+                echo "       CUDA_VISIBLE_DEVICES='$SLURM_CUDA_VISIBLE_DEVICES'." >&2
                 exit 2
             fi
-        done
 
-        IFS=',' read -r -a visible_gpu_tokens <<<"$SLURM_CUDA_VISIBLE_DEVICES"
-        if (( ${#allocated_gpu_ids[@]} != ${#visible_gpu_tokens[@]} )); then
-            echo "ERROR: Slurm GPU mapping is inconsistent: SLURM_JOB_GPUS='$SLURM_JOB_GPUS'" >&2
-            echo "       CUDA_VISIBLE_DEVICES='$SLURM_CUDA_VISIBLE_DEVICES'." >&2
-            exit 2
-        fi
-
-        selected_position=-1
-        for index in "${!allocated_gpu_ids[@]}"; do
-            if [[ "${allocated_gpu_ids[$index]}" == "$PHYSICAL_GPU" ]]; then
-                selected_position="$index"
-                break
+            selected_position=-1
+            for index in "${!allocated_gpu_ids[@]}"; do
+                if [[ "${allocated_gpu_ids[$index]}" == "$PHYSICAL_GPU" ]]; then
+                    selected_position="$index"
+                    break
+                fi
+            done
+            if (( selected_position < 0 )); then
+                echo "ERROR: physical GPU $PHYSICAL_GPU was not allocated to this job." >&2
+                echo "       $SLURM_GPU_ALLOCATION_SOURCE='$SLURM_GPU_ALLOCATION'." >&2
+                exit 2
             fi
-        done
-        if (( selected_position < 0 )); then
-            echo "ERROR: physical GPU $PHYSICAL_GPU was not allocated to this job." >&2
-            echo "       SLURM_JOB_GPUS='$SLURM_JOB_GPUS'." >&2
-            exit 2
+            SELECTED_CUDA_DEVICE="${visible_gpu_tokens[$selected_position]}"
+        else
+            # Some Slurm configurations expose only physical numeric tokens in
+            # CUDA_VISIBLE_DEVICES. Accept the request only when the requested
+            # ID appears directly; cgroup-renumbered ordinals and UUIDs cannot
+            # be safely mapped without JOB_GPUS or STEP_GPUS metadata.
+            SELECTED_CUDA_DEVICE=""
+            IFS=',' read -r -a visible_gpu_tokens <<<"$SLURM_CUDA_VISIBLE_DEVICES"
+            for visible_token in "${visible_gpu_tokens[@]}"; do
+                if [[ "$visible_token" == "$PHYSICAL_GPU" ]]; then
+                    SELECTED_CUDA_DEVICE="$visible_token"
+                    break
+                fi
+            done
+            if [[ -z "$SELECTED_CUDA_DEVICE" ]]; then
+                echo "ERROR: cannot verify physical GPU $PHYSICAL_GPU: neither SLURM_JOB_GPUS nor SLURM_STEP_GPUS is set," >&2
+                echo "       and CUDA_VISIBLE_DEVICES='$SLURM_CUDA_VISIBLE_DEVICES' does not contain that physical ID." >&2
+                exit 2
+            fi
         fi
-        SELECTED_CUDA_DEVICE="${visible_gpu_tokens[$selected_position]}"
     else
         # Outside Slurm, the caller is responsible for exclusive ownership.
         SELECTED_CUDA_DEVICE="$PHYSICAL_GPU"
@@ -424,6 +449,8 @@ print_resolution() {
     echo "Goal cache: $GOAL_CACHE"
     echo "Physical GPU request: ${PHYSICAL_GPU:-none}"
     echo "Slurm global GPUs: ${SLURM_JOB_GPUS:-unset}"
+    echo "Slurm step GPUs: ${SLURM_STEP_GPUS:-unset}"
+    echo "Slurm GPU allocation source: ${SLURM_GPU_ALLOCATION_SOURCE:-CUDA_VISIBLE_DEVICES-only}"
     echo "Slurm CUDA visibility: ${SLURM_CUDA_VISIBLE_DEVICES:-unset}"
     echo "Selected CUDA device: $SELECTED_CUDA_DEVICE"
     printf 'Command: cd %q &&' "$WEBSHOP_DIR"
@@ -463,6 +490,7 @@ echo "SLURM_JOB_ID: ${SLURM_JOB_ID:-unset}"
 echo "SLURM_ARRAY_TASK_ID: ${SLURM_ARRAY_TASK_ID:-unset}"
 echo "SLURM_JOB_NODELIST: ${SLURM_JOB_NODELIST:-unset}"
 echo "SLURM_JOB_GPUS global allocation: ${SLURM_JOB_GPUS:-unset}"
+echo "SLURM_STEP_GPUS allocation: ${SLURM_STEP_GPUS:-unset}"
 echo "CUDA_VISIBLE_DEVICES assigned by Slurm: ${SLURM_CUDA_VISIBLE_DEVICES:-unset}"
 echo "PHYSICAL_GPU requested: ${PHYSICAL_GPU:-none}"
 echo "CUDA_VISIBLE_DEVICES used by evaluator: ${CUDA_VISIBLE_DEVICES:-unset}"

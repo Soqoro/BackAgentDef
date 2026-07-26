@@ -309,6 +309,39 @@ contains "$physical_gpu_mapping" "Slurm global GPUs: 0,2,3,6"
 contains "$physical_gpu_mapping" "Slurm CUDA visibility: 0,1,2,3"
 contains "$physical_gpu_mapping" "Selected CUDA device: 3"
 
+# Older/differently configured Slurm installations may expose the same global
+# allocation through SLURM_STEP_GPUS instead of SLURM_JOB_GPUS.
+step_gpu_mapping="$({
+    env -u OPENAI_API_KEY -u SLURM_JOB_GPUS \
+        REBUTTAL_STAGE=baselines SLURM_ARRAY_TASK_ID=0 \
+        REBUTTAL_DRY_RUN=true PHYSICAL_GPU=3 \
+        SLURM_JOB_ID=123 SLURM_STEP_GPUS=1,3 \
+        CUDA_VISIBLE_DEVICES=0,1 bash "$HARNESS"
+} 2>&1)" || fail "SLURM_STEP_GPUS fallback failed"
+contains "$step_gpu_mapping" "Slurm step GPUs: 1,3"
+contains "$step_gpu_mapping" "Slurm GPU allocation source: SLURM_STEP_GPUS"
+contains "$step_gpu_mapping" "Selected CUDA device: 1"
+
+# If neither Slurm GPU-ID variable exists, a direct physical numeric CUDA token
+# is still verifiable. Renumbered ordinals/UUIDs remain deliberately rejected.
+direct_visible_mapping="$({
+    env -u OPENAI_API_KEY -u SLURM_JOB_GPUS -u SLURM_STEP_GPUS \
+        REBUTTAL_STAGE=baselines SLURM_ARRAY_TASK_ID=0 \
+        REBUTTAL_DRY_RUN=true PHYSICAL_GPU=3 \
+        SLURM_JOB_ID=123 CUDA_VISIBLE_DEVICES=3 bash "$HARNESS"
+} 2>&1)" || fail "direct CUDA_VISIBLE_DEVICES fallback failed"
+contains "$direct_visible_mapping" \
+    "Slurm GPU allocation source: CUDA_VISIBLE_DEVICES-only"
+contains "$direct_visible_mapping" "Selected CUDA device: 3"
+
+unverifiable_mapping="$({
+    env -u OPENAI_API_KEY -u SLURM_JOB_GPUS -u SLURM_STEP_GPUS \
+        REBUTTAL_STAGE=baselines SLURM_ARRAY_TASK_ID=0 \
+        REBUTTAL_DRY_RUN=true PHYSICAL_GPU=3 \
+        SLURM_JOB_ID=123 CUDA_VISIBLE_DEVICES=0 bash "$HARNESS"
+} 2>&1)" && fail "unverifiable physical GPU mapping unexpectedly succeeded"
+contains "$unverifiable_mapping" "cannot verify physical GPU 3"
+
 if env -u OPENAI_API_KEY \
     REBUTTAL_STAGE=baselines SLURM_ARRAY_TASK_ID=0 \
     REBUTTAL_DRY_RUN=true PHYSICAL_GPU=5 \
