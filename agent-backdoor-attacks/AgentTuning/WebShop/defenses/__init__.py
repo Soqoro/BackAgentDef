@@ -27,6 +27,7 @@ from .goal_contract import (
     StructuredGoal,
 )
 from .masker import RegexGoalMasker
+from .llm_accounting import LLMPricing, LLMUsage
 from .reporter import GateReport, MaskRecord
 from .state_abstraction import (
     GoalRelevantStateAbstraction,
@@ -57,6 +58,8 @@ __all__ = [
     "OpenAIGoalParser",
     "RegexGoalParser",
     "RegexGoalMasker",
+    "LLMPricing",
+    "LLMUsage",
     "GoalRelevantStateAbstraction",
     "StateAbstractionResult",
     "StateElement",

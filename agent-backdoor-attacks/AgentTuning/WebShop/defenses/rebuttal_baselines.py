@@ -24,6 +24,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
+from defenses.llm_accounting import LLMPricing, LLMUsage
+
 
 _ACTION_RE = re.compile(
     r"^\s*(search|click)\[(.*)\]\s*$",
@@ -900,6 +902,11 @@ JUDGE_RESPONSE_FORMAT: Dict[str, Any] = {
     },
 }
 
+# Increment whenever the judge prompt, response contract, or deterministic
+# replacement-candidate semantics change. Including this in the hash prevents
+# persistent caches from replaying a decision produced under an older contract.
+JUDGE_CACHE_KEY_VERSION = 1
+
 _JUDGE_SYSTEM_PROMPT = (
     "Verify one WebShop action using only the supplied trusted shopping "
     "instruction, current page observation, current legal action set, proposed "
@@ -968,6 +975,7 @@ def build_judge_request(
     return {
         "model": str(model),
         "temperature": 0,
+        "service_tier": "default",
         "response_format": JUDGE_RESPONSE_FORMAT,
         "messages": build_judge_messages(
             instruction,
@@ -989,6 +997,7 @@ def judge_cache_key(
     """Hash exactly the five inputs that determine a judge decision."""
 
     material = {
+        "judge_cache_key_version": JUDGE_CACHE_KEY_VERSION,
         "judge_model": str(model),
         "original_user_instruction": str(instruction or ""),
         "current_raw_observation": str(observation or ""),
@@ -1065,7 +1074,17 @@ class JudgeActionResult:
     cache_key: Optional[str] = None
     cache_hit: bool = False
     added_latency_seconds: float = 0.0
+    llm_usage: LLMUsage = field(
+        default_factory=lambda: LLMUsage(usage_reported=False)
+    )
+    estimated_cost_usd: Optional[float] = None
     repair_result: Optional[RepairResult] = None
+
+    @property
+    def usage(self) -> LLMUsage:
+        """Backward-friendly shorthand for the per-request LLM usage."""
+
+        return self.llm_usage
 
     @property
     def should_terminate(self) -> bool:
@@ -1084,6 +1103,8 @@ class JudgeActionResult:
             "cache_key": self.cache_key,
             "cache_hit": self.cache_hit,
             "added_latency_seconds": self.added_latency_seconds,
+            "llm_usage": self.llm_usage.to_dict(),
+            "estimated_cost_usd": self.estimated_cost_usd,
             "repair_result": self.repair_result.to_dict() if self.repair_result else None,
             "should_terminate": self.should_terminate,
         }
@@ -1224,12 +1245,80 @@ class JudgeCounters:
     requests: int = 0
     judge_calls: int = 0
     cache_hits: int = 0
+    usage_reported_call_count: int = 0
+    usage_missing_call_count: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    total_tokens: int = 0
+    cached_input_tokens: int = 0
+    reasoning_tokens: int = 0
+    actual_models: List[str] = field(default_factory=list)
+    estimated_cost_usd: Optional[float] = None
+    known_estimated_cost_usd: Optional[float] = None
     failures: int = 0
     replacements: int = 0
     added_latency_seconds: float = 0.0
 
+    @property
+    def logical_requests(self) -> int:
+        return self.requests
+
+    @property
+    def api_calls(self) -> int:
+        return self.judge_calls
+
+    @property
+    def uncached_api_calls(self) -> int:
+        return self.judge_calls
+
+    @property
+    def prompt_tokens(self) -> int:
+        return self.input_tokens
+
+    @property
+    def completion_tokens(self) -> int:
+        return self.output_tokens
+
+    def record_api_call(
+        self,
+        usage: LLMUsage,
+        estimated_cost_usd: Optional[float],
+    ) -> None:
+        """Add accounting for one uncached provider invocation."""
+
+        usage_reported = getattr(usage, "usage_reported", False)
+        if usage_reported:
+            self.usage_reported_call_count += 1
+        else:
+            self.usage_missing_call_count += 1
+        self.input_tokens += usage.input_tokens
+        self.output_tokens += usage.output_tokens
+        self.total_tokens += usage.total_tokens
+        self.cached_input_tokens += usage.cached_input_tokens
+        self.reasoning_tokens += usage.reasoning_tokens
+        if usage.model and usage.model not in self.actual_models:
+            self.actual_models.append(usage.model)
+        if estimated_cost_usd is not None:
+            if self.known_estimated_cost_usd is None:
+                self.known_estimated_cost_usd = 0.0
+            self.known_estimated_cost_usd += estimated_cost_usd
+            if self.usage_missing_call_count == 0:
+                if self.estimated_cost_usd is None:
+                    self.estimated_cost_usd = 0.0
+                self.estimated_cost_usd += estimated_cost_usd
+        if not usage_reported:
+            # A subtotal from reported responses must never be presented as
+            # complete spend when any provider call omitted usage.
+            self.estimated_cost_usd = None
+
     def to_dict(self) -> Dict[str, Any]:
-        return asdict(self)
+        data = asdict(self)
+        data["logical_requests"] = self.logical_requests
+        data["api_calls"] = self.api_calls
+        data["uncached_api_calls"] = self.uncached_api_calls
+        data["prompt_tokens"] = self.prompt_tokens
+        data["completion_tokens"] = self.completion_tokens
+        return data
 
 
 JudgeProvider = Callable[[Dict[str, Any]], Any]
@@ -1246,6 +1335,7 @@ class LLMJudge:
         cache_path: Optional[os.PathLike[str] | str] = None,
         provider: Optional[JudgeProvider] = None,
         legal_repair: Optional[LegalRepair] = None,
+        pricing: Optional[LLMPricing] = None,
         timeout: float = 30.0,
     ) -> None:
         if not str(model or "").strip():
@@ -1256,22 +1346,52 @@ class LLMJudge:
         self.cache = cache or JudgeDecisionCache(cache_path)
         self.provider = provider
         self.legal_repair = legal_repair or LegalRepair()
+        if pricing is not None and not isinstance(pricing, LLMPricing):
+            raise TypeError("pricing must be an LLMPricing instance or None")
+        self.pricing = pricing
         self.timeout = float(timeout)
-        self.counters = JudgeCounters()
+        pricing_configured = bool(pricing and pricing.is_configured)
+        self.counters = JudgeCounters(
+            estimated_cost_usd=0.0 if pricing_configured else None,
+            known_estimated_cost_usd=0.0 if pricing_configured else None,
+        )
 
     def _default_provider(self, request: Dict[str, Any]) -> Any:
         from openai import OpenAI  # type: ignore
 
         client = OpenAI(timeout=self.timeout)
         response = client.chat.completions.create(**request)
-        return response.choices[0].message.content or ""
+        return response
 
     @staticmethod
     def _coerce_provider_output(response: Any) -> Any:
-        if isinstance(response, (str, Mapping)):
+        if isinstance(response, str):
             return response
+        if isinstance(response, Mapping):
+            choices = response.get("choices")
+            if choices is None:
+                # Custom providers may return the raw decision mapping.
+                return response
+            try:
+                choice = choices[0]
+                message = (
+                    choice.get("message")
+                    if isinstance(choice, Mapping)
+                    else choice.message
+                )
+                if isinstance(message, Mapping):
+                    parsed = message.get("parsed")
+                    content = message.get("content")
+                else:
+                    parsed = getattr(message, "parsed", None)
+                    content = getattr(message, "content", None)
+                return parsed if parsed is not None else (content or "")
+            except (AttributeError, IndexError, KeyError, TypeError):
+                return str(response)
         try:
-            return response.choices[0].message.content or ""
+            message = response.choices[0].message
+            parsed = getattr(message, "parsed", None)
+            return parsed if parsed is not None else (message.content or "")
         except (AttributeError, IndexError, TypeError):
             return str(response)
 
@@ -1297,6 +1417,10 @@ class LLMJudge:
         cache_hit, raw_output = self.cache.get(key)
         latency = 0.0
         provider_failure: Optional[str] = None
+        llm_usage = LLMUsage(usage_reported=False)
+        estimated_cost_usd = (
+            0.0 if cache_hit and self.pricing and self.pricing.is_configured else None
+        )
         if cache_hit:
             self.counters.cache_hits += 1
         else:
@@ -1316,9 +1440,24 @@ class LLMJudge:
             except Exception as exc:
                 provider_failure = f"judge_call_error:{type(exc).__name__}:{exc}"
                 raw_output = None
+            else:
+                try:
+                    llm_usage = LLMUsage.from_response(response)
+                except (TypeError, ValueError):
+                    response_model = (
+                        response.get("model")
+                        if isinstance(response, Mapping)
+                        else getattr(response, "model", None)
+                    )
+                    llm_usage = LLMUsage(
+                        model=response_model,
+                        usage_reported=False,
+                    )
+                estimated_cost_usd = llm_usage.estimated_cost_usd(self.pricing)
             latency = time.perf_counter() - started
             self.counters.judge_calls += 1
             self.counters.added_latency_seconds += latency
+            self.counters.record_api_call(llm_usage, estimated_cost_usd)
 
         if provider_failure:
             resolved = JudgeActionResult(
@@ -1332,6 +1471,8 @@ class LLMJudge:
                 cache_key=key,
                 cache_hit=cache_hit,
                 added_latency_seconds=latency,
+                llm_usage=llm_usage,
+                estimated_cost_usd=estimated_cost_usd,
             )
         else:
             base = resolve_judge_output(
@@ -1354,6 +1495,8 @@ class LLMJudge:
                 cache_key=key,
                 cache_hit=cache_hit,
                 added_latency_seconds=latency,
+                llm_usage=llm_usage,
+                estimated_cost_usd=estimated_cost_usd,
             )
 
         # Persist only decisions that passed local schema, legality, and index
@@ -1389,6 +1532,8 @@ class LLMJudge:
             cache_hit=resolved.cache_hit,
             added_latency_seconds=resolved.added_latency_seconds
             + repair.added_latency_seconds,
+            llm_usage=resolved.llm_usage,
+            estimated_cost_usd=resolved.estimated_cost_usd,
             repair_result=repair,
         )
 
@@ -1404,7 +1549,9 @@ __all__ = [
     "JudgeDecision",
     "JudgeDecisionCache",
     "JudgeParseResult",
+    "LLMPricing",
     "LLMJudge",
+    "LLMUsage",
     "LegalRepair",
     "LexicalFilterResult",
     "LexicalGuard",

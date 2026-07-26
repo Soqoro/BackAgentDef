@@ -8,6 +8,7 @@ from typing import Dict, Optional, Tuple
 from .action_certification import ActionCertificationResult, GoalGroundedActionCertification
 from .action_projection import ActionProjectionResult, GoalConstrainedActionProjection
 from .goal_contract import GoalContract, GoalContractExtraction
+from .llm_accounting import LLMPricing
 from .masker import RegexGoalMasker
 from .reporter import GateReport
 from .state_abstraction import GoalRelevantStateAbstraction, StateAbstractionResult, StructuredState
@@ -88,6 +89,7 @@ class GateDefense:
         runtime_mode: str = "full",
         require_goal_parser_success: bool = False,
         goal_contract_cache_path: Optional[str] = None,
+        llm_pricing: Optional[LLMPricing] = None,
     ) -> None:
         if ablation not in GATE_ABLATIONS:
             choices = ", ".join(GATE_ABLATION_CHOICES)
@@ -117,6 +119,7 @@ class GateDefense:
             openai_model=openai_model,
             require_success=require_goal_parser_success,
             cache_path=goal_contract_cache_path,
+            pricing=llm_pricing,
         )
         self.current_goal_contract: Optional[GoalContract] = None
         self.last_state_abstraction_result: Optional[StateAbstractionResult] = None

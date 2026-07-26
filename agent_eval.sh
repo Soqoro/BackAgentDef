@@ -22,6 +22,7 @@ if [[ "$WEBSHOP_DIR" != /* ]]; then
 fi
 RESULTS_ROOT="${RESULTS_ROOT:-$WEBSHOP_DIR/results/rebuttal}"
 GOAL_CACHE="${GOAL_CACHE:-$RESULTS_ROOT/goal_contract_cache.json}"
+GOAL_CACHE_SCOPE="${GOAL_CACHE_SCOPE:-shared}"
 
 # Resolve path overrides before the eventual cd into WEBSHOP_DIR so directory
 # creation, printed commands, and Python all refer to the same files.
@@ -40,6 +41,40 @@ SEED="${SEED:-42}"
 CLEAN_SPLIT="${CLEAN_SPLIT:-std}"
 TARGET_BRAND="${TARGET_BRAND:-adidas}"
 PHYSICAL_GPU="${PHYSICAL_GPU:-}"
+GATE_INPUT_USD_PER_MILLION="${GATE_INPUT_USD_PER_MILLION:-}"
+GATE_CACHED_INPUT_USD_PER_MILLION="${GATE_CACHED_INPUT_USD_PER_MILLION:-}"
+GATE_OUTPUT_USD_PER_MILLION="${GATE_OUTPUT_USD_PER_MILLION:-}"
+JUDGE_INPUT_USD_PER_MILLION="${JUDGE_INPUT_USD_PER_MILLION:-}"
+JUDGE_CACHED_INPUT_USD_PER_MILLION="${JUDGE_CACHED_INPUT_USD_PER_MILLION:-}"
+JUDGE_OUTPUT_USD_PER_MILLION="${JUDGE_OUTPUT_USD_PER_MILLION:-}"
+LLM_PRICING_AS_OF="${LLM_PRICING_AS_OF:-}"
+LLM_PRICING_SOURCE="${LLM_PRICING_SOURCE:-}"
+
+validate_price_triplet() {
+    local label="$1"
+    local input_price="$2"
+    local cached_input_price="$3"
+    local output_price="$4"
+    local value
+
+    if [[ -z "$input_price" && -z "$cached_input_price" && -z "$output_price" ]]; then
+        return 0
+    fi
+    if [[ -z "$input_price" || -z "$output_price" ]]; then
+        echo "ERROR: ${label} input and output USD-per-million prices must be set together." >&2
+        exit 2
+    fi
+    for value in "$input_price" "$output_price"; do
+        if [[ ! "$value" =~ ^([0-9]+([.][0-9]*)?|[.][0-9]+)$ ]]; then
+            echo "ERROR: ${label} prices must be non-negative decimals; got '$value'." >&2
+            exit 2
+        fi
+    done
+    if [[ -n "$cached_input_price" && ! "$cached_input_price" =~ ^([0-9]+([.][0-9]*)?|[.][0-9]+)$ ]]; then
+        echo "ERROR: ${label} cached-input price must be a non-negative decimal; got '$cached_input_price'." >&2
+        exit 2
+    fi
+}
 
 if [[ ! "$ARRAY_TASK_ID" =~ ^[0-9]+$ ]]; then
     echo "ERROR: array task ID must be a non-negative integer; got '$ARRAY_TASK_ID'." >&2
@@ -47,6 +82,10 @@ if [[ ! "$ARRAY_TASK_ID" =~ ^[0-9]+$ ]]; then
 fi
 if [[ -n "$PHYSICAL_GPU" && ! "$PHYSICAL_GPU" =~ ^[0-9]+$ ]]; then
     echo "ERROR: PHYSICAL_GPU must be a non-negative integer; got '$PHYSICAL_GPU'." >&2
+    exit 2
+fi
+if [[ "$GOAL_CACHE_SCOPE" != "shared" && "$GOAL_CACHE_SCOPE" != "row" ]]; then
+    echo "ERROR: GOAL_CACHE_SCOPE must be shared or row; got '$GOAL_CACHE_SCOPE'." >&2
     exit 2
 fi
 
@@ -210,6 +249,28 @@ case "$REBUTTAL_STAGE" in
         ;;
 esac
 
+if [[ "$DEFENSE" == "gate" ]]; then
+    validate_price_triplet \
+        "GATE" \
+        "$GATE_INPUT_USD_PER_MILLION" \
+        "$GATE_CACHED_INPUT_USD_PER_MILLION" \
+        "$GATE_OUTPUT_USD_PER_MILLION"
+    if [[ -n "$LLM_PRICING_AS_OF$LLM_PRICING_SOURCE" && -z "$GATE_INPUT_USD_PER_MILLION" ]]; then
+        echo "ERROR: LLM pricing provenance requires complete GATE prices for a GATE row." >&2
+        exit 2
+    fi
+elif [[ "$DEFENSE" == "llm_judge" ]]; then
+    validate_price_triplet \
+        "judge" \
+        "$JUDGE_INPUT_USD_PER_MILLION" \
+        "$JUDGE_CACHED_INPUT_USD_PER_MILLION" \
+        "$JUDGE_OUTPUT_USD_PER_MILLION"
+    if [[ -n "$LLM_PRICING_AS_OF$LLM_PRICING_SOURCE" && -z "$JUDGE_INPUT_USD_PER_MILLION" ]]; then
+        echo "ERROR: LLM pricing provenance requires complete judge prices for an LLM-judge row." >&2
+        exit 2
+    fi
+fi
+
 TASK_IDS_PATH=""
 case "$ATTACK_SETTING" in
     clean)
@@ -242,6 +303,12 @@ fi
 OUTPUT_DIR="$RESULTS_ROOT/$REBUTTAL_STAGE/$METHOD_PATH"
 OUTPUT_PATH="$OUTPUT_DIR/$SETTING.jsonl"
 SUMMARY_PATH="$OUTPUT_DIR/$SETTING.summary.json"
+if [[ "$DEFENSE" == "gate" && "$GOAL_CACHE_SCOPE" == "row" ]]; then
+    # Isolate cold-cache accounting by matrix row. This prevents concurrent
+    # clean/direct/indirect jobs from nondeterministically assigning the cost
+    # of an overlapping goal to whichever process populates a shared cache.
+    GOAL_CACHE="$OUTPUT_DIR/$SETTING.goal_contract_cache.json"
+fi
 
 PARSER_MODEL="not-applicable"
 JUDGE_MODEL_RESOLVED="not-applicable"
@@ -280,10 +347,43 @@ if [[ "$DEFENSE" == "gate" ]]; then
         --require_goal_parser_success
         --goal_contract_cache "$GOAL_CACHE"
     )
+    if [[ -n "$GATE_INPUT_USD_PER_MILLION" ]]; then
+        CMD+=(
+            --gate_input_usd_per_million "$GATE_INPUT_USD_PER_MILLION"
+            --gate_output_usd_per_million "$GATE_OUTPUT_USD_PER_MILLION"
+        )
+        if [[ -n "$GATE_CACHED_INPUT_USD_PER_MILLION" ]]; then
+            CMD+=(
+                --gate_cached_input_usd_per_million \
+                "$GATE_CACHED_INPUT_USD_PER_MILLION"
+            )
+        fi
+    fi
 fi
 
 if [[ "$DEFENSE" == "llm_judge" ]]; then
     CMD+=(--judge_model "$JUDGE_MODEL")
+    if [[ -n "$JUDGE_INPUT_USD_PER_MILLION" ]]; then
+        CMD+=(
+            --judge_input_usd_per_million "$JUDGE_INPUT_USD_PER_MILLION"
+            --judge_output_usd_per_million "$JUDGE_OUTPUT_USD_PER_MILLION"
+        )
+        if [[ -n "$JUDGE_CACHED_INPUT_USD_PER_MILLION" ]]; then
+            CMD+=(
+                --judge_cached_input_usd_per_million \
+                "$JUDGE_CACHED_INPUT_USD_PER_MILLION"
+            )
+        fi
+    fi
+fi
+
+if [[ "$DEFENSE" == "gate" || "$DEFENSE" == "llm_judge" ]]; then
+    if [[ -n "$LLM_PRICING_AS_OF" ]]; then
+        CMD+=(--llm_pricing_as_of "$LLM_PRICING_AS_OF")
+    fi
+    if [[ -n "$LLM_PRICING_SOURCE" ]]; then
+        CMD+=(--llm_pricing_source "$LLM_PRICING_SOURCE")
+    fi
 fi
 
 if [[ "$REBUTTAL_STAGE" == "oracle" ]]; then
@@ -316,6 +416,11 @@ print_resolution() {
     echo "Summary: $SUMMARY_PATH"
     echo "Parser model: $PARSER_MODEL"
     echo "Judge model: $JUDGE_MODEL_RESOLVED"
+    echo "GATE pricing (input/cached/output USD per 1M): ${GATE_INPUT_USD_PER_MILLION:-unset}/${GATE_CACHED_INPUT_USD_PER_MILLION:-input-rate}/${GATE_OUTPUT_USD_PER_MILLION:-unset}"
+    echo "Judge pricing (input/cached/output USD per 1M): ${JUDGE_INPUT_USD_PER_MILLION:-unset}/${JUDGE_CACHED_INPUT_USD_PER_MILLION:-input-rate}/${JUDGE_OUTPUT_USD_PER_MILLION:-unset}"
+    echo "LLM pricing as of: ${LLM_PRICING_AS_OF:-unset}"
+    echo "LLM pricing source: ${LLM_PRICING_SOURCE:-unset}"
+    echo "Goal cache scope: $GOAL_CACHE_SCOPE"
     echo "Goal cache: $GOAL_CACHE"
     echo "Physical GPU request: ${PHYSICAL_GPU:-none}"
     echo "Slurm global GPUs: ${SLURM_JOB_GPUS:-unset}"

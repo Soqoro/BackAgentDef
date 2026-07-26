@@ -7,6 +7,8 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import ModuleType, SimpleNamespace
+from unittest.mock import patch
 
 
 WEBSHOP_ROOT = Path(__file__).resolve().parents[1]
@@ -14,7 +16,9 @@ if str(WEBSHOP_ROOT) not in sys.path:
     sys.path.insert(0, str(WEBSHOP_ROOT))
 
 from defenses.rebuttal_baselines import (  # noqa: E402
+    LLMPricing,
     LLMJudge,
+    LLMUsage,
     LegalRepair,
     LexicalGuard,
     RepairState,
@@ -312,6 +316,10 @@ class LLMJudgeTests(unittest.TestCase):
                 "judge-test-model",
                 cache_path=Path(temp_dir) / "judge.json",
                 provider=provider,
+                pricing=LLMPricing(
+                    input_usd_per_million=2.0,
+                    output_usd_per_million=8.0,
+                ),
             )
             first = judge.evaluate_action(
                 "Find red running shoes",
@@ -330,6 +338,7 @@ class LLMJudgeTests(unittest.TestCase):
         self.assertEqual(second.action, "click[B012345678]")
         self.assertEqual(len(provider_requests), 1)
         self.assertEqual(provider_requests[0]["temperature"], 0)
+        self.assertEqual(provider_requests[0]["service_tier"], "default")
         response_format = provider_requests[0]["response_format"]
         self.assertEqual(response_format["type"], "json_schema")
         self.assertTrue(response_format["json_schema"]["strict"])
@@ -338,7 +347,316 @@ class LLMJudgeTests(unittest.TestCase):
         )
         self.assertEqual(judge.counters.requests, 2)
         self.assertEqual(judge.counters.judge_calls, 1)
+        self.assertEqual(judge.counters.api_calls, 1)
         self.assertEqual(judge.counters.cache_hits, 1)
+        self.assertEqual(judge.counters.usage_reported_call_count, 0)
+        self.assertEqual(judge.counters.usage_missing_call_count, 1)
+        self.assertIsNone(first.estimated_cost_usd)
+        self.assertEqual(second.estimated_cost_usd, 0.0)
+        self.assertFalse(first.llm_usage.usage_reported)
+        self.assertEqual(first.action, second.action)
+        # The decision is backward-compatible, but absent usage makes aggregate
+        # spend unknown rather than silently reporting a zero-cost provider call.
+        self.assertIsNone(judge.counters.estimated_cost_usd)
+
+    def test_full_object_response_tracks_exact_usage_cost_and_cache(self) -> None:
+        decision = json.dumps(
+            {"allow": True, "replacement_index": None, "reason": "legal"}
+        )
+        response = SimpleNamespace(
+            model="judge-actual-2026-07-01",
+            usage=SimpleNamespace(
+                prompt_tokens=1000,
+                completion_tokens=200,
+                total_tokens=1200,
+                prompt_tokens_details=SimpleNamespace(cached_tokens=250),
+                completion_tokens_details=SimpleNamespace(reasoning_tokens=50),
+            ),
+            choices=[
+                SimpleNamespace(message=SimpleNamespace(content=decision))
+            ],
+        )
+        calls = []
+        pricing = LLMPricing(
+            input_usd_per_million=2.0,
+            cached_input_usd_per_million=0.5,
+            output_usd_per_million=8.0,
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            judge = LLMJudge(
+                "judge-requested-alias",
+                cache_path=Path(temp_dir) / "judge.json",
+                provider=lambda request: calls.append(request) or response,
+                pricing=pricing,
+            )
+            first = judge.evaluate_action(
+                "Find red running shoes",
+                "Results page",
+                RESULTS_PAGE,
+                "click[B012345678]",
+            )
+            second = judge.evaluate_action(
+                "Find red running shoes",
+                "Results page",
+                RESULTS_PAGE,
+                "click[B012345678]",
+            )
+
+        expected_cost = 0.003225
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(first.action, "click[B012345678]")
+        self.assertEqual(first.llm_usage.input_tokens, 1000)
+        self.assertEqual(first.llm_usage.output_tokens, 200)
+        self.assertEqual(first.llm_usage.total_tokens, 1200)
+        self.assertEqual(first.llm_usage.cached_input_tokens, 250)
+        self.assertEqual(first.llm_usage.reasoning_tokens, 50)
+        self.assertEqual(first.llm_usage.model, "judge-actual-2026-07-01")
+        self.assertAlmostEqual(first.estimated_cost_usd or 0.0, expected_cost)
+        self.assertEqual(
+            second.llm_usage,
+            LLMUsage(usage_reported=False),
+        )
+        self.assertEqual(second.estimated_cost_usd, 0.0)
+        self.assertEqual(judge.counters.input_tokens, 1000)
+        self.assertEqual(judge.counters.output_tokens, 200)
+        self.assertEqual(judge.counters.total_tokens, 1200)
+        self.assertEqual(judge.counters.cached_input_tokens, 250)
+        self.assertEqual(judge.counters.reasoning_tokens, 50)
+        self.assertEqual(
+            judge.counters.actual_models,
+            ["judge-actual-2026-07-01"],
+        )
+        self.assertEqual(judge.counters.usage_reported_call_count, 1)
+        self.assertEqual(judge.counters.usage_missing_call_count, 0)
+        self.assertAlmostEqual(
+            judge.counters.estimated_cost_usd or 0.0,
+            expected_cost,
+        )
+        self.assertAlmostEqual(
+            judge.counters.known_estimated_cost_usd or 0.0,
+            expected_cost,
+        )
+        result_log = first.to_dict()
+        self.assertEqual(result_log["llm_usage"]["model"], "judge-actual-2026-07-01")
+        self.assertAlmostEqual(result_log["estimated_cost_usd"], expected_cost)
+
+    def test_full_mapping_response_extracts_decision_and_usage(self) -> None:
+        response = {
+            "model": "judge-mapping-model",
+            "usage": {
+                "prompt_tokens": 17,
+                "completion_tokens": 5,
+                "total_tokens": 22,
+                "prompt_tokens_details": {"cached_tokens": 3},
+                "completion_tokens_details": {"reasoning_tokens": 2},
+            },
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "allow": False,
+                                "replacement_index": 0,
+                                "reason": "replace",
+                            }
+                        )
+                    }
+                }
+            ],
+        }
+        judge = LLMJudge(
+            "judge-requested-alias",
+            provider=lambda request: response,
+            pricing=LLMPricing(
+                input_usd_per_million=1.0,
+                cached_input_usd_per_million=0.5,
+                output_usd_per_million=3.0,
+            ),
+        )
+
+        result = judge.evaluate_action(
+            "Find red running shoes",
+            "Results page",
+            RESULTS_PAGE,
+            "click[not-current]",
+        )
+
+        self.assertEqual(result.action, "click[B012345678]")
+        self.assertTrue(result.replacement_applied)
+        self.assertEqual(result.llm_usage.model, "judge-mapping-model")
+        self.assertEqual(result.llm_usage.input_tokens, 17)
+        self.assertEqual(result.llm_usage.output_tokens, 5)
+        self.assertEqual(result.llm_usage.cached_input_tokens, 3)
+        self.assertEqual(result.llm_usage.reasoning_tokens, 2)
+        self.assertAlmostEqual(result.estimated_cost_usd or 0.0, 0.0000305)
+
+    def test_invalid_output_still_accounts_usage_and_is_not_cached(self) -> None:
+        response = {
+            "model": "judge-invalid-output-model",
+            "usage": {
+                "prompt_tokens": 10,
+                "completion_tokens": 2,
+                "total_tokens": 12,
+                "prompt_tokens_details": {"cached_tokens": 2},
+                "completion_tokens_details": {"reasoning_tokens": 1},
+            },
+            "choices": [{"message": {"content": "not-json"}}],
+        }
+        calls = []
+        judge = LLMJudge(
+            "judge-requested-alias",
+            provider=lambda request: calls.append(request) or response,
+            pricing=LLMPricing(
+                input_usd_per_million=2.0,
+                cached_input_usd_per_million=1.0,
+                output_usd_per_million=4.0,
+            ),
+        )
+
+        first = judge.evaluate_action(
+            "Find red running shoes",
+            "Results page",
+            RESULTS_PAGE,
+            "click[B012345678]",
+        )
+        second = judge.evaluate_action(
+            "Find red running shoes",
+            "Results page",
+            RESULTS_PAGE,
+            "click[B012345678]",
+        )
+
+        self.assertEqual(len(calls), 2)
+        self.assertFalse(first.cache_hit)
+        self.assertFalse(second.cache_hit)
+        self.assertTrue((first.failure or "").startswith("invalid_json:"))
+        self.assertEqual(first.llm_usage.total_tokens, 12)
+        self.assertAlmostEqual(first.estimated_cost_usd or 0.0, 0.000026)
+        self.assertEqual(judge.counters.requests, 2)
+        self.assertEqual(judge.counters.judge_calls, 2)
+        self.assertEqual(judge.counters.cache_hits, 0)
+        self.assertEqual(judge.counters.usage_reported_call_count, 2)
+        self.assertEqual(judge.counters.input_tokens, 20)
+        self.assertEqual(judge.counters.output_tokens, 4)
+        self.assertEqual(judge.counters.total_tokens, 24)
+        self.assertAlmostEqual(
+            judge.counters.estimated_cost_usd or 0.0,
+            0.000052,
+        )
+
+    def test_raw_string_provider_stays_compatible_without_partial_cost(self) -> None:
+        decision = json.dumps(
+            {"allow": True, "replacement_index": None, "reason": "legal"}
+        )
+        responses = iter(
+            (
+                {
+                    "model": "judge-reported-model",
+                    "usage": {
+                        "prompt_tokens": 100,
+                        "completion_tokens": 10,
+                        "total_tokens": 110,
+                    },
+                    "choices": [{"message": {"content": decision}}],
+                },
+                decision,
+            )
+        )
+        judge = LLMJudge(
+            "judge-model",
+            provider=lambda request: next(responses),
+            pricing=LLMPricing(
+                input_usd_per_million=1.0,
+                output_usd_per_million=2.0,
+            ),
+        )
+
+        reported = judge.evaluate_action(
+            "Find red running shoes",
+            "Results page",
+            RESULTS_PAGE,
+            "click[B012345678]",
+        )
+        raw_string = judge.evaluate_action(
+            "Find red running shoes",
+            "Results page",
+            RESULTS_PAGE,
+            "click[Back]",
+        )
+
+        self.assertEqual(reported.action, "click[B012345678]")
+        self.assertEqual(raw_string.action, "click[Back]")
+        self.assertFalse(raw_string.llm_usage.usage_reported)
+        self.assertEqual(judge.counters.usage_reported_call_count, 1)
+        self.assertEqual(judge.counters.usage_missing_call_count, 1)
+        self.assertAlmostEqual(
+            judge.counters.known_estimated_cost_usd or 0.0,
+            0.00012,
+        )
+        self.assertIsNone(judge.counters.estimated_cost_usd)
+
+    def test_malformed_usage_does_not_change_a_valid_judge_decision(self) -> None:
+        response = {
+            "model": "judge-bad-usage-model",
+            "usage": {
+                "prompt_tokens": -1,
+                "completion_tokens": 3,
+                "total_tokens": 2,
+            },
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "allow": True,
+                                "replacement_index": None,
+                                "reason": "legal",
+                            }
+                        )
+                    }
+                }
+            ],
+        }
+        judge = LLMJudge(
+            "judge-model",
+            provider=lambda request: response,
+            pricing=LLMPricing(
+                input_usd_per_million=1.0,
+                output_usd_per_million=2.0,
+            ),
+        )
+
+        result = judge.evaluate_action(
+            "Find red running shoes",
+            "Results page",
+            RESULTS_PAGE,
+            "click[B012345678]",
+        )
+
+        self.assertEqual(result.action, "click[B012345678]")
+        self.assertIsNone(result.failure)
+        self.assertFalse(result.llm_usage.usage_reported)
+        self.assertEqual(result.llm_usage.model, "judge-bad-usage-model")
+        self.assertEqual(judge.counters.usage_missing_call_count, 1)
+        self.assertIsNone(judge.counters.estimated_cost_usd)
+
+    def test_default_provider_returns_full_response(self) -> None:
+        response = object()
+        fake_openai = ModuleType("openai")
+        fake_openai.OpenAI = lambda timeout: SimpleNamespace(  # type: ignore[attr-defined]
+            chat=SimpleNamespace(
+                completions=SimpleNamespace(
+                    create=lambda **request: response,
+                )
+            )
+        )
+        judge = LLMJudge("judge-model")
+
+        with patch.dict(sys.modules, {"openai": fake_openai}):
+            returned = judge._default_provider({"model": "judge-model"})
+
+        self.assertIs(returned, response)
 
 
 if __name__ == "__main__":

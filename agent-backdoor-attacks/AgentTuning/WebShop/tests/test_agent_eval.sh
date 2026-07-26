@@ -204,6 +204,62 @@ gate_only="$({
 } 2>&1)" || fail "GATE dry run incorrectly required JUDGE_MODEL or an API key"
 not_contains "$gate_only" "DRY_RUN_INVOKED_PYTHON"
 
+# Explicit price snapshots are forwarded only to the selected external-LLM
+# role. The cached-input rate remains optional and otherwise uses input price.
+priced_judge="$({
+    env -u OPENAI_API_KEY -u GATE_MODEL \
+        REBUTTAL_STAGE=baselines SLURM_ARRAY_TASK_ID=9 \
+        REBUTTAL_DRY_RUN=true JUDGE_MODEL=test-judge-model \
+        JUDGE_INPUT_USD_PER_MILLION=0.15 \
+        JUDGE_CACHED_INPUT_USD_PER_MILLION=0.075 \
+        JUDGE_OUTPUT_USD_PER_MILLION=0.6 \
+        LLM_PRICING_AS_OF=2026-07-27 \
+        LLM_PRICING_SOURCE=official-test-snapshot \
+        bash "$HARNESS"
+} 2>&1)" || fail "priced judge dry run failed"
+priced_judge_command="$(sed -n 's/^Command: //p' <<<"$priced_judge")"
+contains "$priced_judge_command" "--judge_input_usd_per_million 0.15"
+contains "$priced_judge_command" "--judge_cached_input_usd_per_million 0.075"
+contains "$priced_judge_command" "--judge_output_usd_per_million 0.6"
+contains "$priced_judge_command" "--llm_pricing_as_of 2026-07-27"
+contains "$priced_judge_command" "--llm_pricing_source official-test-snapshot"
+not_contains "$priced_judge_command" "--gate_input_usd_per_million"
+
+priced_gate="$({
+    env -u OPENAI_API_KEY -u JUDGE_MODEL \
+        REBUTTAL_STAGE=baselines SLURM_ARRAY_TASK_ID=15 \
+        REBUTTAL_DRY_RUN=true GATE_MODEL=test-gate-model \
+        GATE_INPUT_USD_PER_MILLION=1.25 \
+        GATE_OUTPUT_USD_PER_MILLION=10 \
+        LLM_PRICING_AS_OF=paper-snapshot \
+        bash "$HARNESS"
+} 2>&1)" || fail "priced GATE dry run failed"
+priced_gate_command="$(sed -n 's/^Command: //p' <<<"$priced_gate")"
+contains "$priced_gate_command" "--gate_input_usd_per_million 1.25"
+contains "$priced_gate_command" "--gate_output_usd_per_million 10"
+not_contains "$priced_gate_command" "--gate_cached_input_usd_per_million"
+not_contains "$priced_gate_command" "--judge_input_usd_per_million"
+
+incomplete_judge_price="$({
+    env -u OPENAI_API_KEY -u GATE_MODEL \
+        REBUTTAL_STAGE=baselines SLURM_ARRAY_TASK_ID=9 \
+        REBUTTAL_DRY_RUN=true JUDGE_MODEL=test-judge-model \
+        JUDGE_INPUT_USD_PER_MILLION=0.15 \
+        bash "$HARNESS"
+} 2>&1)" && fail "incomplete judge pricing unexpectedly succeeded"
+contains "$incomplete_judge_price" \
+    "judge input and output USD-per-million prices must be set together"
+
+provenance_without_price="$({
+    env -u OPENAI_API_KEY -u GATE_MODEL \
+        REBUTTAL_STAGE=baselines SLURM_ARRAY_TASK_ID=9 \
+        REBUTTAL_DRY_RUN=true JUDGE_MODEL=test-judge-model \
+        LLM_PRICING_AS_OF=2026-07-27 \
+        bash "$HARNESS"
+} 2>&1)" && fail "pricing provenance without judge prices unexpectedly succeeded"
+contains "$provenance_without_price" \
+    "LLM pricing provenance requires complete judge prices"
+
 # Relative result/cache overrides must be anchored once, not reinterpreted
 # after the job changes into the WebShop evaluator directory.
 relative_paths="$({
@@ -215,6 +271,29 @@ relative_paths="$({
 } 2>&1)" || fail "relative output/cache dry run failed"
 contains "$relative_paths" "Output: $REPO_ROOT/tmp/rebuttal-results/baselines/gate/full/clean.jsonl"
 contains "$relative_paths" "Goal cache: $REPO_ROOT/tmp/shared-goals.json"
+
+# Focused cold-cost runs can isolate the GATE cache per resolved row so
+# overlapping task goals do not make per-setting spend depend on job order.
+row_scoped_cache="$({
+    env -u OPENAI_API_KEY \
+        REBUTTAL_STAGE=baselines SLURM_ARRAY_TASK_ID=16 \
+        REBUTTAL_DRY_RUN=true GATE_MODEL=test-gate-model \
+        RESULTS_ROOT=tmp/rebuttal-results GOAL_CACHE_SCOPE=row \
+        bash "$HARNESS"
+} 2>&1)" || fail "row-scoped cache dry run failed"
+contains "$row_scoped_cache" "Goal cache scope: row"
+contains "$row_scoped_cache" \
+    "Goal cache: $REPO_ROOT/tmp/rebuttal-results/baselines/gate/full/direct.goal_contract_cache.json"
+row_scoped_command="$(sed -n 's/^Command: //p' <<<"$row_scoped_cache")"
+contains "$row_scoped_command" \
+    "--goal_contract_cache $REPO_ROOT/tmp/rebuttal-results/baselines/gate/full/direct.goal_contract_cache.json"
+
+invalid_cache_scope="$({
+    env -u OPENAI_API_KEY \
+        REBUTTAL_STAGE=baselines SLURM_ARRAY_TASK_ID=0 \
+        REBUTTAL_DRY_RUN=true GOAL_CACHE_SCOPE=invalid bash "$HARNESS"
+} 2>&1)" && fail "invalid GOAL_CACHE_SCOPE unexpectedly succeeded"
+contains "$invalid_cache_scope" "GOAL_CACHE_SCOPE must be shared or row"
 
 # A requested global GPU must map by position to the corresponding CUDA token.
 # This remains correct when Slurm cgroups renumber physical GPUs locally.

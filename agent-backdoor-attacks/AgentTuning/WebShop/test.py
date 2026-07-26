@@ -35,6 +35,7 @@ from defenses.rebuttal_baselines import (
     LexicalGuard,
     RepairState,
 )
+from defenses.llm_accounting import LLMPricing
 from defenses.rebuttal_metrics import attack_metric_summaries, proportion_summary
 from defenses.near_miss_oracle import (
     is_strict_near_miss_purchase,
@@ -2139,6 +2140,9 @@ class WebShop:
         self.judge_calls = 0
         self.judge_failures = 0
         self.judge_replacements = 0
+        self.runtime_baseline_rounds = 0
+        self.gate_runtime_rounds = 0
+        self.gate_certification_rounds = 0
         self.added_runtime_seconds = []
         self.episode_records = []
 
@@ -2374,10 +2378,13 @@ class WebShop:
                 "baseline_intervention": False,
                 "repair_attempted": False,
                 "repair_succeeded": False,
+                "judge_requested": False,
                 "judge_called": False,
                 "judge_cache_hit": False,
                 "judge_failed": False,
                 "judge_replaced": False,
+                "judge_llm_usage": None,
+                "judge_estimated_cost_usd": None,
                 "baseline_report": None,
                 "lexical_original_search": None,
                 "lexical_filtered_search": None,
@@ -2404,6 +2411,7 @@ class WebShop:
                 step_added_runtime += time.perf_counter() - reminder_started
             if self.gate is not None:
                 gate_prompt_started = time.perf_counter()
+                self.gate_runtime_rounds += 1
                 prompt_text, gate_report = self.gate.apply(prompt_text)
                 step_added_runtime += time.perf_counter() - gate_prompt_started
                 step_log["gate_mask_count"] = gate_report.mask_count
@@ -2554,6 +2562,7 @@ class WebShop:
                 return repaired_response
 
             if self.chat.defense in {"legal_repair", "lexical_guard", "llm_judge"}:
+                self.runtime_baseline_rounds += 1
                 baseline_started = time.perf_counter()
 
                 if self.chat.defense == "legal_repair":
@@ -2637,9 +2646,16 @@ class WebShop:
                         judge.legal_repair.counters.repair_successes - before_successes
                     )
                     step_log["judge_called"] = call_delta > 0
+                    step_log["judge_requested"] = True
                     step_log["judge_cache_hit"] = baseline_result.cache_hit
                     step_log["judge_failed"] = failure_delta > 0
                     step_log["judge_replaced"] = replacement_delta > 0
+                    step_log["judge_llm_usage"] = (
+                        baseline_result.llm_usage.to_dict()
+                    )
+                    step_log["judge_estimated_cost_usd"] = (
+                        baseline_result.estimated_cost_usd
+                    )
 
                 step_added_runtime += time.perf_counter() - baseline_started
                 step_log["baseline_report"] = baseline_result.to_dict()
@@ -2688,6 +2704,7 @@ class WebShop:
             certification_result = None
             gate_action_started = time.perf_counter()
             if gate_certification_enabled and action:
+                self.gate_certification_rounds += 1
                 certification_result = self.gate.certify_action(action)
                 step_log["gate_certification_accepted"] = certification_result.accepted
                 step_log["gate_certification_z"] = certification_result.z
@@ -3264,6 +3281,209 @@ def git_commit_hash():
     return value or None
 
 
+def _ratio_or_none(numerator, denominator):
+    if denominator is None or denominator <= 0:
+        return None
+    return numerator / denominator
+
+
+def llm_efficiency_summary(args, webshop, parser_stats):
+    """Return role-specific and method-neutral external-LLM accounting."""
+
+    parser_request_count = int(parser_stats.get("parser_request_count", 0))
+    parser_call_count = int(parser_stats.get("parser_calls", 0))
+    parser_api_call_count = int(parser_stats.get("parser_api_calls", 0))
+    parser_cache_hit_count = int(parser_stats.get("parser_cache_hits", 0))
+    parser_usage_reported = int(
+        parser_stats.get("parser_usage_reported_call_count", 0)
+    )
+    parser_usage_missing = int(
+        parser_stats.get("parser_usage_missing_call_count", 0)
+    )
+    parser_input_tokens = int(parser_stats.get("parser_input_tokens", 0))
+    parser_cached_input_tokens = int(
+        parser_stats.get("parser_cached_input_tokens", 0)
+    )
+    parser_output_tokens = int(parser_stats.get("parser_output_tokens", 0))
+    parser_reasoning_tokens = int(
+        parser_stats.get("parser_reasoning_tokens", 0)
+    )
+    parser_total_tokens = int(parser_stats.get("parser_total_tokens", 0))
+    parser_estimated_cost = parser_stats.get("parser_estimated_cost_usd")
+
+    judge = (
+        webshop.runtime_baseline
+        if isinstance(webshop.runtime_baseline, LLMJudge)
+        else None
+    )
+    judge_counters = judge.counters if judge is not None else None
+    judge_request_count = int(
+        getattr(judge_counters, "requests", 0)
+    )
+    judge_call_count = int(
+        getattr(judge_counters, "judge_calls", 0)
+    )
+    judge_cache_hit_count = int(
+        getattr(judge_counters, "cache_hits", 0)
+    )
+    judge_usage_reported = int(
+        getattr(judge_counters, "usage_reported_call_count", 0)
+    )
+    judge_usage_missing = int(
+        getattr(judge_counters, "usage_missing_call_count", 0)
+    )
+    judge_input_tokens = int(
+        getattr(judge_counters, "input_tokens", 0)
+    )
+    judge_cached_input_tokens = int(
+        getattr(judge_counters, "cached_input_tokens", 0)
+    )
+    judge_output_tokens = int(
+        getattr(judge_counters, "output_tokens", 0)
+    )
+    judge_reasoning_tokens = int(
+        getattr(judge_counters, "reasoning_tokens", 0)
+    )
+    judge_total_tokens = int(
+        getattr(judge_counters, "total_tokens", 0)
+    )
+    judge_estimated_cost = (
+        getattr(judge_counters, "estimated_cost_usd", None)
+        if judge_counters is not None
+        else None
+    )
+
+    if args.defense == "gate" and not args.gate_disable_llm:
+        common_requests = parser_request_count
+        common_api_calls = parser_api_call_count
+        common_cache_hits = parser_cache_hit_count
+        common_usage_reported = parser_usage_reported
+        common_usage_missing = parser_usage_missing
+        common_input_tokens = parser_input_tokens
+        common_cached_input_tokens = parser_cached_input_tokens
+        common_output_tokens = parser_output_tokens
+        common_reasoning_tokens = parser_reasoning_tokens
+        common_total_tokens = parser_total_tokens
+        common_cost = parser_estimated_cost
+        common_actual_models = parser_stats.get("actual_parser_models", [])
+        input_rate = args.gate_input_usd_per_million
+        cached_input_rate = args.gate_cached_input_usd_per_million
+        output_rate = args.gate_output_usd_per_million
+    elif args.defense == "llm_judge":
+        common_requests = judge_request_count
+        common_api_calls = judge_call_count
+        common_cache_hits = judge_cache_hit_count
+        common_usage_reported = judge_usage_reported
+        common_usage_missing = judge_usage_missing
+        common_input_tokens = judge_input_tokens
+        common_cached_input_tokens = judge_cached_input_tokens
+        common_output_tokens = judge_output_tokens
+        common_reasoning_tokens = judge_reasoning_tokens
+        common_total_tokens = judge_total_tokens
+        common_cost = judge_estimated_cost
+        common_actual_models = list(
+            getattr(judge_counters, "actual_models", [])
+        )
+        input_rate = args.judge_input_usd_per_million
+        cached_input_rate = args.judge_cached_input_usd_per_million
+        output_rate = args.judge_output_usd_per_million
+    else:
+        common_requests = 0
+        common_api_calls = 0
+        common_cache_hits = 0
+        common_usage_reported = 0
+        common_usage_missing = 0
+        common_input_tokens = 0
+        common_cached_input_tokens = 0
+        common_output_tokens = 0
+        common_reasoning_tokens = 0
+        common_total_tokens = 0
+        common_cost = 0.0
+        common_actual_models = []
+        input_rate = None
+        cached_input_rate = None
+        output_rate = None
+
+    if cached_input_rate is None and input_rate is not None:
+        cached_input_rate = input_rate
+
+    if args.defense == "gate":
+        defense_action_rounds = webshop.gate_runtime_rounds
+    elif args.defense in {"legal_repair", "lexical_guard", "llm_judge"}:
+        defense_action_rounds = webshop.runtime_baseline_rounds
+    else:
+        defense_action_rounds = 0
+
+    return {
+        "parser_actual_models": parser_stats.get("actual_parser_models", []),
+        "parser_request_count": parser_request_count,
+        "parser_call_count": parser_call_count,
+        "parser_api_call_count": parser_api_call_count,
+        "parser_cache_hit_count": parser_cache_hit_count,
+        "parser_usage_reported_call_count": parser_usage_reported,
+        "parser_usage_missing_call_count": parser_usage_missing,
+        "parser_input_token_count": parser_input_tokens,
+        "parser_cached_input_token_count": parser_cached_input_tokens,
+        "parser_output_token_count": parser_output_tokens,
+        "parser_reasoning_token_count": parser_reasoning_tokens,
+        "parser_total_token_count": parser_total_tokens,
+        "parser_estimated_cost_usd": parser_estimated_cost,
+        "judge_actual_models": (
+            list(getattr(judge_counters, "actual_models", []))
+            if judge_counters is not None
+            else []
+        ),
+        "judge_request_count": judge_request_count,
+        "judge_call_count": judge_call_count,
+        "judge_cache_hit_count": judge_cache_hit_count,
+        "judge_usage_reported_call_count": judge_usage_reported,
+        "judge_usage_missing_call_count": judge_usage_missing,
+        "judge_input_token_count": judge_input_tokens,
+        "judge_cached_input_token_count": judge_cached_input_tokens,
+        "judge_output_token_count": judge_output_tokens,
+        "judge_reasoning_token_count": judge_reasoning_tokens,
+        "judge_total_token_count": judge_total_tokens,
+        "judge_estimated_cost_usd": judge_estimated_cost,
+        "defense_action_round_count": defense_action_rounds,
+        "gate_runtime_round_count": webshop.gate_runtime_rounds,
+        "gate_certification_round_count": webshop.gate_certification_rounds,
+        "defense_llm_actual_models": list(common_actual_models),
+        "defense_llm_request_count": common_requests,
+        "defense_llm_api_call_count": common_api_calls,
+        "defense_llm_cache_hit_count": common_cache_hits,
+        "defense_llm_usage_reported_call_count": common_usage_reported,
+        "defense_llm_usage_missing_call_count": common_usage_missing,
+        "defense_llm_input_token_count": common_input_tokens,
+        "defense_llm_cached_input_token_count": common_cached_input_tokens,
+        "defense_llm_output_token_count": common_output_tokens,
+        "defense_llm_reasoning_token_count": common_reasoning_tokens,
+        "defense_llm_total_token_count": common_total_tokens,
+        "defense_llm_estimated_cost_usd": common_cost,
+        "defense_llm_requests_per_episode": _ratio_or_none(
+            common_requests,
+            webshop.episodes,
+        ),
+        "defense_llm_api_calls_per_episode": _ratio_or_none(
+            common_api_calls,
+            webshop.episodes,
+        ),
+        "defense_llm_api_calls_per_action_step": _ratio_or_none(
+            common_api_calls,
+            webshop.total_action_steps,
+        ),
+        "defense_llm_estimated_cost_usd_per_episode": (
+            _ratio_or_none(common_cost, webshop.episodes)
+            if common_cost is not None
+            else None
+        ),
+        "llm_input_usd_per_million": input_rate,
+        "llm_cached_input_usd_per_million": cached_input_rate,
+        "llm_output_usd_per_million": output_rate,
+        "llm_pricing_as_of": args.llm_pricing_as_of,
+        "llm_pricing_source": args.llm_pricing_source,
+    }
+
+
 def rebuttal_summary_dict(args, webshop, task_ids, resolved_task_ids_path):
     episodes = webshop.episodes
     attack_metrics = attack_metric_summaries(
@@ -3273,6 +3493,7 @@ def rebuttal_summary_dict(args, webshop, task_ids, resolved_task_ids_path):
         episodes=episodes,
     )
     parser_stats = webshop.gate.parser_stats_dict() if webshop.gate is not None else {}
+    llm_efficiency = llm_efficiency_summary(args, webshop, parser_stats)
     method = (
         f"gate/{args.gate_runtime_mode}" if args.defense == "gate" else args.defense
     )
@@ -3366,6 +3587,7 @@ def rebuttal_summary_dict(args, webshop, task_ids, resolved_task_ids_path):
         "judge_failure_count": webshop.judge_failures,
         "judge_replacement_count": webshop.judge_replacements,
         "repair_judge_call_count": webshop.repair_calls + webshop.judge_calls,
+        **llm_efficiency,
         "added_runtime_seconds": added_runtime,
         "mean_added_runtime_seconds": added_runtime["mean"],
         "median_added_runtime_seconds": added_runtime["median"],
@@ -3783,6 +4005,27 @@ if __name__ == "__main__":
         default=50,
         help="Max masked terms/records stored per Gate step report preview.",
     )
+    parser.add_argument(
+        "--gate_input_usd_per_million",
+        type=float,
+        default=None,
+        help="Pinned USD price per 1M uncached input tokens for the GATE parser.",
+    )
+    parser.add_argument(
+        "--gate_cached_input_usd_per_million",
+        type=float,
+        default=None,
+        help=(
+            "Pinned USD price per 1M cached input tokens for the GATE parser. "
+            "Defaults to the ordinary input rate when omitted."
+        ),
+    )
+    parser.add_argument(
+        "--gate_output_usd_per_million",
+        type=float,
+        default=None,
+        help="Pinned USD price per 1M output tokens for the GATE parser.",
+    )
 
     parser.add_argument(
         "--judge_model",
@@ -3795,6 +4038,39 @@ if __name__ == "__main__":
         type=str,
         default=None,
         help="Optional persistent cache for schema-validated LLM judge decisions.",
+    )
+    parser.add_argument(
+        "--judge_input_usd_per_million",
+        type=float,
+        default=None,
+        help="Pinned USD price per 1M uncached input tokens for the LLM judge.",
+    )
+    parser.add_argument(
+        "--judge_cached_input_usd_per_million",
+        type=float,
+        default=None,
+        help=(
+            "Pinned USD price per 1M cached input tokens for the LLM judge. "
+            "Defaults to the ordinary input rate when omitted."
+        ),
+    )
+    parser.add_argument(
+        "--judge_output_usd_per_million",
+        type=float,
+        default=None,
+        help="Pinned USD price per 1M output tokens for the LLM judge.",
+    )
+    parser.add_argument(
+        "--llm_pricing_as_of",
+        type=str,
+        default=None,
+        help="Date or version label for the explicitly supplied LLM price snapshot.",
+    )
+    parser.add_argument(
+        "--llm_pricing_source",
+        type=str,
+        default=None,
+        help="Source label or URL for the explicitly supplied LLM price snapshot.",
     )
 
     # Quantization / pruning defenses.
@@ -3926,6 +4202,41 @@ if __name__ == "__main__":
 
     if args.num_eval == 0 or args.num_eval < -1:
         parser.error("--num_eval must be a positive integer or -1 for all task IDs")
+
+    try:
+        gate_llm_pricing = LLMPricing(
+            input_usd_per_million=args.gate_input_usd_per_million,
+            cached_input_usd_per_million=(
+                args.gate_cached_input_usd_per_million
+            ),
+            output_usd_per_million=args.gate_output_usd_per_million,
+        )
+        judge_llm_pricing = LLMPricing(
+            input_usd_per_million=args.judge_input_usd_per_million,
+            cached_input_usd_per_million=(
+                args.judge_cached_input_usd_per_million
+            ),
+            output_usd_per_million=args.judge_output_usd_per_million,
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
+
+    if args.defense != "gate" and gate_llm_pricing.is_configured:
+        parser.error("GATE pricing flags require --defense gate")
+    if args.defense != "llm_judge" and judge_llm_pricing.is_configured:
+        parser.error("judge pricing flags require --defense llm_judge")
+    if args.gate_disable_llm and gate_llm_pricing.is_configured:
+        parser.error("GATE LLM pricing flags cannot be used with --gate_disable_llm")
+    if (
+        args.llm_pricing_as_of is not None
+        or args.llm_pricing_source is not None
+    ) and not (
+        gate_llm_pricing.is_configured or judge_llm_pricing.is_configured
+    ):
+        parser.error(
+            "--llm_pricing_as_of/--llm_pricing_source require a complete "
+            "GATE or judge price pair"
+        )
 
     if args.require_goal_parser_success and not os.environ.get("OPENAI_API_KEY"):
         parser.error(
@@ -4174,6 +4485,7 @@ if __name__ == "__main__":
             runtime_mode=args.gate_runtime_mode,
             require_goal_parser_success=args.require_goal_parser_success,
             goal_contract_cache_path=args.goal_contract_cache,
+            llm_pricing=gate_llm_pricing,
         )
 
     runtime_baseline = None
@@ -4183,6 +4495,7 @@ if __name__ == "__main__":
         runtime_baseline = LLMJudge(
             model=args.judge_model,
             cache_path=args.judge_cache_path,
+            pricing=judge_llm_pricing,
         )
 
     webshop = WebShop(
@@ -4258,9 +4571,14 @@ if __name__ == "__main__":
         print(f"Goal parser fail-fast: {args.require_goal_parser_success}")
         print(f"Goal contract cache: {args.goal_contract_cache}")
         print(f"Gate mask token: {args.gate_mask_token}")
+        print(f"Gate LLM pricing: {gate_llm_pricing.to_dict()}")
     if args.defense == "llm_judge":
         print(f"Judge model: {args.judge_model}")
         print(f"Judge cache: {args.judge_cache_path}")
+        print(f"Judge LLM pricing: {judge_llm_pricing.to_dict()}")
+    if args.defense in {"gate", "llm_judge"}:
+        print(f"LLM pricing as of: {args.llm_pricing_as_of}")
+        print(f"LLM pricing source: {args.llm_pricing_source}")
     print("===============================================")
 
     for i in tqdm(ids):
@@ -4529,5 +4847,34 @@ if __name__ == "__main__":
         resolved_task_ids_path=resolved_task_ids_path,
     )
     write_rebuttal_summary(args.summary_path, run_summary)
+    print()
+    print("Defense efficiency:")
+    print(
+        "Action/runtime rounds: "
+        f"{run_summary['defense_action_round_count']}"
+    )
+    print(
+        "External LLM logical requests / API calls / local cache hits: "
+        f"{run_summary['defense_llm_request_count']} / "
+        f"{run_summary['defense_llm_api_call_count']} / "
+        f"{run_summary['defense_llm_cache_hit_count']}"
+    )
+    print(
+        "External LLM input / cached-input / output / total tokens: "
+        f"{run_summary['defense_llm_input_token_count']} / "
+        f"{run_summary['defense_llm_cached_input_token_count']} / "
+        f"{run_summary['defense_llm_output_token_count']} / "
+        f"{run_summary['defense_llm_total_token_count']}"
+    )
+    print(
+        "External LLM estimated cost (USD): "
+        f"{run_summary['defense_llm_estimated_cost_usd']}"
+    )
+    if run_summary["defense_llm_usage_missing_call_count"]:
+        print(
+            "WARNING: complete LLM cost is unavailable because "
+            f"{run_summary['defense_llm_usage_missing_call_count']} API call(s) "
+            "did not report usage."
+        )
     if args.summary_path:
         print(f"Machine-readable run summary: {args.summary_path}")

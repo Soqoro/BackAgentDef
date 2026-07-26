@@ -24,6 +24,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional
 
+from .llm_accounting import LLMPricing, LLMUsage
+
 try:
     import fcntl
 except ImportError:  # pragma: no cover - WebShop experiments run on Linux.
@@ -505,6 +507,9 @@ class OpenAIGoalContractExtractor:
         self.temperature = temperature
         self.timeout = timeout
         self.last_actual_model: Optional[str] = None
+        self.last_usage = LLMUsage(usage_reported=False)
+        self.last_api_call_count = 0
+        self.last_accounting_error: Optional[str] = None
         self.fallback_extractor = (
             fallback_extractor
             or fallback_parser
@@ -514,6 +519,9 @@ class OpenAIGoalContractExtractor:
     def extract(self, query: str) -> GoalContract:
         query = query or ""
         self.last_actual_model = None
+        self.last_usage = LLMUsage(usage_reported=False)
+        self.last_api_call_count = 0
+        self.last_accounting_error = None
         if not os.environ.get("OPENAI_API_KEY"):
             contract = self.fallback_extractor.extract(query)
             contract.extractor = "regex_fallback"
@@ -558,18 +566,48 @@ Rules:
 
         try:
             client = OpenAI(timeout=self.timeout)
+            self.last_api_call_count = 1
             response = client.chat.completions.create(
                 model=self.model,
                 temperature=self.temperature,
+                service_tier="default",
                 response_format={"type": "json_object"},
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": query},
                 ],
             )
-            response_model = getattr(response, "model", None)
+            if isinstance(response, Mapping):
+                response_model = response.get("model")
+            else:
+                response_model = getattr(response, "model", None)
             self.last_actual_model = str(response_model or self.model)
-            content = response.choices[0].message.content or "{}"
+            try:
+                self.last_usage = LLMUsage.from_response(response)
+            except ValueError as exc:
+                # Provider accounting metadata must never change the parser's
+                # contract-extraction behavior.
+                self.last_accounting_error = f"{type(exc).__name__}: {exc}"
+                self.last_usage = LLMUsage(
+                    model=self.last_actual_model,
+                    usage_reported=False,
+                )
+            choices = (
+                response.get("choices")
+                if isinstance(response, Mapping)
+                else response.choices
+            )
+            choice = choices[0]
+            message = (
+                choice.get("message")
+                if isinstance(choice, Mapping)
+                else choice.message
+            )
+            content = (
+                message.get("content")
+                if isinstance(message, Mapping)
+                else message.content
+            ) or "{}"
             data = json.loads(content)
             contract = GoalContract.from_dict(
                 data,
@@ -605,6 +643,7 @@ class GoalContractExtraction:
         timeout: float = 30.0,
         require_success: bool = False,
         cache_path: Optional[str] = None,
+        pricing: Optional[LLMPricing] = None,
     ) -> None:
         self.regex_extractor = RegexGoalContractExtractor()
         self.openai_extractor = OpenAIGoalContractExtractor(
@@ -617,10 +656,19 @@ class GoalContractExtraction:
         self.openai_model = openai_model
         self.require_success = require_success
         self.cache_path = Path(cache_path).expanduser() if cache_path else None
+        if pricing is not None and not isinstance(pricing, LLMPricing):
+            raise TypeError("pricing must be an LLMPricing instance or None")
+        self.pricing = pricing
+        self.parser_requests = 0
         self.parser_calls = 0
+        self.parser_api_calls = 0
         self.parser_cache_hits = 0
         self.parser_fallback_count = 0
         self.parser_error_count = 0
+        self.parser_usage_reported_call_count = 0
+        self.parser_usage_missing_call_count = 0
+        self._parser_usage = LLMUsage()
+        self._actual_parser_models: List[str] = []
         self.last_actual_parser_model: Optional[str] = None
 
         if self.require_success and self.use_openai and not os.environ.get("OPENAI_API_KEY"):
@@ -723,6 +771,7 @@ class GoalContractExtraction:
 
     def extract(self, query: str) -> GoalContract:
         query = query or ""
+        self.parser_requests += 1
         if not self.use_openai:
             self.last_actual_parser_model = "regex_goal_contract"
             return self.regex_extractor.extract(query)
@@ -755,7 +804,15 @@ class GoalContractExtraction:
         """Call the requested model once; caller handles per-key serialization."""
 
         self.parser_calls += 1
-        contract = self.openai_extractor.extract(query)
+        # Reset these explicitly so test doubles or custom extractors cannot
+        # accidentally replay accounting metadata from a prior invocation.
+        self.openai_extractor.last_api_call_count = 0
+        self.openai_extractor.last_usage = LLMUsage(usage_reported=False)
+        self.openai_extractor.last_accounting_error = None
+        try:
+            contract = self.openai_extractor.extract(query)
+        finally:
+            self._record_last_provider_call()
         if contract.extraction_error:
             self.parser_error_count += 1
             self.parser_fallback_count += 1
@@ -776,14 +833,73 @@ class GoalContractExtraction:
     def parse(self, instruction: str) -> GoalContract:
         return self.extract(instruction)
 
+    def _record_last_provider_call(self) -> None:
+        """Add accounting from a real provider call, never from a cache hit."""
+
+        api_calls = self.openai_extractor.last_api_call_count
+        if (
+            isinstance(api_calls, bool)
+            or not isinstance(api_calls, int)
+            or api_calls < 0
+        ):
+            api_calls = 0
+        self.parser_api_calls += api_calls
+        if api_calls == 0:
+            return
+
+        usage = self.openai_extractor.last_usage
+        if not isinstance(usage, LLMUsage):
+            usage = LLMUsage(usage_reported=False)
+        if usage.usage_reported:
+            self.parser_usage_reported_call_count += api_calls
+            self._parser_usage = self._parser_usage + usage
+        else:
+            self.parser_usage_missing_call_count += api_calls
+
+        actual_model = usage.model or self.openai_extractor.last_actual_model
+        if actual_model:
+            actual_model = str(actual_model)
+            if actual_model not in self._actual_parser_models:
+                self._actual_parser_models.append(actual_model)
+
+    def _estimated_cost_usd(self) -> Optional[float]:
+        if self.pricing is None or not self.pricing.is_configured:
+            return None
+        if self.parser_usage_missing_call_count:
+            return None
+        return self._parser_usage.estimated_cost_usd(self.pricing)
+
     def stats_dict(self) -> Dict[str, Any]:
+        usage = self._parser_usage
+        known_cost = usage.estimated_cost_usd(self.pricing)
         return {
             "requested_parser_model": self.openai_model if self.use_openai else None,
             "actual_parser_model": self.last_actual_parser_model,
+            "actual_parser_models": list(self._actual_parser_models),
+            "parser_requests": self.parser_requests,
+            "parser_request_count": self.parser_requests,
             "parser_calls": self.parser_calls,
+            "parser_api_calls": self.parser_api_calls,
+            "parser_uncached_api_call_count": self.parser_api_calls,
             "parser_cache_hits": self.parser_cache_hits,
             "parser_fallback_count": self.parser_fallback_count,
             "parser_error_count": self.parser_error_count,
+            "parser_usage_reported_call_count": (
+                self.parser_usage_reported_call_count
+            ),
+            "parser_usage_missing_call_count": (
+                self.parser_usage_missing_call_count
+            ),
+            "parser_input_tokens": usage.input_tokens,
+            "parser_output_tokens": usage.output_tokens,
+            "parser_total_tokens": usage.total_tokens,
+            "parser_cached_input_tokens": usage.cached_input_tokens,
+            "parser_reasoning_tokens": usage.reasoning_tokens,
+            "parser_estimated_cost_usd": self._estimated_cost_usd(),
+            "parser_known_estimated_cost_usd": known_cost,
+            "parser_pricing": (
+                self.pricing.to_dict() if self.pricing is not None else None
+            ),
             "require_parser_success": self.require_success,
             "goal_contract_cache_path": str(self.cache_path) if self.cache_path else None,
         }

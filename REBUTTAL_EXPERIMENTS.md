@@ -52,13 +52,33 @@ TARGET_BRAND=adidas
 PHYSICAL_GPU=<optional global GPU ID>
 RESULTS_ROOT=<WebShop>/results/rebuttal
 GOAL_CACHE=<RESULTS_ROOT>/goal_contract_cache.json
+GOAL_CACHE_SCOPE=shared  # shared or row
 TEST_IDS_PATH=/absolute/path/to/ids.json
+GATE_INPUT_USD_PER_MILLION=<pinned price>
+GATE_CACHED_INPUT_USD_PER_MILLION=<optional pinned price>
+GATE_OUTPUT_USD_PER_MILLION=<pinned price>
+JUDGE_INPUT_USD_PER_MILLION=<pinned price>
+JUDGE_CACHED_INPUT_USD_PER_MILLION=<optional pinned price>
+JUDGE_OUTPUT_USD_PER_MILLION=<pinned price>
+LLM_PRICING_AS_OF=<date or version label>
+LLM_PRICING_SOURCE=<rate-card URL or snapshot identifier>
 ```
+
+Input and output prices must be supplied together for the selected external
+LLM role. The cached-input rate is optional and defaults to the ordinary input
+rate. Prices are never inferred from a model name: this keeps a stored result
+tied to the rate card used for that experiment rather than whatever pricing is
+current when the summary is later read.
 
 Under Slurm, relative `WEBSHOP_DIR`, `RESULTS_ROOT`, and `GOAL_CACHE` overrides
 are anchored to `SLURM_SUBMIT_DIR`; during local execution they are anchored to
 the directory containing `agent_eval.sh`. Paths are resolved before the job
 changes working directories.
+
+`GOAL_CACHE_SCOPE=row` replaces `GOAL_CACHE` for a GATE row with
+`<OUTPUT_DIR>/<setting>.goal_contract_cache.json`. Use it for independently
+cold per-setting cost comparisons. The default `shared` scope retains the
+cross-row cache used to measure warm/deployment behavior.
 
 ### Optional physical-GPU selection
 
@@ -170,10 +190,13 @@ errors, malformed/schema-invalid JSON, an illegal allowed proposal, and an
 invalid replacement index/action all invoke the same one-retry legality
 fallback. Invalid decisions are not cached.
 
-The cache key is SHA-256 over the judge model, exact original goal, current raw
-observation, canonical current action set, and proposal. The candidates are a
-deterministic function of the goal and action set. Unless `--judge_cache_path`
-is supplied, the evaluator stores a sibling `<setting>.judge_cache.json`.
+The cache key is SHA-256 over an explicit judge-contract version, the judge
+model, exact original goal, current raw observation, canonical current action
+set, and proposal. Incrementing the version prevents an old prompt/schema/
+candidate contract from replaying stale decisions. The candidates are a
+deterministic function of the goal and action set. Unless
+`--judge_cache_path` is supplied, the evaluator stores a sibling
+`<setting>.judge_cache.json`.
 
 ## Goal parser fail-fast contract
 
@@ -317,6 +340,85 @@ mkdir -p logs
 Slurm opens stdout/stderr before the job body runs, so create that directory
 once before submitting any array.
 
+### Action-level comparison without choice-integrity runs
+
+For the focused comparison, run the sparse baseline array below. It includes
+`none`, `legal_repair`, `lexical_guard`, `llm_judge`, and `gate/full` for clean,
+direct, and indirect settings; indices 12-14 (`goal_reminder`) are intentionally
+omitted because that method is prompt-level rather than an action guardrail.
+Use a new results/cache root for a cold-cache cost measurement:
+
+```bash
+: "${OPENAI_API_KEY:?Export OPENAI_API_KEY before launching}"
+
+# Use the same pinned model for both roles to avoid a model-quality confound.
+export GATE_MODEL="gpt-5.4-mini-2026-03-17"
+export JUDGE_MODEL="$GATE_MODEL"
+
+# Requests explicitly use the default/standard service tier. These
+# gpt-5.4-mini prices were captured from the source/date below.
+export GATE_INPUT_USD_PER_MILLION="0.75"
+export GATE_CACHED_INPUT_USD_PER_MILLION="0.075"
+export GATE_OUTPUT_USD_PER_MILLION="4.50"
+export JUDGE_INPUT_USD_PER_MILLION="$GATE_INPUT_USD_PER_MILLION"
+export JUDGE_CACHED_INPUT_USD_PER_MILLION="$GATE_CACHED_INPUT_USD_PER_MILLION"
+export JUDGE_OUTPUT_USD_PER_MILLION="$GATE_OUTPUT_USD_PER_MILLION"
+export LLM_PRICING_AS_OF="2026-07-27"
+export LLM_PRICING_SOURCE="https://developers.openai.com/api/docs/pricing"
+
+RUN_TAG="$(date -u +%Y%m%dT%H%M%SZ)"
+export RESULTS_ROOT="$PWD/agent-backdoor-attacks/AgentTuning/WebShop/results/rebuttal_action_$RUN_TAG"
+export GOAL_CACHE_SCOPE=row
+
+mkdir -p logs
+sbatch --array=0-11,15-17%4 \
+  --export=ALL,REBUTTAL_STAGE=baselines \
+  agent_eval.sh
+```
+
+The model above matches the exact snapshot already pinned by the repository's
+choice-integrity configuration, but this launch does not run any
+choice-integrity jobs. If a different API model or service tier is required,
+change both model variables and all six rate variables together; never relabel
+old rates as belonging to a different model.
+
+Run the same command once with `REBUTTAL_DRY_RUN=true` in the export list
+before the GPU job. After all 15 rows finish, create the comparison tables with:
+
+```bash
+WS="$PWD/agent-backdoor-attacks/AgentTuning/WebShop"
+python "$WS/aggregate_rebuttal.py" \
+  "$RESULTS_ROOT"/baselines/none/*.summary.json \
+  "$RESULTS_ROOT"/baselines/legal_repair/*.summary.json \
+  "$RESULTS_ROOT"/baselines/lexical_guard/*.summary.json \
+  "$RESULTS_ROOT"/baselines/llm_judge/*.summary.json \
+  "$RESULTS_ROOT"/baselines/gate/full/*.summary.json \
+  --csv "$RESULTS_ROOT/action_comparison.csv" \
+  --markdown "$RESULTS_ROOT/action_comparison.md" \
+  --latex "$RESULTS_ROOT/action_comparison.tex"
+```
+
+To compare the action-enforcement component of GATE
+separately, run mechanism indices 3-5 (`gate/enforce_only`) into a second fresh
+results/cache root:
+
+```bash
+RUN_TAG="$(date -u +%Y%m%dT%H%M%SZ)_enforce"
+export RESULTS_ROOT="$PWD/agent-backdoor-attacks/AgentTuning/WebShop/results/rebuttal_action_$RUN_TAG"
+export GOAL_CACHE_SCOPE=row
+
+sbatch --array=3-5%3 \
+  --export=ALL,REBUTTAL_STAGE=mechanisms \
+  agent_eval.sh
+```
+
+Do not reuse the full-GATE goal cache for a cold-cache `enforce_only` cost
+measurement. `GOAL_CACHE_SCOPE=row` also prevents overlapping goals in
+concurrent clean/direct/indirect rows from assigning paid parser work to a
+nondeterministic row. Set `GOAL_CACHE_SCOPE=shared` only for a separate
+warm/deployment measurement; the two results answer different efficiency
+questions.
+
 ```bash
 sbatch --array=0-17%4 \
   --export=ALL,REBUTTAL_STAGE=baselines,GATE_MODEL="<MODEL>",JUDGE_MODEL="<MODEL>" \
@@ -425,11 +527,12 @@ The evaluator also derives these sibling files:
 
 The required `*.summary.json` is the canonical aggregation input. It includes
 method/runtime mode, checkpoint, task-ID path/count/list, seed, requested and
-actual parser model, parser calls/cache hits/fallback/errors, judge model,
-attack type, all run metrics and raw counts, repair/judge counts, added-runtime
-distribution, oracle eligibility and near-miss click/purchase outcomes where
-applicable, Git commit hash when available, sanitized CLI arguments, and paired
-per-episode task IDs/rewards.
+actual parser/judge models, logical requests, uncached API calls, cache hits,
+usage-coverage counts, input/cached-input/output/reasoning/total tokens,
+estimated USD cost, attack type, all run metrics and raw counts, repair/judge
+counts, added-runtime distribution, oracle eligibility and near-miss
+click/purchase outcomes where applicable, Git commit hash when available,
+sanitized CLI arguments, and paired per-episode task IDs/rewards.
 Argument names containing API-key, password, secret, access-token, or
 auth-token markers are redacted; `OPENAI_API_KEY` is never a CLI argument or
 summary field.
@@ -479,12 +582,34 @@ action is unchanged. A failed repair counts as an intervention because the
 extra generation was attempted. `goal_reminder` adds no intervention under
 this definition.
 
-`repair_call_count` is the number of extra evaluated-policy generations;
-`judge_call_count` is the number of uncached external provider calls (cache hits
-are not calls); and `repair_judge_call_count` is their sum. Added runtime is a
-per-initial-policy-step `time.perf_counter()` distribution. It includes GATE
-episode setup on the first step, runtime safeguard work, judge network time,
-and extra repair generation, but not the ordinary base-policy generation.
+`repair_call_count` is the number of extra evaluated-policy generations.
+External-LLM efficiency is kept separate:
+
+- `defense_action_round_count` counts runtime defense rounds. For the judge it
+  is one per action proposal; for GATE it is one prompt/runtime pass per step.
+  `gate_certification_round_count` separately counts actions reaching GATE's
+  local certifier.
+- `defense_llm_request_count` counts logical external-LLM requests, including
+  local-cache hits. The judge normally requests one decision per action; GATE
+  normally requests one goal extraction per episode.
+- `defense_llm_api_call_count` counts actual uncached provider attempts, while
+  `defense_llm_cache_hit_count` reports locally reused decisions/contracts.
+- The input/cached-input/output/reasoning/total token fields come directly from
+  provider response usage for API calls made by that run. A local cache hit adds
+  no provider tokens or dollars.
+- `defense_llm_estimated_cost_usd` applies the recorded per-million-token
+  prices to uncached input, provider-cached input, and output tokens. If pricing
+  was not supplied, or any provider call omitted usage, the complete cost is
+  `null`, never a partial subtotal disguised as total spend. Reported/missing
+  usage-call counts make that coverage auditable.
+
+`judge_call_count` and `parser_call_count` remain as role-specific compatibility
+fields. `repair_judge_call_count` is their legacy sum; it mixes local
+evaluated-policy repairs with external judge calls and should not be used as
+the cost comparison. Added runtime is a per-initial-policy-step
+`time.perf_counter()` distribution. It includes GATE episode setup on the first
+step, runtime safeguard work, judge network time, and extra repair generation,
+but not the ordinary base-policy generation.
 
 ## Aggregation
 
@@ -565,8 +690,10 @@ counts.
   the requested structured-output parameters. Record and reuse exact model IDs
   and caches.
 - Added-runtime measurements are evaluator wall-clock measurements, not an
-  isolated benchmark. Judge cache hits and misses have intentionally different
-  costs and are reported separately through call counts.
+  isolated benchmark. Persistent local caches make calls, tokens, and current-
+  run cost depend on whether the run is cold or warm, so cache hits and logical
+  requests are reported separately from actual API calls. Estimated USD uses
+  the supplied rate snapshot and is not a provider invoice.
 - Default attack IDs are the existing sneaker task lists. Other categories use
   `TEST_IDS_PATH`; the harness does not generate or rebalance task sets.
 - Near-miss parsing is intentionally conservative. It recognizes only the

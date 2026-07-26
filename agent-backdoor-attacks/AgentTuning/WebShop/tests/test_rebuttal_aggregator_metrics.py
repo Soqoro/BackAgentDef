@@ -593,6 +593,119 @@ class RebuttalAggregatorMetricTests(unittest.TestCase):
                 "legal\\_repair", latex_path.read_text(encoding="utf-8")
             )
 
+    def test_llm_efficiency_fields_round_trip_without_inventing_cost(self):
+        efficiency_fields = {
+            "parser_request_count": 7,
+            "parser_call_count": 5,
+            "parser_api_call_count": 5,
+            "parser_cache_hit_count": 2,
+            "parser_usage_reported_call_count": 4,
+            "parser_usage_missing_call_count": 1,
+            "parser_input_token_count": 100,
+            "parser_cached_input_token_count": 20,
+            "parser_output_token_count": 25,
+            "parser_reasoning_token_count": 5,
+            "parser_total_token_count": 125,
+            "parser_estimated_cost_usd": None,
+            "judge_request_count": 11,
+            "judge_call_count": 9,
+            "judge_cache_hit_count": 2,
+            "judge_usage_reported_call_count": 8,
+            "judge_usage_missing_call_count": 1,
+            "judge_input_token_count": 200,
+            "judge_cached_input_token_count": 40,
+            "judge_output_token_count": 50,
+            "judge_reasoning_token_count": 10,
+            "judge_total_token_count": 250,
+            "judge_estimated_cost_usd": 0.00125,
+            "defense_llm_request_count": 18,
+            "defense_llm_api_call_count": 14,
+            "defense_llm_cache_hit_count": 4,
+            "defense_llm_usage_reported_call_count": 12,
+            "defense_llm_usage_missing_call_count": 2,
+            "defense_llm_input_token_count": 300,
+            "defense_llm_cached_input_token_count": 60,
+            "defense_llm_output_token_count": 75,
+            "defense_llm_reasoning_token_count": 15,
+            "defense_llm_total_token_count": 375,
+            "defense_llm_estimated_cost_usd": None,
+            "defense_llm_requests_per_episode": 18.0,
+            "defense_llm_api_calls_per_episode": 14.0,
+            "defense_llm_api_calls_per_action_step": 7.0,
+            "defense_llm_estimated_cost_usd_per_episode": None,
+            "llm_input_usd_per_million": 2.5,
+            "llm_cached_input_usd_per_million": 1.25,
+            "llm_output_usd_per_million": 10.0,
+            "llm_pricing_as_of": "2026-07-27",
+            "llm_pricing_source": "configured-test-rates",
+            "defense_action_round_count": 20,
+            "gate_runtime_round_count": 12,
+            "gate_certification_round_count": 3,
+        }
+        run = aggregate.RunRecord.from_raw(
+            Path("judge.summary.json"),
+            {
+                "method": "llm_judge",
+                "attack_type": "clean",
+                "task_ids": [1],
+                "episode_count": 1,
+                "parser_actual_models": ["parser-a", "parser-b"],
+                "judge_actual_models": ["judge-a"],
+                **efficiency_fields,
+                "cli_arguments": {
+                    "parser_estimated_cost_usd": 99.0,
+                    "defense_llm_estimated_cost_usd": 99.0,
+                    "defense_llm_estimated_cost_usd_per_episode": 99.0,
+                },
+                "per_episode": [{"task_id": 1, "reward": 0.5}],
+            },
+        )
+
+        row = aggregate.aggregate_runs([run], bootstrap_samples=10)[0]
+        for name, expected in efficiency_fields.items():
+            self.assertEqual(row[name], expected, name)
+        self.assertEqual(row["parser_actual_models"], ["parser-a", "parser-b"])
+        self.assertEqual(row["judge_actual_models"], ["judge-a"])
+        self.assertIsNone(row["parser_estimated_cost_usd"])
+        self.assertIsNone(row["defense_llm_estimated_cost_usd"])
+        self.assertIsNone(row["defense_llm_estimated_cost_usd_per_episode"])
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            csv_path = root / "efficiency.csv"
+            markdown_path = root / "efficiency.md"
+            latex_path = root / "efficiency.tex"
+            aggregate.write_csv(csv_path, [row])
+            aggregate.write_markdown(markdown_path, [row])
+            aggregate.write_latex(latex_path, [row])
+
+            with csv_path.open(newline="", encoding="utf-8") as handle:
+                csv_row = next(csv.DictReader(handle))
+            for name, expected in efficiency_fields.items():
+                expected_csv = aggregate._csv_value(expected)
+                self.assertEqual(csv_row[name], str(expected_csv), name)
+            self.assertEqual(
+                csv_row["parser_actual_models"], '["parser-a", "parser-b"]'
+            )
+            self.assertEqual(csv_row["judge_actual_models"], '["judge-a"]')
+            self.assertEqual(csv_row["parser_estimated_cost_usd"], "")
+            self.assertEqual(csv_row["defense_llm_estimated_cost_usd"], "")
+            self.assertEqual(
+                csv_row["defense_llm_estimated_cost_usd_per_episode"], ""
+            )
+
+            markdown = markdown_path.read_text(encoding="utf-8")
+            latex = latex_path.read_text(encoding="utf-8")
+            self.assertIn(
+                "20/12/3; 18/14/4; 300/60/75/15/375; —",
+                markdown,
+            )
+            self.assertNotIn("375; $0", markdown)
+            self.assertIn(
+                "20/12/3; 18/14/4; 300/60/75/15/375; --",
+                latex,
+            )
+
     def test_legacy_percentage_does_not_invent_counts(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "legacy.json"

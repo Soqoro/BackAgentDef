@@ -8,7 +8,9 @@ import sys
 import tempfile
 import threading
 import time
+import types
 import unittest
+from dataclasses import FrozenInstanceError
 from pathlib import Path
 from unittest import mock
 
@@ -25,7 +27,93 @@ from defenses.goal_contract import (  # noqa: E402
     GoalContractParseError,
     goal_contract_cache_key,
 )
+from defenses.llm_accounting import LLMPricing, LLMUsage  # noqa: E402
 from defenses.rebuttal_metrics import attack_metric_summaries  # noqa: E402
+
+
+class LLMAccountingTests(unittest.TestCase):
+    def test_mapping_chat_usage_and_cost_are_normalized(self) -> None:
+        response = {
+            "model": "provider-model-v2",
+            "usage": {
+                "prompt_tokens": 100,
+                "completion_tokens": 20,
+                "total_tokens": 120,
+                "prompt_tokens_details": {"cached_tokens": 40},
+                "completion_tokens_details": {"reasoning_tokens": 5},
+            },
+        }
+
+        usage = LLMUsage.from_response(response)
+        pricing = LLMPricing(
+            input_usd_per_million=1.5,
+            output_usd_per_million=6.0,
+            cached_input_usd_per_million=0.5,
+        )
+
+        self.assertEqual(
+            usage.to_dict(),
+            {
+                "model": "provider-model-v2",
+                "input_tokens": 100,
+                "output_tokens": 20,
+                "total_tokens": 120,
+                "cached_input_tokens": 40,
+                "reasoning_tokens": 5,
+                "usage_reported": True,
+            },
+        )
+        self.assertAlmostEqual(usage.estimated_cost_usd(pricing), 0.00023)
+
+    def test_object_usage_accepts_input_output_aliases_and_cached_fallback(self) -> None:
+        response = types.SimpleNamespace(
+            model="object-model",
+            usage=types.SimpleNamespace(
+                input_tokens=12,
+                output_tokens=3,
+                input_tokens_details=types.SimpleNamespace(cached_tokens=2),
+                output_tokens_details=types.SimpleNamespace(reasoning_tokens=1),
+            ),
+        )
+        usage = LLMUsage.from_response(response)
+        pricing = LLMPricing(
+            input_usd_per_million=2.0,
+            output_usd_per_million=10.0,
+        )
+
+        self.assertEqual(usage.total_tokens, 15)
+        self.assertEqual(usage.cached_input_tokens, 2)
+        self.assertEqual(usage.reasoning_tokens, 1)
+        self.assertAlmostEqual(usage.estimated_cost_usd(pricing), 0.000054)
+
+    def test_missing_usage_has_null_cost_and_validation_is_nonnegative(self) -> None:
+        pricing = LLMPricing(
+            input_usd_per_million=1.0,
+            output_usd_per_million=2.0,
+        )
+        usage = LLMUsage.from_response({"allow": True, "model": "judge"})
+
+        self.assertFalse(usage.usage_reported)
+        self.assertIsNone(usage.estimated_cost_usd(pricing))
+        self.assertFalse(
+            LLMUsage.from_response({"usage": {}, "model": "judge"}).usage_reported
+        )
+        self.assertFalse(
+            LLMUsage.from_response(
+                {"usage": {"prompt_tokens": 3}, "model": "judge"}
+            ).usage_reported
+        )
+        self.assertIsNone(LLMUsage(input_tokens=1).estimated_cost_usd(None))
+        with self.assertRaises(ValueError):
+            LLMPricing(input_usd_per_million=-1, output_usd_per_million=2)
+        with self.assertRaises(ValueError):
+            LLMPricing(input_usd_per_million=1)
+        with self.assertRaises(ValueError):
+            LLMUsage(input_tokens=-1)
+        with self.assertRaises(ValueError):
+            LLMUsage(input_tokens=1, cached_input_tokens=2)
+        with self.assertRaises(FrozenInstanceError):
+            pricing.input_usd_per_million = 3.0
 
 
 class GoalParserContractTests(unittest.TestCase):
@@ -256,6 +344,155 @@ class GoalParserContractTests(unittest.TestCase):
         self.assertEqual(len(calls), 1)
         self.assertEqual(sum(item.parser_calls for item in extractors), 1)
         self.assertEqual(sum(item.parser_cache_hits for item in extractors), 1)
+
+    def test_provider_usage_cost_and_model_are_not_recounted_on_cache_hit(
+        self,
+    ) -> None:
+        instruction = "Find red shoes under $50"
+        response = {
+            "model": "actual-provider-model",
+            "usage": {
+                "prompt_tokens": 100,
+                "completion_tokens": 20,
+                "total_tokens": 120,
+                "prompt_tokens_details": {"cached_tokens": 40},
+                "completion_tokens_details": {"reasoning_tokens": 5},
+            },
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "I": "find shoes",
+                                "C_plus": ["red", "under $50"],
+                                "C_minus": [],
+                                "product_type": "shoes",
+                                "attributes": ["red"],
+                                "options": {},
+                                "max_price": 50,
+                                "min_rating": None,
+                            }
+                        )
+                    }
+                }
+            ],
+        }
+        create = mock.Mock(return_value=response)
+
+        class FakeOpenAI:
+            def __init__(self, **_kwargs):
+                self.chat = types.SimpleNamespace(
+                    completions=types.SimpleNamespace(create=create)
+                )
+
+        pricing = LLMPricing(
+            input_usd_per_million=1.5,
+            output_usd_per_million=6.0,
+            cached_input_usd_per_million=0.5,
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory) / "goals.json"
+            with mock.patch.dict(
+                os.environ,
+                {"OPENAI_API_KEY": "test-key"},
+                clear=True,
+            ), mock.patch.dict(
+                sys.modules,
+                {"openai": types.SimpleNamespace(OpenAI=FakeOpenAI)},
+            ):
+                extraction = GoalContractExtraction(
+                    use_openai=True,
+                    openai_model="requested-model",
+                    require_success=True,
+                    cache_path=str(cache),
+                    pricing=pricing,
+                )
+                first = extraction.extract(instruction)
+                stats_after_call = extraction.stats_dict()
+                second = extraction.extract(instruction)
+                stats_after_hit = extraction.stats_dict()
+
+        self.assertEqual(first.intent, "find shoes")
+        self.assertEqual(second.intent, "find shoes")
+        self.assertEqual(create.call_count, 1)
+        self.assertEqual(stats_after_call["parser_requests"], 1)
+        self.assertEqual(stats_after_hit["parser_requests"], 2)
+        self.assertEqual(stats_after_hit["parser_calls"], 1)
+        self.assertEqual(stats_after_hit["parser_api_calls"], 1)
+        self.assertEqual(stats_after_hit["parser_cache_hits"], 1)
+        self.assertEqual(stats_after_hit["actual_parser_model"], "actual-provider-model")
+        self.assertEqual(
+            stats_after_hit["actual_parser_models"],
+            ["actual-provider-model"],
+        )
+        self.assertEqual(stats_after_hit["parser_input_tokens"], 100)
+        self.assertEqual(stats_after_hit["parser_output_tokens"], 20)
+        self.assertEqual(stats_after_hit["parser_total_tokens"], 120)
+        self.assertEqual(stats_after_hit["parser_cached_input_tokens"], 40)
+        self.assertEqual(stats_after_hit["parser_reasoning_tokens"], 5)
+        self.assertEqual(stats_after_hit["parser_usage_reported_call_count"], 1)
+        self.assertEqual(stats_after_hit["parser_usage_missing_call_count"], 0)
+        self.assertAlmostEqual(
+            stats_after_hit["parser_estimated_cost_usd"],
+            0.00023,
+        )
+        self.assertEqual(stats_after_call, {
+            **stats_after_hit,
+            "parser_requests": 1,
+            "parser_request_count": 1,
+            "parser_cache_hits": 0,
+        })
+
+    def test_missing_provider_usage_makes_total_cost_null(self) -> None:
+        response = {
+            "model": "actual-provider-model",
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "I": "find shoes",
+                                "C_plus": ["red"],
+                                "C_minus": [],
+                            }
+                        )
+                    }
+                }
+            ],
+        }
+
+        class FakeOpenAI:
+            def __init__(self, **_kwargs):
+                self.chat = types.SimpleNamespace(
+                    completions=types.SimpleNamespace(
+                        create=mock.Mock(return_value=response)
+                    )
+                )
+
+        with mock.patch.dict(
+            os.environ,
+            {"OPENAI_API_KEY": "test-key"},
+            clear=True,
+        ), mock.patch.dict(
+            sys.modules,
+            {"openai": types.SimpleNamespace(OpenAI=FakeOpenAI)},
+        ):
+            extraction = GoalContractExtraction(
+                use_openai=True,
+                openai_model="requested-model",
+                pricing=LLMPricing(
+                    input_usd_per_million=1.0,
+                    output_usd_per_million=2.0,
+                ),
+            )
+            extraction.extract("Find red shoes")
+
+        stats = extraction.stats_dict()
+        self.assertEqual(stats["parser_api_calls"], 1)
+        self.assertEqual(stats["parser_usage_reported_call_count"], 0)
+        self.assertEqual(stats["parser_usage_missing_call_count"], 1)
+        self.assertIsNone(stats["parser_estimated_cost_usd"])
+        self.assertEqual(stats["parser_known_estimated_cost_usd"], 0.0)
 
 
 class GateRuntimeModeTests(unittest.TestCase):

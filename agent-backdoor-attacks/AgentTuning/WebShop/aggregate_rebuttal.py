@@ -1271,6 +1271,68 @@ METRIC_ORDER = (
 )
 
 
+PARSER_LLM_EFFICIENCY_COLUMNS = (
+    "parser_request_count",
+    "parser_call_count",
+    "parser_api_call_count",
+    "parser_cache_hit_count",
+    "parser_usage_reported_call_count",
+    "parser_usage_missing_call_count",
+    "parser_input_token_count",
+    "parser_cached_input_token_count",
+    "parser_output_token_count",
+    "parser_reasoning_token_count",
+    "parser_total_token_count",
+    "parser_estimated_cost_usd",
+)
+
+JUDGE_LLM_EFFICIENCY_COLUMNS = (
+    "judge_request_count",
+    "judge_call_count",
+    "judge_cache_hit_count",
+    "judge_usage_reported_call_count",
+    "judge_usage_missing_call_count",
+    "judge_input_token_count",
+    "judge_cached_input_token_count",
+    "judge_output_token_count",
+    "judge_reasoning_token_count",
+    "judge_total_token_count",
+    "judge_estimated_cost_usd",
+)
+
+DEFENSE_LLM_EFFICIENCY_COLUMNS = (
+    "defense_llm_request_count",
+    "defense_llm_api_call_count",
+    "defense_llm_cache_hit_count",
+    "defense_llm_usage_reported_call_count",
+    "defense_llm_usage_missing_call_count",
+    "defense_llm_input_token_count",
+    "defense_llm_cached_input_token_count",
+    "defense_llm_output_token_count",
+    "defense_llm_reasoning_token_count",
+    "defense_llm_total_token_count",
+    "defense_llm_estimated_cost_usd",
+    "defense_llm_requests_per_episode",
+    "defense_llm_api_calls_per_episode",
+    "defense_llm_api_calls_per_action_step",
+    "defense_llm_estimated_cost_usd_per_episode",
+)
+
+LLM_PRICING_COLUMNS = (
+    "llm_input_usd_per_million",
+    "llm_cached_input_usd_per_million",
+    "llm_output_usd_per_million",
+    "llm_pricing_as_of",
+    "llm_pricing_source",
+)
+
+DEFENSE_ROUND_COLUMNS = (
+    "defense_action_round_count",
+    "gate_runtime_round_count",
+    "gate_certification_round_count",
+)
+
+
 def aggregate_runs(
     runs: Sequence[RunRecord],
     bootstrap_samples: int = DEFAULT_BOOTSTRAP_SAMPLES,
@@ -1355,21 +1417,99 @@ def aggregate_runs(
             "parser_model_actual": _metadata_value(
                 run.raw, ("parser_model_actual", "actual_parser_model")
             ),
+            "parser_actual_models": _metadata_value(
+                run.raw, ("parser_actual_models",)
+            ),
+            "parser_request_count": _metadata_value(
+                run.raw, ("parser_request_count",)
+            ),
             "parser_call_count": _metadata_value(run.raw, ("parser_call_count",)),
+            "parser_api_call_count": _metadata_value(
+                run.raw, ("parser_api_call_count",)
+            ),
             "parser_cache_hit_count": _metadata_value(
                 run.raw, ("parser_cache_hit_count",)
+            ),
+            "parser_usage_reported_call_count": _metadata_value(
+                run.raw, ("parser_usage_reported_call_count",)
+            ),
+            "parser_usage_missing_call_count": _metadata_value(
+                run.raw, ("parser_usage_missing_call_count",)
+            ),
+            "parser_input_token_count": _metadata_value(
+                run.raw, ("parser_input_token_count",)
+            ),
+            "parser_cached_input_token_count": _metadata_value(
+                run.raw, ("parser_cached_input_token_count",)
+            ),
+            "parser_output_token_count": _metadata_value(
+                run.raw, ("parser_output_token_count",)
+            ),
+            "parser_reasoning_token_count": _metadata_value(
+                run.raw, ("parser_reasoning_token_count",)
+            ),
+            "parser_total_token_count": _metadata_value(
+                run.raw, ("parser_total_token_count",)
+            ),
+            "parser_estimated_cost_usd": _metadata_value(
+                run.raw, ("parser_estimated_cost_usd",)
             ),
             "parser_fallback_count": _metadata_value(
                 run.raw, ("parser_fallback_count",)
             ),
             "parser_error_count": _metadata_value(run.raw, ("parser_error_count",)),
             "judge_model": _metadata_value(run.raw, ("judge_model",)),
+            "judge_actual_models": _metadata_value(
+                run.raw, ("judge_actual_models",)
+            ),
+            "judge_request_count": _metadata_value(
+                run.raw, ("judge_request_count",)
+            ),
             "repair_call_count": repair_calls,
             "repair_success_count": repair_successes,
             "judge_call_count": judge_calls,
+            "judge_cache_hit_count": _metadata_value(
+                run.raw, ("judge_cache_hit_count",)
+            ),
+            "judge_usage_reported_call_count": _metadata_value(
+                run.raw, ("judge_usage_reported_call_count",)
+            ),
+            "judge_usage_missing_call_count": _metadata_value(
+                run.raw, ("judge_usage_missing_call_count",)
+            ),
+            "judge_input_token_count": _metadata_value(
+                run.raw, ("judge_input_token_count",)
+            ),
+            "judge_cached_input_token_count": _metadata_value(
+                run.raw, ("judge_cached_input_token_count",)
+            ),
+            "judge_output_token_count": _metadata_value(
+                run.raw, ("judge_output_token_count",)
+            ),
+            "judge_reasoning_token_count": _metadata_value(
+                run.raw, ("judge_reasoning_token_count",)
+            ),
+            "judge_total_token_count": _metadata_value(
+                run.raw, ("judge_total_token_count",)
+            ),
+            "judge_estimated_cost_usd": _metadata_value(
+                run.raw, ("judge_estimated_cost_usd",)
+            ),
             "judge_failure_count": judge_failures,
             "judge_replacement_count": judge_replacements,
             "repair_judge_call_count": combined_calls,
+            **{
+                name: _metadata_value(run.raw, (name,))
+                for name in DEFENSE_LLM_EFFICIENCY_COLUMNS
+            },
+            **{
+                name: _metadata_value(run.raw, (name,))
+                for name in LLM_PRICING_COLUMNS
+            },
+            **{
+                name: _metadata_value(run.raw, (name,))
+                for name in DEFENSE_ROUND_COLUMNS
+            },
             "mean_added_runtime_seconds": mean_runtime,
             "median_added_runtime_seconds": median_runtime,
             "p95_added_runtime_seconds": p95_runtime,
@@ -1446,17 +1586,21 @@ CSV_BASE_COLUMNS = (
     "episode_count",
     "parser_model_requested",
     "parser_model_actual",
-    "parser_call_count",
-    "parser_cache_hit_count",
+    "parser_actual_models",
+    *PARSER_LLM_EFFICIENCY_COLUMNS,
     "parser_fallback_count",
     "parser_error_count",
     "judge_model",
+    "judge_actual_models",
     "repair_call_count",
     "repair_success_count",
-    "judge_call_count",
+    *JUDGE_LLM_EFFICIENCY_COLUMNS,
     "judge_failure_count",
     "judge_replacement_count",
     "repair_judge_call_count",
+    *DEFENSE_LLM_EFFICIENCY_COLUMNS,
+    *LLM_PRICING_COLUMNS,
+    *DEFENSE_ROUND_COLUMNS,
     "mean_added_runtime_seconds",
     "median_added_runtime_seconds",
     "p95_added_runtime_seconds",
@@ -1480,6 +1624,8 @@ def _csv_value(value: Any) -> Any:
         return ""
     if isinstance(value, float):
         return f"{value:.10g}"
+    if isinstance(value, (Mapping, list, tuple)):
+        return json.dumps(value, sort_keys=True)
     return value
 
 
@@ -1587,6 +1733,46 @@ def _format_clean_changes(row: Mapping[str, Any], missing: str = "—") -> str:
     return f"{improved}/{unchanged}/{harmed}"
 
 
+def _format_llm_efficiency(
+    row: Mapping[str, Any], missing: str = "—"
+) -> str:
+    defense_rounds = [
+        _integer(row.get("defense_action_round_count")),
+        _integer(row.get("gate_runtime_round_count")),
+        _integer(row.get("gate_certification_round_count")),
+    ]
+    request_counts = [
+        _integer(row.get("defense_llm_request_count")),
+        _integer(row.get("defense_llm_api_call_count")),
+        _integer(row.get("defense_llm_cache_hit_count")),
+    ]
+    token_counts = [
+        _integer(row.get("defense_llm_input_token_count")),
+        _integer(row.get("defense_llm_cached_input_token_count")),
+        _integer(row.get("defense_llm_output_token_count")),
+        _integer(row.get("defense_llm_reasoning_token_count")),
+        _integer(row.get("defense_llm_total_token_count")),
+    ]
+    cost = _finite_float(row.get("defense_llm_estimated_cost_usd"))
+    if (
+        all(value is None for value in defense_rounds + request_counts + token_counts)
+        and cost is None
+    ):
+        return missing
+
+    rounds_text = "/".join(
+        str(value) if value is not None else missing for value in defense_rounds
+    )
+    request_text = "/".join(
+        str(value) if value is not None else missing for value in request_counts
+    )
+    token_text = "/".join(
+        str(value) if value is not None else missing for value in token_counts
+    )
+    cost_text = f"${cost:.8g}" if cost is not None else missing
+    return f"{rounds_text}; {request_text}; {token_text}; {cost_text}"
+
+
 def _table_headers() -> List[str]:
     return [
         "Method",
@@ -1597,6 +1783,10 @@ def _table_headers() -> List[str]:
         "N",
         "Oracle eligible",
         "Repair calls/success; judge calls/failures/replacements",
+        (
+            "Defense rounds action/runtime/cert; LLM req/API/cache; "
+            "tokens I/CI/O/R/T; USD"
+        ),
         "Added runtime mean/median/p95 (s)",
         "AER",
         "AER difference vs none",
@@ -1659,6 +1849,7 @@ def _table_row(row: Mapping[str, Any], missing: str = "—") -> List[str]:
             else missing
         ),
         call_text,
+        _format_llm_efficiency(row, missing),
         runtime_text,
         _format_aer(row.get("aer"), missing),
         _format_aer_difference(row, missing),
@@ -1679,7 +1870,10 @@ def write_markdown(path: Path, rows: Sequence[Mapping[str, Any]]) -> None:
         (
             "Proportions are shown as numerator/denominator; percent "
             "[Wilson 95% CI]. AER differences use a task-paired bootstrap "
-            "95% CI with seed 42. Missing values are not estimated."
+            "95% CI with seed 42. Defense rounds are action/runtime/"
+            "certification; LLM efficiency is logical requests/API calls/"
+            "cache hits; input/cached-input/output/reasoning/total tokens; "
+            "estimated USD. Missing values are not estimated."
         ),
         "",
         "| " + " | ".join(_markdown_escape(value) for value in headers) + " |",
@@ -1716,6 +1910,11 @@ def write_latex(path: Path, rows: Sequence[Mapping[str, Any]]) -> None:
     lines = [
         "% Proportions: numerator/denominator; percent [Wilson 95% CI].",
         "% AER differences: task-paired bootstrap 95% CI, seed 42.",
+        (
+            "% Defense rounds: action/runtime/certification. LLM efficiency: "
+            "logical requests/API calls/cache hits; input/cached-input/output/"
+            "reasoning/total tokens; estimated USD."
+        ),
         "% Missing values are shown as -- and are not estimated.",
         r"\begin{tabular}{" + "l" * len(headers) + "}",
         r"\hline",
