@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "case_id": {
+      "type": "string"
+    },
+    "poisoning_status": {
+      "enum": [
+        "known",
+        "unknown",
+        "clean"
+      ]
+    },
+    "trigger_ground_truth": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "attack_target": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "training_manifest_hash": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "overlap": {
+      "enum": [
+        "excluded",
+        "unknown",
+        "present"
+      ]
+    }
+  },
+  "required": [
+    "case_id",
+    "poisoning_status",
+    "trigger_ground_truth",
+    "attack_target",
+    "training_manifest_hash",
+    "overlap"
+  ],
+  "additionalProperties": false
+}

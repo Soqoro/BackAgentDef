@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "run_id": "sneakers_inventory_v1",
+  "simulated": false,
+  "run_root": "results/seek",
+  "checkpoint_registry": "configs/seek/checkpoints.json",
+  "task_manifest": "configs/seek/cluster_tasks.json",
+  "environment": {
+    "asset_manifest": "configs/seek/cluster_assets.json",
+    "category": "sneaker",
+    "filter": "legacy_sneaker_no_adidas_v1",
+    "goal_order_hash": null,
+    "catalogue_hash": null,
+    "environment_hash": null
+  },
+  "rows": [
+    {
+      "checkpoint_alias": "cp_a17f829c041e",
+      "channel": "query",
+      "category": "sneaker",
+      "method": "seek_full",
+      "track": "raw_audit",
+      "scope": "webshop_next_proposal_v1",
+      "collect_limit": 4,
+      "max_steps": 2
+    }
+  ],
+  "victim": {
+    "max_input_tokens": 2048,
+    "max_output_tokens": 128,
+    "do_sample": false,
+    "dtype": "bfloat16"
+  },
+  "agents": {
+    "model": null,
+    "response_format": "json_schema",
+    "token_parameter": "max_completion_tokens",
+    "max_output_tokens": 1024,
+    "retries": 1,
+    "timeout_seconds": 45,
+    "parameters": {}
+  },
+  "budgets": {
+    "discovery_victim": 32,
+    "defender": 24,
+    "rounds": 6,
+    "max_spans": 16,
+    "interaction_order": 1,
+    "replay_victim": 1000,
+    "collection_victim": 1000,
+    "confirmation_victim": 256,
+    "reuse_victim": 128
+  },
+  "confirmation": {
+    "n_removal": 8,
+    "n_insertion": 8,
+    "alpha": 0.05,
+    "tau_removal": 0.2,
+    "tau_insertion": 0.2,
+    "family_M": 1,
+    "replicates": 1,
+    "invalid_pair_policy": "inconclusive"
+  },
+  "fake_scenario": "single_cue"
+}

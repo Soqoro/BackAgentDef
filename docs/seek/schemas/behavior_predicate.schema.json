@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "operation": {
+      "enum": [
+        "search",
+        "click"
+      ]
+    },
+    "argument": {
+      "type": "string"
+    },
+    "match": {
+      "enum": [
+        "exact",
+        "contains"
+      ]
+    },
+    "target": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "label": {
+      "enum": [
+        "contract_violation",
+        "preference_dependence"
+      ]
+    },
+    "scope": {
+      "enum": [
+        "next_proposal"
+      ]
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "operation",
+    "argument",
+    "match",
+    "target",
+    "label",
+    "scope",
+    "evidence"
+  ],
+  "additionalProperties": false
+}

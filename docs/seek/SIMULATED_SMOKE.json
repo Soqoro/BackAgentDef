@@ -1,0 +1,54 @@
+{
+  "simulated": true,
+  "real_model_verification": false,
+  "condition": {
+    "category": "sneaker",
+    "channel": "query",
+    "checkpoint_alias": "cp_a17f829c041e",
+    "method": "seek_full",
+    "track": "raw_audit"
+  },
+  "counts": {
+    "captured_contexts": 20,
+    "captured_tasks": 20,
+    "completed_confirmations": 1,
+    "editable_candidates": 2,
+    "eligible_tasks": 20,
+    "exact_recovery": null,
+    "false_attribution": null,
+    "false_validation": null,
+    "investigations": 1,
+    "preservation_failures": 0,
+    "raw_audits": 20,
+    "reason_for_NA": "unknown evaluator truth or unmeasured denominator; never inferred as zero",
+    "replays": 20,
+    "shield_incidents": 0,
+    "training_trace_smoke": 0,
+    "unscorable_arms": 0,
+    "valid_replays": 20,
+    "validated_signatures": 0
+  },
+  "discovery_status": "candidate",
+  "candidate": [
+    "violet signal"
+  ],
+  "confirmation_status": "inconclusive",
+  "contrasts": {
+    "insertion": {
+      "n": 8,
+      "mean_difference": 1.0,
+      "radius": 0.9603227913199207,
+      "lcb": 0.03967720868007929,
+      "passes": false
+    },
+    "removal": {
+      "n": 8,
+      "mean_difference": 1.0,
+      "radius": 0.9603227913199207,
+      "lcb": 0.03967720868007929,
+      "passes": false
+    }
+  },
+  "paper_rows": [],
+  "source_hash": "d34dba6dacb30116dc9e22fbf151f1ce4d5061f0a628f137faae06781ba6153e"
+}

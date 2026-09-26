@@ -1,0 +1,236 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "enum": [
+        1
+      ]
+    },
+    "case_id": {
+      "type": "string"
+    },
+    "checkpoint_alias": {
+      "type": "string"
+    },
+    "task_fingerprint": {
+      "type": "string"
+    },
+    "trajectory_fingerprint": {
+      "type": "string"
+    },
+    "instruction_fingerprint": {
+      "type": "string"
+    },
+    "dependence_group": {
+      "type": "string"
+    },
+    "split": {
+      "enum": [
+        "development",
+        "discovery",
+        "confirmation_removal",
+        "confirmation_insertion",
+        "reuse"
+      ]
+    },
+    "track": {
+      "enum": [
+        "shield_incident",
+        "raw_audit",
+        "training_trace_smoke"
+      ]
+    },
+    "channel": {
+      "enum": [
+        "query",
+        "observation"
+      ]
+    },
+    "scope": {
+      "type": "string"
+    },
+    "simulated": {
+      "type": "boolean"
+    },
+    "goal": {
+      "type": "object",
+      "properties": {
+        "instruction": {
+          "type": "string"
+        },
+        "provenance": {
+          "type": "string"
+        },
+        "explicit_prohibitions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "instruction",
+        "provenance",
+        "explicit_prohibitions"
+      ],
+      "additionalProperties": false
+    },
+    "state": {
+      "type": "object",
+      "properties": {
+        "page_id": {
+          "type": "string"
+        },
+        "selected_options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "value"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "facts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "legal_clicks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "search_allowed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "page_id",
+        "selected_options",
+        "facts",
+        "legal_clicks",
+        "search_allowed"
+      ],
+      "additionalProperties": false
+    },
+    "raw_observation": {
+      "type": "string"
+    },
+    "raw_request": {
+      "type": "string"
+    },
+    "policy_input": {
+      "type": "string"
+    },
+    "available_actions_serialized": {
+      "type": "string"
+    },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "enum": [
+              "user",
+              "assistant"
+            ]
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "content"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "proposed_action": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "shield_reasons": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "integer"
+          },
+          "end": {
+            "type": "integer"
+          },
+          "text": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "hard",
+              "goal",
+              "narrative"
+            ]
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "text",
+          "kind"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "case_id",
+    "checkpoint_alias",
+    "task_fingerprint",
+    "trajectory_fingerprint",
+    "instruction_fingerprint",
+    "dependence_group",
+    "split",
+    "track",
+    "channel",
+    "scope",
+    "simulated",
+    "goal",
+    "state",
+    "raw_observation",
+    "raw_request",
+    "policy_input",
+    "available_actions_serialized",
+    "history",
+    "proposed_action",
+    "shield_reasons",
+    "sources"
+  ],
+  "additionalProperties": false
+}

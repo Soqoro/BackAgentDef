@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "checkpoints": [
+    {"alias": "cp_a17f829c041e", "path": "/dataset/suaq0001/BackAgentDef/outputs/query_attack/checkpoint-118", "identity": null, "weights": {}, "training_status": "unknown", "training_manifest": null, "trigger_ground_truth": null, "enabled": true},
+    {"alias": "cp_b38e921d052f", "path": "/dataset/suaq0001/BackAgentDef/outputs/observation_attack/checkpoint-118", "identity": null, "weights": {}, "training_status": "unknown", "training_manifest": null, "trigger_ground_truth": null, "enabled": true},
+    {"alias": "cp_c49d032e163a", "path": null, "identity": null, "weights": {}, "training_status": "unknown", "training_manifest": null, "trigger_ground_truth": null, "enabled": false},
+    {"alias": "cp_d50c143f274b", "path": null, "identity": null, "weights": {}, "training_status": "unknown", "training_manifest": null, "trigger_ground_truth": null, "enabled": false}
+  ]
+}
