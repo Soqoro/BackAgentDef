@@ -394,6 +394,33 @@ raise SystemExit(main(['preflight','--metadata-only','--config',sys.argv[2]]))
 
 
 class SlurmTests(unittest.TestCase):
+    def test_inherited_jupyter_paths_removed_for_dry_runs(self):
+        env = dict(os.environ, PYTHONHOME='/missing/jupyter', PYTHONPATH='/foreign/site-packages',
+                   SEEK_CONFIG=str(ROOT/'configs/seek/fake_cpu.json'), SEEK_PHASE='collect',
+                   SEEK_DRY_RUN='1', SEEK_REPO_ROOT=str(ROOT), SEEK_PYTHON=sys.executable)
+        env.pop('SLURM_ARRAY_TASK_ID', None)
+        for args in ([str(ROOT/'seek_eval.sh')],
+                     [str(ROOT/'seek_submit.sh'), '--config', str(ROOT/'configs/seek/fake_cpu.json'),
+                      '--phase', 'collect', '--dry-run']):
+            result = subprocess.run(['bash', *args], env=env, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_worker_cleans_activation_hook_paths_without_gpu(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            fake = root/'python'
+            fake.write_text('#!/bin/bash\n[[ ! -v PYTHONPATH && ! -v PYTHONHOME && "$PYTHONNOUSERSITE" == 1 ]] || exit 91\n[[ "$CUDA_VISIBLE_DEVICES" == 7 ]] || exit 92\n')
+            fake.chmod(0o700)
+            conda = root/'conda.sh'
+            conda.write_text('conda() { export PYTHONPATH=/foreign/site-packages PYTHONHOME=/foreign/python; }\n')
+            env = dict(os.environ, PATH=str(root)+os.pathsep+os.environ['PATH'],
+                       PYTHONPATH='/initial/site-packages', PYTHONHOME='/initial/python',
+                       CUDA_VISIBLE_DEVICES='7', SEEK_CONFIG='unused.json', SEEK_PHASE='inventory',
+                       SEEK_REPO_ROOT=str(ROOT), SEEK_PYTHON=str(fake), CONDA_SH=str(conda),
+                       SLURM_JOB_ID='CPU_FIXTURE', SEEK_DRY_RUN='0', SLURM_ARRAY_TASK_ID='0')
+            result = subprocess.run(['bash', str(ROOT/'seek_eval.sh')], env=env, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_spooled_slurm_script_uses_submission_repo(self):
         with tempfile.TemporaryDirectory() as tmp:
             spool=Path(tmp)/'slurm_script'

@@ -7,6 +7,10 @@
 #SBATCH --signal=B:TERM@60
 set -euo pipefail
 
+# Jupyter may export another Python installation into Slurm jobs.
+unset PYTHONPATH PYTHONHOME
+export PYTHONNOUSERSITE=1
+
 SCRIPT_SOURCE_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_DIR="${SEEK_REPO_ROOT:-${SLURM_SUBMIT_DIR:-$SCRIPT_SOURCE_DIR}}"
 SEEK_CONFIG="${SEEK_CONFIG:?Set SEEK_CONFIG to a concrete JSON config}"
@@ -34,6 +38,9 @@ CONDA_SH="${CONDA_SH:-/export/home2/suaq0001/miniconda3/etc/profile.d/conda.sh}"
 CONDA_ENV="${CONDA_ENV:-webshop_torchfix}"
 source "$CONDA_SH"
 conda activate "$CONDA_ENV"
+# Activation hooks must not reintroduce a foreign Python installation.
+unset PYTHONPATH PYTHONHOME
+export PYTHONNOUSERSITE=1
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
 # Preserve the scheduler's CUDA_VISIBLE_DEVICES. The adapter uses visible cuda:0.
 python seek_eval.py preflight --metadata-only --config "$SEEK_CONFIG" --phase "$SEEK_PHASE" --row "$SEEK_ROW"

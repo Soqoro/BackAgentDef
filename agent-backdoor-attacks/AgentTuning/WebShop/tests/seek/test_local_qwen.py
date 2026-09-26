@@ -105,7 +105,10 @@ class LocalQwenTests(unittest.TestCase):
         self.agents['local']['python'] = str(f)
 
     def test_protocol_resident_worker_and_cleanup(self):
-        self.fake_interpreter('''import sys,json
+        self.fake_interpreter('''import sys,json,os
+assert 'PYTHONHOME' not in os.environ
+assert 'PYTHONPATH' not in os.environ
+assert os.environ['PYTHONNOUSERSITE'] == '1'
 json.loads(sys.stdin.readline())
 print(json.dumps({'status':'ready','simulated_fixture':True}),flush=True)
 for line in sys.stdin:
@@ -113,7 +116,7 @@ for line in sys.stdin:
     assert 'schema' in request['messages'][0]['content']
     print(json.dumps({'text':'{}','finish_reason':'stop','refusal':False}),flush=True)
 ''')
-        with patch.dict(os.environ, {'SLURM_JOB_ID': 'CPU_FIXTURE'}):
+        with patch.dict(os.environ, {'SLURM_JOB_ID': 'CPU_FIXTURE', 'PYTHONHOME': '/missing/jupyter', 'PYTHONPATH': '/foreign/site-packages'}):
             role = LocalRoles(self.agents)
             try:
                 reply = role.call('Goal', {})

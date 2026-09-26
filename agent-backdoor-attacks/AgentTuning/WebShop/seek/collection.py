@@ -1,6 +1,7 @@
 """Only this module may step WebShop. Diagnosis modules never receive an env."""
 import copy
 import importlib.util
+import random
 from pathlib import Path
 
 from .manifests import SPLITS, build_manifest, resolve
@@ -80,14 +81,24 @@ def legacy_module():
     return module
 
 
+ENVIRONMENT_CONSTRUCTION_SEED = 42
+
+
 def open_environment(config):
     legacy = legacy_module()
     assets = read_json(resolve(config["environment"]["asset_manifest"]))
-    env = legacy.WebAgentTextEnv(observation_mode="text", file_path=str(resolve(assets["product_file"])),
-                                filter_goals=legacy.train_filter, human_goals=False, num_products=assets["num_products"])
+    # WebShop samples prices/goal limits BEFORE its internal shuffle seed.
+    # Seed immediately before construction, independent of import/model RNG use.
+    rng_state = random.getstate()
+    try:
+        random.seed(ENVIRONMENT_CONSTRUCTION_SEED)
+        env = legacy.WebAgentTextEnv(observation_mode="text", file_path=str(resolve(assets["product_file"])),
+                                    filter_goals=legacy.train_filter, human_goals=False, num_products=assets["num_products"])
+    finally:
+        random.setstate(rng_state)
     actual_order = digest([g["instruction_text"] for g in env.server.goals])
     if config["environment"]["goal_order_hash"] is not None and actual_order != config["environment"]["goal_order_hash"]:
-        raise Invalid("environment goal order fingerprint mismatch")
+        raise Invalid(f"environment goal order fingerprint mismatch: expected={config['environment']['goal_order_hash']} actual={actual_order}; rebuild inventory/manifest under the same Seek construction protocol")
     return legacy, env, actual_order
 
 

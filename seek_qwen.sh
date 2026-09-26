@@ -10,6 +10,10 @@
 #SBATCH --output=logs/seek/qwen-%j.out
 #SBATCH --error=logs/seek/qwen-%j.err
 set -euo pipefail
+
+# Jupyter may export another Python installation into Slurm jobs.
+unset PYTHONPATH PYTHONHOME
+export PYTHONNOUSERSITE=1
 SOURCE_DIR="${SEEK_REPO_ROOT:-${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)}}"
 cd "$SOURCE_DIR"
 : "${SEEK_QWEN_PYTHON:?Set absolute isolated defender Python path}"

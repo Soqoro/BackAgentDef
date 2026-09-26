@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
+# Jupyter may export another Python installation into Slurm jobs.
+unset PYTHONPATH PYTHONHOME
+export PYTHONNOUSERSITE=1
 SOURCE_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 SEEK_CONFIG="" SEEK_PHASE="" SEEK_RUN_ROOT="$SOURCE_DIR/results/seek"
 concurrency=1 dependency="" selected_row="" dry_run=0

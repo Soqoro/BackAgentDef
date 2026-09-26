@@ -61,6 +61,8 @@ class LocalRoles:
             if self.process is None:
                 check_lock(c["local"]["lock"], c["local"]["lock_sha256"], c["model"])
                 env = dict(os.environ, HF_HUB_OFFLINE="1", TRANSFORMERS_OFFLINE="1", PYTHONNOUSERSITE="1")
+                env.pop("PYTHONPATH", None)
+                env.pop("PYTHONHOME", None)
                 self.process = subprocess.Popen(
                     [c["local"]["python"], "-u", str(Path(__file__).with_name("qwen_worker.py"))],
                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1, env=env)

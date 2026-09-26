@@ -9,8 +9,11 @@ from .victim import file_hash
 
 def environment_source_hash():
     root = Path(__file__).resolve().parents[1] / "web_agent_site"
-    return digest({str(p.relative_to(root)): file_hash(p) for p in sorted(root.rglob("*"))
-                   if p.is_file() and p.suffix in (".py", ".html")})
+    files = {str(p.relative_to(root)): file_hash(p) for p in sorted(root.rglob("*"))
+             if p.is_file() and p.suffix in (".py", ".html")}
+    # Bind inventory semantics to the Seek wrapper as well as upstream WebShop.
+    files["seek/collection.py"] = file_hash(Path(__file__).with_name("collection.py"))
+    return digest(files)
 
 
 def audit_assets(product_file, num_products=None):

@@ -168,3 +168,38 @@ synthetic tests), plus 52 existing Stage I Python tests and all 36 agent_eval.sh
 Slurm dry-run rows. Python compilation, bash syntax and git whitespace checks
 passed. Protected agent_eval.sh, WebShop/test.py and defenses files have no diff.
 No real model was loaded and no job was submitted during these checks.
+
+## Inventory import failure from inherited Jupyter paths
+
+Reported cluster job 1083058_0 failed importing Flask: Python 3.10 Flask from
+webshop_torchfix imported Werkzeug from `/cm/shared/apps/jupyter/16.0.5/lib/python3.12/site-packages`.
+Metadata preflight was ready; inventory did not complete. This is an environment
+import failure, not a model/provenance finding. Do not upgrade Flask, Gym or the
+victim environment in response to the surrounding warnings before checking paths.
+
+Seek entry scripts now unset PYTHONPATH/PYTHONHOME and set PYTHONNOUSERSITE=1 before
+Python or conda runs. The worker repeats this after activation, and the isolated
+Qwen subprocess also strips these inherited variables. Slurm GPU assignments stay
+unchanged. CPU tests inject broken paths and an activation hook to verify this.
+
+For an already-started run on the previous source revision, first try this
+submission-environment repair without updating source files:
+
+```bash
+unset PYTHONPATH PYTHONHOME
+export PYTHONNOUSERSITE=1 CONDA_NO_PLUGINS=true
+python - <<'PY'
+import sys
+import flask
+import werkzeug
+print('Python:', sys.executable)
+print('Flask:', flask.__file__)
+print('Werkzeug:', werkzeug.__file__)
+PY
+```
+
+If imports succeed from the intended environment, resubmit the same inventory
+config with seek_submit.sh (which enables resume). If imports still fail, inspect
+the new traceback before changing packages. Keep the failed logs and run directory.
+The code fix changes the source fingerprint: after syncing it, use new run IDs for
+inventory and the pilot instead of overwriting/resuming a run pinned to older source.
