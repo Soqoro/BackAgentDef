@@ -59,11 +59,13 @@ The last command exits 2 with precise missing-asset blockers in this checkout.
 The dry-run prints two rows, opaque checkpoint aliases, config/output paths and
 the `0-1%1` array. No real submission is performed by these commands.
 
+For the staged **local Qwen3.5-27B defender**, use [QWEN_CLUSTER_PILOT.md](docs/seek/QWEN_CLUSTER_PILOT.md). It supplies an isolated Transformers environment, CPU checks, a one-GPU smoke, and a two-GPU discovery job. The API setup below is the alternative backend.
+
 ## First cluster setup: existing files only
 
 These commands are for the user on the cluster after pulling the implementation.
 Do not execute them as part of local development. Do not download or train models.
-Use the existing environment; no upgrades are required by this patch.
+For the API backend, use the existing environment. Local Qwen needs the separate defender environment described above.
 
 Pin a trusted defender model ID yourself before collection. Keep it fixed across
 phases so changing models cannot silently reuse a run. `SEEK_AGENT_MODEL` or

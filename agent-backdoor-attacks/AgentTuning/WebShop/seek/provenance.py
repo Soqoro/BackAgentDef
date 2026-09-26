@@ -114,6 +114,15 @@ def preflight(config, row_index=0, phase=None):
         blockers.append(str(exc))
     if phase in (None, "discover", "confirm") and not config["agents"]["model"]:
         blockers.append("explicit SEEK_AGENT_MODEL/config agents.model required for real role calls")
+    if "local" in config["agents"]:
+        try:
+            from .qwen_worker import check_lock
+            local = config["agents"]["local"]
+            check_lock(local["lock"], local["lock_sha256"], config["agents"]["model"])
+            if not Path(local["python"]).is_file():
+                raise Invalid("local defender Python missing")
+        except (Invalid, OSError, ValueError, KeyError) as exc:
+            blockers.append(str(exc))
     if phase == "confirm" and limitations:
         blockers.append("resolve confirmatory provenance/overlap prerequisites (unknown gold alone may remain N/A)" if
                         any("training" in s or "overlap" in s for s in limitations) else "")

@@ -16,7 +16,7 @@ PHASES = ("inventory", "collect", "replay", "discover", "confirm", "reuse")
 
 
 def source_metadata():
-    files = list((Path(__file__).parent).glob("*.py")) + [REPO / "seek_eval.py", REPO / "seek_eval.sh", REPO / "seek_submit.sh"]
+    files = list((Path(__file__).parent).glob("*.py")) + [REPO / "seek_eval.py", REPO / "seek_eval.sh", REPO / "seek_submit.sh", REPO / "seek_qwen.sh"]
     files += list((Path(__file__).parents[1] / "defenses").glob("*.py")) + [Path(__file__).parents[1] / "test.py"]
     sources = {str(p.relative_to(REPO)): digest(p.read_text()) for p in files if p.exists()}
     try:
@@ -52,7 +52,7 @@ def run(config, phase, row_index, resume=False, override=None):
     if not config["simulated"]:
         if not os.environ.get("SLURM_JOB_ID"):
             raise Invalid("real runtime requires an allocated Slurm worker; no GPU work on notebook/login")
-        if phase == "discover" and not os.environ.get("OPENAI_API_KEY"):
+        if phase == "discover" and "local" not in config["agents"] and not os.environ.get("OPENAI_API_KEY"):
             raise Invalid("trusted defender API credential missing from environment")
     immutable_json(root.parents[1] / "planned_rows.json", {"simulated": config["simulated"],
                    "rows": [str(row_path(config, i, override).relative_to(root.parents[1])) for i in range(len(config["rows"]))]})
@@ -140,12 +140,16 @@ def execute_phase(config, row, root, phase, victim, journal):
         if not eligible:
             raise Invalid("no discovery/development contexts; never substitute holdouts")
         selected = sorted(eligible, key=lambda s: s["public"]["case_id"])[0]
-        backend = FakeRoles() if config["simulated"] else OpenAIRoles(config["agents"])
+        from .local_roles import LocalRoles
+        backend = FakeRoles() if config["simulated"] else (LocalRoles(config["agents"]) if "local" in config["agents"] else OpenAIRoles(config["agents"]))
         discussion = Discussion(backend, config, journal)
         try:
             result = discover(selected, replays.get(selected["public"]["case_id"], {}), victim, discussion, journal, config, row["method"])
         except Invalid as exc:
             result = {"status": "backend_failure", "candidate": None, "reason": str(exc)}
+        finally:
+            if hasattr(backend, "close"):
+                backend.close()
         result.update(discovery_case_id=selected["public"]["case_id"], simulated=config["simulated"])
         from .confirmation import freeze
         frozen = freeze(result, selected, snapshots, config["confirmation"], root / "frozen_candidate.json")

@@ -14,6 +14,14 @@ ROLE_SCHEMA = obj(role=enum("Goal", "State", "Action"), stage=STR, spans=array(S
                   prediction=STR, alternative=STR, revision=STR, interpretation=STR)
 
 
+def role_messages(role, payload):
+    system = PROMPTS[role]
+    if payload.get("semantic_preservation") is False:
+        system += "\nThis is the registered no_goal_preservation DISCOVERY ablation. Omit semantic goal screening and retain hard identity, price, option, action and source integrity. Do not remove candidates solely because of semantic Goal objections. No live actions are executed; independent evaluator preservation remains mandatory."
+    system += "\nReturn only one JSON object matching this schema: " + canonical(ROLE_SCHEMA)
+    return [{"role": "system", "content": system}, {"role": "user", "content": canonical(payload)}]
+
+
 class OpenAIRoles:
     simulated = False
 

@@ -47,7 +47,7 @@ def load_config(path):
     if any(type(g[k]) is not int or g[k] < 1 for k in ("max_input_tokens", "max_output_tokens")):
         raise Invalid("invalid token caps")
     a = c["agents"]
-    if set(a) != {"model", "response_format", "token_parameter", "max_output_tokens", "retries", "timeout_seconds", "parameters"}:
+    if set(a) - {"local"} != {"model", "response_format", "token_parameter", "max_output_tokens", "retries", "timeout_seconds", "parameters"}:
         raise Invalid("invalid agents schema")
     a["model"] = os.environ.get("SEEK_AGENT_MODEL") or a["model"]
     if a["response_format"] not in ("json_schema", "json_object") or a["token_parameter"] not in ("max_tokens", "max_completion_tokens"):
@@ -58,6 +58,9 @@ def load_config(path):
         raise Invalid("invalid defender timeout")
     if set(a["parameters"]) - {"temperature", "reasoning_effort", "service_tier"}:
         raise Invalid("unsupported defender extra parameter (secrets must stay in environment)")
+    if "local" in a:
+        from .local_roles import validate_local
+        validate_local(a)
     q = c["confirmation"]
     if set(q) != {"n_removal", "n_insertion", "alpha", "tau_removal", "tau_insertion", "family_M", "replicates", "invalid_pair_policy"}:
         raise Invalid("invalid confirmation schema")

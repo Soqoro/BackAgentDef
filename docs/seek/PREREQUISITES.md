@@ -32,3 +32,7 @@ a separately grounded extension, not an inferred forbidden brand.
 Snapshots, full dialogues and provenance remain on the cluster. The small review
 export includes status/count/cost/source-hash records only, excluding raw prompts,
 checkpoint paths, private truth, configuration and environment credentials.
+
+## Local Qwen defender update
+
+The cluster user located Qwen3.5-27B revision `fc05daec18b0a78c049392ed2e771dde82bdf654` and reported all locked files present. Hash verification and GPU validation remain outstanding. Transformers 4.57.6 in the victim environment is not the Qwen runtime. See [QWEN_CLUSTER_PILOT.md](QWEN_CLUSTER_PILOT.md) for the isolated backend and exact CPU/Slurm commands using PH100q H100 80GB cards. A full discovery job needs two allocated GPUs; its defender subprocess uses visible cuda:1. No API key or model download is needed.

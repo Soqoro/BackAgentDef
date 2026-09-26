@@ -23,8 +23,9 @@ def main():
     parser.add_argument("--query-checkpoint", default="/dataset/suaq0001/BackAgentDef/outputs/query_attack/checkpoint-118")
     parser.add_argument("--observation-checkpoint", default="/dataset/suaq0001/BackAgentDef/outputs/observation_attack/checkpoint-118")
     parser.add_argument("--agent-model", default=os.environ.get("SEEK_AGENT_MODEL"))
+    parser.add_argument("--agent-config", help="prepared local defender agents JSON")
     args = parser.parse_args()
-    if not args.agent_model:
+    if not args.agent_model and not args.agent_config:
         parser.error("pin --agent-model or SEEK_AGENT_MODEL before recording configs; no API is called")
     destination = resolve(args.output_dir)
     assets = audit_assets(args.product_file, args.num_products)
@@ -36,7 +37,12 @@ def main():
     immutable_json(destination / "checkpoints.json", registry)
     config = read_json(ROOT / "configs/seek/cluster_pilot.json")
     config.update(checkpoint_registry=str(destination / "checkpoints.json"), task_manifest=str(destination / "tasks.json"))
-    config["agents"]["model"] = args.agent_model
+    if args.agent_config:
+        from seek.local_roles import validate_local
+        config["agents"] = read_json(resolve(args.agent_config))
+        validate_local(config["agents"])
+    else:
+        config["agents"]["model"] = args.agent_model
     config["environment"].update(asset_manifest=str(destination / "assets.json"),
                                   catalogue_hash=digest(assets["files"]), environment_hash=environment_source_hash())
     immutable_json(destination / "pilot_template.json", config)
