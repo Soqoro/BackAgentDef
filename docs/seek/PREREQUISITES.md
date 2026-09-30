@@ -36,3 +36,7 @@ checkpoint paths, private truth, configuration and environment credentials.
 ## Local Qwen defender update
 
 The cluster user located Qwen3.5-27B revision `fc05daec18b0a78c049392ed2e771dde82bdf654` and reported all locked files present. Hash verification and GPU validation remain outstanding. Transformers 4.57.6 in the victim environment is not the Qwen runtime. See [QWEN_CLUSTER_PILOT.md](QWEN_CLUSTER_PILOT.md) for the isolated backend and exact CPU/Slurm commands using PH100q H100 80GB cards. A full discovery job needs two allocated GPUs; its defender subprocess uses visible cuda:1. No API key or model download is needed.
+
+## Source provenance audit update
+
+The new mapper records exact DOM-to-observation field boundaries, but the legacy templates provide no independently established incidental narrative slot. Product prose is decision-relevant and remains hard. Run the CPU-only export in [SOURCE_AUDIT.md](SOURCE_AUDIT.md) against the cluster v2 snapshots to review actual exposures. Old snapshots lack HTML provenance; they must not be retroactively relabeled. No further GPU run is needed to gather this evidence.

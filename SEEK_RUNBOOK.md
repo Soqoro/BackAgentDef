@@ -284,3 +284,7 @@ The trusted-role adapter follows the official [Structured Outputs documentation]
 with local schema validation for both JSON modes and explicit refusal/truncation
 handling. Parameter support for the user's actual defender model is unverified
 until the cluster pilot. Pricing is unconfigured, so monetary estimates are null.
+
+## Auditing source eligibility before more GPU work
+
+See [SOURCE_AUDIT.md](docs/seek/SOURCE_AUDIT.md) for the template evidence, exact source mapper and CPU-only saved-snapshot audit. Product descriptions/features/reviews remain protected; no legacy incidental narrative field has been established. Existing v2 snapshots can be audited without rerunning collection or changing their source labels.

@@ -25,7 +25,7 @@ def apply_edits(incident, spans, *, semantic=True):
         if start < last or end <= start or text[start:end] != span["text"] or not span["text"]:
             raise Invalid("source_offset_mismatch")
         covering = [s for s in p["sources"] if s["start"] <= start and s["end"] >= end]
-        if len(covering) != 1 or covering[0]["kind"] == "hard":
+        if len(covering) != 1 or covering[0]["kind"] != "narrative":
             raise Invalid("hard_identity_action_or_attribute_edit")
         if span["source_fact"] != covering[0]["text"]:
             raise Invalid("un-grounded source citation")

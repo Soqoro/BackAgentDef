@@ -8,6 +8,7 @@ from .manifests import SPLITS, build_manifest, resolve
 from .replay import query
 from .schemas import Invalid, PublicIncident, digest
 from .snapshot_io import save_snapshot, snapshot
+from .source_audit import map_sources
 from .storage import immutable_json, read_json
 from .victim import LEGACY
 
@@ -144,14 +145,16 @@ def collect_real(config, row, victim, journal, root):
                      "selected_options": [{"name": str(k), "value": str(v)} for k, v in session.get("options", {}).items()],
                      "facts": observation.splitlines(), "legal_clicks": list(actions.get("clickables", [])),
                      "search_allowed": bool(actions.get("has_search_bar", False))}
-            # No automatic assertion that a product/page word is incidental. Richer
-            # source adapters need an independent audit before exposing narrative slots.
-            def make_public(text, track):
+            # Record DOM field provenance without treating product prose as incidental.
+            def make_public(text, track, capture_tag):
+                sources, source_audit = map_sources(text, observation, env.state.get("html"))
+                case_id = digest([task["task_fingerprint"], step, track, row["channel"]])
+                immutable_json(Path(root) / "source_audits" / (case_id + "-" + capture_tag + ".json"), source_audit)
                 local_row = dict(row, track=track)
                 return public_case(task, local_row, simulated=False, observation=observation, request=raw_request,
                                    policy_input=text, actions=actions, history=history, state=state, step=step,
-                                   sources=[{"start": 0, "end": len(text), "text": text, "kind": "hard"}])
-            defended = make_public(policy_input, "raw_audit")
+                                   sources=sources)
+            defended = make_public(policy_input, "raw_audit", "defended")
             def capture_runtime(public):
                 runtime = victim.runtime(public.to_dict(), config["victim"], fp)
                 runtime["frozen_contract"] = gate.current_goal_contract.to_dict()
@@ -173,7 +176,7 @@ def collect_real(config, row, victim, journal, root):
                 if output_report and output_report.mask_count:
                     reasons.append("output_masking")
             if row["track"] == "raw_audit":
-                audit_public = make_public(raw_request, "raw_audit")
+                audit_public = make_public(raw_request, "raw_audit", "raw_audit")
                 captured = complete_capture(audit_public, capture_runtime(audit_public),
                                              victim, journal, config["budgets"]["collection_victim"], root, "raw_audit")
             else:
@@ -183,8 +186,11 @@ def collect_real(config, row, victim, journal, root):
                 p["track"] = row["track"]
                 p["case_id"] = digest([task["task_fingerprint"], step, row["track"], row["channel"]])
                 p["shield_reasons"] = reasons
+                _, final_source_audit = map_sources(p["policy_input"], observation, env.state.get("html"))
+                audit_tag = "raw_audit" if row["track"] == "raw_audit" else "defended"
+                immutable_json(Path(root) / "source_audits" / (p["case_id"] + "-" + audit_tag + ".json"), final_source_audit)
                 captured = snapshot(PublicIncident.from_dict(p), captured["runtime"], captured["raw_response"], action,
-                                    {"reasons": reasons, "certification": cert.to_dict(), "collector_goal_parser": "regex",
+                                    {"reasons": reasons, "source_audit_hash": digest(final_source_audit), "certification": cert.to_dict(), "collector_goal_parser": "regex",
                                      "raw_audit_executed": False, "original_defended_proposal": raw_action})
                 save_snapshot(root, captured)
                 snapshots.append(captured)

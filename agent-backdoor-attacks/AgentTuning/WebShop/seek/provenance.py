@@ -12,7 +12,8 @@ def environment_source_hash():
     files = {str(p.relative_to(root)): file_hash(p) for p in sorted(root.rglob("*"))
              if p.is_file() and p.suffix in (".py", ".html")}
     # Bind inventory semantics to the Seek wrapper as well as upstream WebShop.
-    files["seek/collection.py"] = file_hash(Path(__file__).with_name("collection.py"))
+    for name in ("collection.py", "source_audit.py"):
+        files["seek/" + name] = file_hash(Path(__file__).with_name(name))
     return digest(files)
 
 
