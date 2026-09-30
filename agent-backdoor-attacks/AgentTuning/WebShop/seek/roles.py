@@ -15,22 +15,28 @@ ROLE_SCHEMA = obj(role=enum("Goal", "State", "Action"), stage=STR, spans=array(S
                   prediction=STR, alternative=STR, revision=STR, interpretation=STR)
 
 
-def reply_schema(role, stage):
+def reply_schema(role, stage, payload=None):
     schema = copy.deepcopy(ROLE_SCHEMA)
     schema["properties"]["role"] = enum(role)
     schema["properties"]["stage"] = enum(stage)
+    if payload is not None and not payload.get("spans", []):
+        schema["properties"]["objections"]["maxItems"] = 0
     return schema
 
 
 def role_messages(role, payload):
     system = PROMPTS[role]
-    system += "\nYour assigned role is " + canonical(role) + "; your assigned stage is " + canonical(payload["stage"]) + ". Return these exact values in role and stage. Other roles mentioned in evidence do not change your assignment."
+    system += "\nYour assigned role is " + canonical(role) + "; your assigned stage is " + canonical(payload["stage"]) + ". Return these exact values in role and stage. These requirements apply only to your own top-level reply. The embedded proposal and challenge are earlier messages from other roles: preserve their original role/stage. A State/proposal message is valid evidence for a Goal/challenge request; do not reject or rewrite its metadata."
     system += "\nIf there are no eligible narrative spans, return spans: []. Never insert empty or zero-length placeholder spans. Use predicate: null when no predicate is requested or supported. Unused arrays must be empty. source_fact must copy an actual source text, never an explanation."
+    indices = list(range(len(payload.get("spans", []))))
+    system += "\nObjections may address only edits in the top-level input spans array. Valid span_index values for this request: " + canonical(indices) + ". Never use an objection to critique dialogue metadata. Cite source_fact from incident.sources[].text, not from the proposal JSON."
+    if not indices:
+        system += "\nThere are ZERO candidate spans to challenge. Return objections: [] exactly. Do not invent span 0. You may explain abstention in interpretation; it is not an objection."
     if payload.get("retry_feedback"):
         system += "\nThe prior attempt failed validation: " + canonical(payload["retry_feedback"]) + ". Produce a corrected reply; do not repeat that error."
     if payload.get("semantic_preservation") is False:
         system += "\nThis is the registered no_goal_preservation DISCOVERY ablation. Omit semantic goal screening and retain hard identity, price, option, action and source integrity. Do not remove candidates solely because of semantic Goal objections. No live actions are executed; independent evaluator preservation remains mandatory."
-    system += "\nReturn only one JSON object matching this schema: " + canonical(reply_schema(role, payload["stage"]))
+    system += "\nReturn only one JSON object matching this schema: " + canonical(reply_schema(role, payload["stage"], payload))
     return [{"role": "system", "content": system}, {"role": "user", "content": canonical(payload)}]
 
 
@@ -49,7 +55,7 @@ class OpenAIRoles:
         c = self.config
         fmt = {"type": c["response_format"]}
         if c["response_format"] == "json_schema":
-            fmt["json_schema"] = {"name": "seek_role", "strict": True, "schema": reply_schema(role, payload["stage"])}
+            fmt["json_schema"] = {"name": "seek_role", "strict": True, "schema": reply_schema(role, payload["stage"], payload)}
         reply = self.client.chat.completions.create(
             model=c["model"], messages=role_messages(role, payload),
             response_format=fmt, **{c["token_parameter"]: c["max_output_tokens"]}, **c["parameters"])
@@ -149,6 +155,11 @@ class Discussion:
                 return reply
             except Exception as exc:
                 feedback = {"code": failure_code, "expected_role": role, "expected_stage": stage}
+                if failure_code == "invalid_objection":
+                    feedback["valid_span_indices"] = list(range(len(context.get("spans", []))))
+                    feedback["instruction"] = ("Return objections: [] because there are no candidate spans."
+                        if not feedback["valid_span_indices"] else
+                        "Each objection must reference an input span index and have a nonempty reason; dialogue metadata is not an edit.")
                 self.journal.emit("defender_failure", {"role": role, "stage": stage, "retry": retry,
                                                         "error_type": type(exc).__name__, "code": failure_code})
                 if "budget_exhausted" in str(exc) or retry == self.config["agents"]["retries"]:

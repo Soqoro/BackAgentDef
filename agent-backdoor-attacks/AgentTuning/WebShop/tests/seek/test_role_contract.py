@@ -78,6 +78,41 @@ class RoleContractTests(unittest.TestCase):
         self.assertNotIn('SECRET', json.dumps(requests) + json.dumps(self.journal.records))
         self.assertEqual(requests[1]['retry_feedback']['code'], 'backend_error')
 
+    def test_empty_spans_require_empty_objections_in_request_schema(self):
+        payload = {'stage': 'challenge', 'spans': [], 'proposal': {'role': 'State', 'stage': 'proposal'}}
+        schema = reply_schema('Goal', 'challenge', payload)
+        self.assertEqual(schema['properties']['objections']['maxItems'], 0)
+        self.assertNotIn('maxItems', ROLE_SCHEMA['properties']['objections'])
+        prompt = role_messages('Goal', payload)[0]['content']
+        self.assertIn('ZERO candidate spans', prompt)
+        self.assertIn('State/proposal message is valid evidence', prompt)
+        self.assertIn('do not reject or rewrite its metadata', prompt)
+        self.assertNotIn('maxItems', reply_schema('Goal', 'challenge', {'spans': [{}]})['properties']['objections'])
+
+    def test_objection_to_nonexistent_span_is_rejected_and_retry_explains(self):
+        requests = []
+        class Backend(FakeRoles):
+            def call(self, role, payload):
+                requests.append(copy.deepcopy(payload))
+                result = super().call(role, payload)
+                if len(requests) == 1:
+                    reply = json.loads(result['text'])
+                    reply['objections'] = [{'span_index': 0, 'source_fact': 'role State',
+                        'reason': 'wrong role in proposal', 'change': 'reject'}]
+                    result['text'] = json.dumps(reply)
+                return result
+        discussion = Discussion(Backend(), self.config, self.journal)
+        reply = discussion.ask('Goal', self.incident, 'challenge', spans=[],
+                               proposal={'role': 'State', 'stage': 'proposal'})
+        self.assertEqual(reply['objections'], [])
+        feedback = requests[1]['retry_feedback']
+        self.assertEqual(feedback['code'], 'invalid_objection')
+        self.assertEqual(feedback['valid_span_indices'], [])
+        self.assertIn('Return objections: []', feedback['instruction'])
+        accepted = [r for r in self.journal.records if r['kind'] == 'dialogue']
+        self.assertEqual(len(accepted), 1)
+        self.assertEqual(accepted[0]['data']['retry'], 1)
+
     def test_smoke_exercises_all_three_roles(self):
         spec = importlib.util.spec_from_file_location('qwen_role_smoke', ROOT/'docs/seek/check_qwen_roles.py')
         module = importlib.util.module_from_spec(spec)

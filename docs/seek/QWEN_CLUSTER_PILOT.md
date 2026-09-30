@@ -252,3 +252,24 @@ If needed, repeat with row-0001 and a distinct output directory. Never overwrite
 the completed v2 discovery or force --resume after changing protocol/source.
 A corrected scientific discovery run needs a separately recorded run lineage;
 the diagnostic above deliberately avoids rerunning collection merely to test roles.
+
+### Empty-span challenge correction (role protocol v3)
+
+Job 1084245 accepted State/proposal with spans=[], then Goal/challenge incorrectly
+challenged the embedded State message's role/stage and referenced nonexistent
+span 0. Both Goal attempts were rejected as invalid_objection. The role-label
+correction worked; this was a different, observed dialogue interpretation failure.
+
+Protocol v3 explicitly limits assigned role/stage requirements to the current
+reply. Earlier State/proposal metadata is not a candidate edit for Goal to reject.
+The request lists valid span indices and constrains objections to an empty array
+when there are no spans. Invalid-objection retries include the valid indices and
+a concrete correction. The runtime index/source validator is unchanged; no invalid
+reply is silently repaired or accepted. Generation is still prompted JSON rather
+than grammar-constrained decoding, so real-model success remains to be measured.
+
+After syncing v3, repeat the one-GPU `SEEK_QWEN_MODE=roles` smoke above with a new
+output directory, `results/seek/diagnostics/qwen_roles_v3_row0`. Preserve the failed
+v2 diagnostic and scientific v2 results. State's no-edit abstention is appropriate
+for a source adapter that marks every page region hard/protected. A successful
+role smoke does not establish a causal candidate or remove that source limitation.
