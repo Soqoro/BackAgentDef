@@ -19,7 +19,7 @@ cd "$SOURCE_DIR"
 : "${SEEK_QWEN_PYTHON:?Set absolute isolated defender Python path}"
 : "${SEEK_QWEN_AGENTS:?Set prepared qwen_agents.json path}"
 mode="${SEEK_QWEN_MODE:-smoke}"
-case "$mode" in smoke|discover) ;; *) echo 'mode must be smoke or discover' >&2; exit 2;; esac
+case "$mode" in smoke|roles|discover) ;; *) echo 'mode must be smoke, roles or discover' >&2; exit 2;; esac
 if [[ "${SEEK_DRY_RUN:-0}" == 1 ]]; then
     printf 'mode=%s python=%s agents=%s\n' "$mode" "$SEEK_QWEN_PYTHON" "$SEEK_QWEN_AGENTS"
     exit 0
@@ -30,6 +30,13 @@ export TMPDIR="${SLURM_TMPDIR:-/tmp}"
 # Never assign CUDA_VISIBLE_DEVICES: indices are relative to the Slurm allocation.
 if [[ "$mode" == smoke ]]; then
     exec "$SEEK_QWEN_PYTHON" -u agent-backdoor-attacks/AgentTuning/WebShop/seek/qwen_worker.py --smoke-agents "$SEEK_QWEN_AGENTS"
+fi
+if [[ "$mode" == roles ]]; then
+    : "${SEEK_QWEN_ROW_ROOT:?Set saved pilot row directory}"
+    : "${SEEK_QWEN_SMOKE_OUTPUT:?Set a new diagnostic output directory}"
+    exec "$SEEK_QWEN_PYTHON" -u docs/seek/check_qwen_roles.py \
+      --agents "$SEEK_QWEN_AGENTS" --row-root "$SEEK_QWEN_ROW_ROOT" \
+      --output "$SEEK_QWEN_SMOKE_OUTPUT"
 fi
 # Invoke with --gres=gpu:2 --cpus-per-task=8 --mem=160G for discovery.
 export SEEK_PHASE=discover

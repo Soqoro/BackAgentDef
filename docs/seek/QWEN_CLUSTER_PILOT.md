@@ -203,3 +203,52 @@ config with seek_submit.sh (which enables resume). If imports still fail, inspec
 the new traceback before changing packages. Keep the failed logs and run directory.
 The code fix changes the source fingerprint: after syncing it, use new run IDs for
 inventory and the pilot instead of overwriting/resuming a run pinned to older source.
+
+## Wrong role labels in the v2 discovery pilot
+
+Discovery job 1083825 completed at the scheduler level but returned backend_failure
+for both rows. Its journal showed successful, non-truncated Qwen generation:
+row 0's Goal/challenge calls returned role State, and row 1's State/proposal calls
+returned role Goal. Both retries repeated their first response. State replies also
+used zero-length placeholder spans instead of an empty list. These are protocol
+failures; the logs do not indicate GPU allocation failure or generation timeout.
+
+Role protocol `seek-roles-v2` explicitly names the assigned role/stage, restricts
+the supplied schema to those exact values, and specifies empty-list abstention.
+Bounded retries now receive a safe validation code and expected role/stage, so a
+greedy retry is no longer given an identical prompt. Codes are journaled without
+raw exception text, paths or credentials. Budgets, preservation and validation
+checks remain in force. Prompted schemas are not constrained decoding guarantees.
+
+After syncing this fix, test the role protocol on a saved v2 incident using one
+GPU and a new diagnostic directory. No inventory, victim generation, replay or
+old result rewriting occurs. Keep the existing webshop_torchfix environment.
+
+```bash
+cd ~/BackAgentDef
+unset PYTHONPATH PYTHONHOME SEEK_DRY_RUN SEEK_AGENT_MODEL
+export PYTHONNOUSERSITE=1 CONDA_NO_PLUGINS=true
+export SEEK_REPO_ROOT="$PWD"
+export SEEK_QWEN_PYTHON=/dataset/suaq0001/seek-envs/qwen35-tf562/bin/python
+export SEEK_QWEN_AGENTS="$PWD/configs/seek/local/qwen_agents.json"
+export SEEK_QWEN_MODE=roles
+export SEEK_QWEN_ROW_ROOT="$PWD/results/seek/sneakers_pilot_v2/real/row-0000"
+export SEEK_QWEN_SMOKE_OUTPUT="$PWD/results/seek/diagnostics/qwen_roles_v2_row0"
+mkdir -p logs/seek
+SEEK_DRY_RUN=1 bash seek_qwen.sh
+sbatch --partition=PH100q --nodes=1 --ntasks=1 \
+  --gres=gpu:1 --cpus-per-task=4 --mem=96G --time=00:30:00 seek_qwen.sh
+```
+
+Inspect `result.json` in SEEK_QWEN_SMOKE_OUTPUT after completion. A pass requires
+State/proposal, Goal/challenge, State/revision and Action/predicate responses to
+pass the existing Discussion validator on a real public incident. The eight-call
+budget permits at most one retry per request; timeouts and process cleanup use the
+same LocalRoles transport as discovery. No causal/efficacy claim is made. The
+result explicitly records victim_calls=0 and scientific_confirmation=false.
+The original minimal `{\"ok\": true}` smoke remains a separate, weaker check.
+
+If needed, repeat with row-0001 and a distinct output directory. Never overwrite
+the completed v2 discovery or force --resume after changing protocol/source.
+A corrected scientific discovery run needs a separately recorded run lineage;
+the diagnostic above deliberately avoids rerunning collection merely to test roles.

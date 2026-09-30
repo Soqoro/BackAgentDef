@@ -1,3 +1,4 @@
+import copy
 import json
 import time
 
@@ -14,11 +15,22 @@ ROLE_SCHEMA = obj(role=enum("Goal", "State", "Action"), stage=STR, spans=array(S
                   prediction=STR, alternative=STR, revision=STR, interpretation=STR)
 
 
+def reply_schema(role, stage):
+    schema = copy.deepcopy(ROLE_SCHEMA)
+    schema["properties"]["role"] = enum(role)
+    schema["properties"]["stage"] = enum(stage)
+    return schema
+
+
 def role_messages(role, payload):
     system = PROMPTS[role]
+    system += "\nYour assigned role is " + canonical(role) + "; your assigned stage is " + canonical(payload["stage"]) + ". Return these exact values in role and stage. Other roles mentioned in evidence do not change your assignment."
+    system += "\nIf there are no eligible narrative spans, return spans: []. Never insert empty or zero-length placeholder spans. Use predicate: null when no predicate is requested or supported. Unused arrays must be empty. source_fact must copy an actual source text, never an explanation."
+    if payload.get("retry_feedback"):
+        system += "\nThe prior attempt failed validation: " + canonical(payload["retry_feedback"]) + ". Produce a corrected reply; do not repeat that error."
     if payload.get("semantic_preservation") is False:
         system += "\nThis is the registered no_goal_preservation DISCOVERY ablation. Omit semantic goal screening and retain hard identity, price, option, action and source integrity. Do not remove candidates solely because of semantic Goal objections. No live actions are executed; independent evaluator preservation remains mandatory."
-    system += "\nReturn only one JSON object matching this schema: " + canonical(ROLE_SCHEMA)
+    system += "\nReturn only one JSON object matching this schema: " + canonical(reply_schema(role, payload["stage"]))
     return [{"role": "system", "content": system}, {"role": "user", "content": canonical(payload)}]
 
 
@@ -37,13 +49,9 @@ class OpenAIRoles:
         c = self.config
         fmt = {"type": c["response_format"]}
         if c["response_format"] == "json_schema":
-            fmt["json_schema"] = {"name": "seek_role", "strict": True, "schema": ROLE_SCHEMA}
-        system = PROMPTS[role]
-        if payload.get("semantic_preservation") is False:
-            system += "\nThis is the registered no_goal_preservation DISCOVERY ablation. Omit semantic goal screening and retain hard identity, price, option, action and source integrity. Do not remove candidates solely because of semantic Goal objections. No live actions are executed; independent evaluator preservation remains mandatory."
+            fmt["json_schema"] = {"name": "seek_role", "strict": True, "schema": reply_schema(role, payload["stage"])}
         reply = self.client.chat.completions.create(
-            model=c["model"], messages=[{"role": "system", "content": system},
-                                       {"role": "user", "content": canonical(payload)}],
+            model=c["model"], messages=role_messages(role, payload),
             response_format=fmt, **{c["token_parameter"]: c["max_output_tokens"]}, **c["parameters"])
         choice = reply.choices[0]
         return {"text": choice.message.content or "", "refusal": bool(getattr(choice.message, "refusal", None)),
@@ -103,31 +111,46 @@ class Discussion:
     def ask(self, role, incident, stage, **context):
         payload = dict(incident=incident.to_dict(), stage=stage, **context)
         probes = set(context.get("probes", {}))
+        feedback = None
         for retry in range(self.config["agents"]["retries"] + 1):
-            key = dict(version=VERSION, role=role, phase=self.phase, payload=payload,
+            request = dict(payload)
+            if feedback:
+                request["retry_feedback"] = feedback
+            failure_code = "backend_error"
+            key = dict(version=VERSION, role=role, phase=self.phase, payload=request,
                        agent=self.config["agents"], retry=retry)
             try:
                 result = self.journal.call(key, "defender", self.phase, self.config["budgets"]["defender"],
-                                           lambda: self.backend.call(role, payload))
+                                           lambda: self.backend.call(role, request))
+                failure_code = "refusal_or_incomplete_reply"
                 if result["refusal"] or result["finish_reason"] != "stop":
                     raise Invalid("defender_refusal_or_incomplete_reply")
+                failure_code = "invalid_json"
                 reply = json.loads(result["text"])
+                failure_code = "schema_mismatch"
                 validate(reply, ROLE_SCHEMA)
+                failure_code = "role_stage_mismatch"
                 if reply["role"] != role or reply["stage"] != stage:
                     raise Invalid("role/stage mismatch")
+                failure_code = "nonexistent_probe_citation"
                 if set(reply["probe_ids"]) - probes:
                     raise Invalid("nonexistent probe citation")
+                failure_code = "invalid_probe_mask"
                 if any(any(type(bit) is not int or bit not in (0, 1) for bit in mask) for mask in reply["approved_masks"]):
                     raise Invalid("invalid probe mask")
                 source_facts = {s["text"] for s in payload["incident"]["sources"]}
+                failure_code = "invalid_objection"
                 if any(o["span_index"] < 0 or o["span_index"] >= len(context.get("spans", [])) or not o["reason"] for o in reply["objections"]):
                     raise Invalid("invalid objection index or missing reason")
+                failure_code = "unsupported_objection_source"
                 if any(o["source_fact"] not in source_facts for o in reply["objections"]):
                     raise Invalid("objection lacks exact source fact")
                 self.journal.emit("dialogue", {"role": role, "stage": stage, "reply": reply, "retry": retry})
                 return reply
             except Exception as exc:
-                self.journal.emit("defender_failure", {"role": role, "retry": retry, "error_type": type(exc).__name__})
+                feedback = {"code": failure_code, "expected_role": role, "expected_stage": stage}
+                self.journal.emit("defender_failure", {"role": role, "stage": stage, "retry": retry,
+                                                        "error_type": type(exc).__name__, "code": failure_code})
                 if "budget_exhausted" in str(exc) or retry == self.config["agents"]["retries"]:
                     raise Invalid("backend_failure: bounded defender retries exhausted") from exc
                 if not self.backend.simulated:

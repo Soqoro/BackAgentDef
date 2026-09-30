@@ -119,10 +119,10 @@ for line in sys.stdin:
         with patch.dict(os.environ, {'SLURM_JOB_ID': 'CPU_FIXTURE', 'PYTHONHOME': '/missing/jupyter', 'PYTHONPATH': '/foreign/site-packages'}):
             role = LocalRoles(self.agents)
             try:
-                reply = role.call('Goal', {})
+                reply = role.call('Goal', {'stage': 'challenge'})
                 proc = role.process
                 self.assertTrue(reply['runtime']['simulated_fixture'])
-                role.call('State', {})
+                role.call('State', {'stage': 'proposal'})
                 self.assertIs(role.process, proc)
             finally:
                 role.close()
@@ -134,7 +134,7 @@ for line in sys.stdin:
         with patch.dict(os.environ, {'SLURM_JOB_ID': 'CPU_FIXTURE'}):
             role = LocalRoles(self.agents)
             with self.assertRaisesRegex(Invalid, 'timeout'):
-                role.call('Goal', {})
+                role.call('Goal', {'stage': 'challenge'})
             self.assertIsNone(role.process)
 
     def test_cpu_metadata_command_imports_no_ml(self):
