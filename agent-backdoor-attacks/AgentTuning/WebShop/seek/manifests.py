@@ -161,3 +161,25 @@ def build_manifest(inventory, sizes, training=None, seed="seek-v1"):
                 "training_inventory_hash": digest(training) if training is not None else None,
                 "tasks": result, "selection": {"seed": seed, "unit": "connected_task_product_group", "sizes": sizes}}
     return validate_manifest(manifest, namespace)
+
+
+def select_collection_tasks(manifest, limit):
+    """One deterministic representative per independent group, in split order.
+
+    The manifest is already outcome-independent. Never fill a pilot with sibling
+    variants merely because one product contributes many rows.
+    """
+    if type(limit) is not int or limit < 1:
+        raise Invalid("collection limit must be a positive group count")
+    groups = {}
+    for task in manifest["tasks"]:
+        group = task["dependence_group"]
+        if group in groups and groups[group][0]["split"] != task["split"]:
+            raise Invalid("collection group crosses splits")
+        groups.setdefault(group, []).append(task)
+    representatives = [min(tasks, key=lambda t: (t["task_fingerprint"], t["local_id"]))
+                       for tasks in groups.values()]
+    representatives.sort(key=lambda t: (SPLITS.index(t["split"]), t["dependence_group"]))
+    if len(representatives) < limit:
+        raise Invalid(f"insufficient collection groups: need {limit}; have {len(representatives)}")
+    return representatives[:limit]

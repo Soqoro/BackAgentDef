@@ -4,7 +4,7 @@ import importlib.util
 import random
 from pathlib import Path
 
-from .manifests import SPLITS, build_manifest, resolve
+from .manifests import SPLITS, build_manifest, resolve, select_collection_tasks
 from .replay import query
 from .schemas import Invalid, PublicIncident, digest
 from .snapshot_io import save_snapshot, snapshot
@@ -123,11 +123,17 @@ def collect_real(config, row, victim, journal, root):
     from defenses.gate import GateDefense
     manifest = read_json(resolve(config["task_manifest"]))
     immutable_json(Path(root) / "task_manifest.json", manifest)
+    selected_tasks = select_collection_tasks(manifest, row["collect_limit"])
+    immutable_json(Path(root) / "collection_selection.json", {
+        "version": "distinct_groups_v1", "manifest_hash": digest(manifest),
+        "unit": "one_representative_per_dependence_group", "requested_groups": row["collect_limit"],
+        "tasks": [{k: t[k] for k in ("local_id", "task_fingerprint", "dependence_group", "split")}
+                  for t in selected_tasks]})
     legacy, env, _ = open_environment(config)
     snapshots = []
     e = config["environment"]
     fp = {"environment_fingerprint": e["environment_hash"], "filter_fingerprint": digest(e["filter"]), "catalogue_fingerprint": e["catalogue_hash"]}
-    for task in manifest["tasks"][:row["collect_limit"]]:
+    for task in selected_tasks:
         env.reset(task["local_id"])
         actual_instruction = env.server.goals[task["local_id"]]["instruction_text"]
         if actual_instruction != task["instruction"] or digest(env.server.goals[task["local_id"]]) != task["trajectory_fingerprint"]:

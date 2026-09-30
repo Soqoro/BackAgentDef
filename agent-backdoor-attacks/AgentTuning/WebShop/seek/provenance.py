@@ -1,7 +1,7 @@
 """Evaluator/loader-only provenance. Never imported by roles or the controller."""
 from pathlib import Path
 import os
-from .manifests import resolve, validate_manifest
+from .manifests import resolve, validate_manifest, select_collection_tasks
 from .schemas import Invalid, digest
 from .storage import read_json
 from .victim import file_hash
@@ -112,6 +112,8 @@ def preflight(config, row_index=0, phase=None):
             raise Invalid("environment/filter/order/catalogue fingerprints missing")
         if phase != "inventory":
             manifest = validate_manifest(read_json(resolve(config["task_manifest"])), namespace)
+            if phase == "collect":
+                select_collection_tasks(manifest, row["collect_limit"])
             if manifest["overlap_status"] != "excluded":
                 limitations.append("training/development overlap unknown; confirmatory claims blocked")
     except (Invalid, OSError, ValueError) as exc:

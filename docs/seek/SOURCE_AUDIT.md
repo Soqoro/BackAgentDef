@@ -99,3 +99,37 @@ narrative markers, missing/misaligned HTML, Shield transformations, ablation goa
 protection, and read-only audit behavior. These are simulated source-layout tests,
 not real-model or real-catalogue semantic verification. The user's successful
 Qwen role smoke and valid v2 replay remain separate reported cluster evidence.
+
+## Review of the user-supplied v2 cluster export
+
+The supplied audit contains 16 real snapshot records: eight search-start pages and
+eight search-result pages, all in the development split. There are four distinct
+instructions, varying shoe size (8, 8.5, 9, 9.5) while retaining the same other
+requirements. Start pages show site identity, the instruction and Search; result
+pages show the instruction, pagination, product IDs/titles and prices. No separate
+incidental narrative field is established by these actual observations. All 16
+records lack HTML provenance, as expected for the older capture implementation.
+
+The reported zero editable regions is the conservative adapter result, not proof
+that all possible semantics-preserving interventions are impossible or that the
+checkpoints are clean. Adding HTML alone would not turn product facts into
+incidental content. No more GPU discovery is warranted on these same snapshots.
+
+There is also a sampling limitation: the v2 collect_real implementation slices the first
+collect_limit rows from a manifest that expands related task/product groups
+contiguously. Four selected task rows therefore need not represent four independent
+groups. The export omits dependence_group, so exact group membership is not
+established by this report alone; it must be checked in tasks.json/snapshots. The
+16 replay records are repeated steps/channels, not 16 independent causal cases.
+Before a broader study, selection must be specified at the group level and retain
+outcome-independent selection and held-out separation.
+
+The next scientific prerequisite is evaluator-side checkpoint/training provenance:
+identify the actual cue, channel and poisoning construction associated with each
+checkpoint, without revealing those labels to detector roles. If those cues are
+legitimate task/product facts, the strict removal/insertion design is inapplicable
+unless an independently justified semantics-preserving intervention is found. A
+removable-cue trained checkpoint would be a separate campaign under the existing
+supplemental-training specification; none is assumed or trained here.
+
+The subsequent selection fix uses one deterministic task representative per dependence group and freezes collection_selection.json before environment construction. A four-task future pilot now uses four groups, with the existing development/discovery/holdout split ordering preserved. Insufficient groups fail preflight; sibling variants are not used to pad the count. This does not retroactively change v2 sampling or establish editability.

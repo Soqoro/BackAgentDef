@@ -40,3 +40,7 @@ The cluster user located Qwen3.5-27B revision `fc05daec18b0a78c049392ed2e771dde8
 ## Source provenance audit update
 
 The new mapper records exact DOM-to-observation field boundaries, but the legacy templates provide no independently established incidental narrative slot. Product prose is decision-relevant and remains hard. Run the CPU-only export in [SOURCE_AUDIT.md](SOURCE_AUDIT.md) against the cluster v2 snapshots to review actual exposures. Old snapshots lack HTML provenance; they must not be retroactively relabeled. No further GPU run is needed to gather this evidence.
+
+## Private training-evidence inventory
+
+Use [PRIVATE_PROVENANCE_AUDIT.md](PRIVATE_PROVENANCE_AUDIT.md) for the standalone evaluator-only CPU audit and exact cluster command. It checks current checkpoint bytes and inventories candidate training metadata without promoting provenance or exposing cue labels to roles. Actual query training data and contemporaneous checkpoint-to-run bindings remain missing. Future real collection now selects distinct dependence groups; completed v2 sampling/results remain unchanged.
