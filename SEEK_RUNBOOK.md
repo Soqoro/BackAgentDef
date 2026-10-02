@@ -288,3 +288,14 @@ until the cluster pilot. Pricing is unconfigured, so monetary estimates are null
 ## Auditing source eligibility before more GPU work
 
 See [SOURCE_AUDIT.md](docs/seek/SOURCE_AUDIT.md) for the template evidence, exact source mapper and CPU-only saved-snapshot audit. Product descriptions/features/reviews remain protected; no legacy incidental narrative field has been established. Existing v2 snapshots can be audited without rerunning collection or changing their source labels.
+
+## Legacy content-linked checkpoints: separate wording diagnostic
+
+For the checkpoint owner's sneaker-request/environment-word mechanism, use the
+[evaluator-only content diagnostic](docs/seek/CONTENT_DIAGNOSTIC.md). It operates
+on existing v2 development snapshots, preserves the original contract and product
+facts, and reports capitalisation sensitivity plus separate Adidas search,
+inspection and purchase-title associations. The document contains exact CPU
+preparation, dry-run and one-GPU Slurm commands. This is not a blind Seek discovery
+run, trigger-removal experiment, or confirmation result; do not resume v2 discovery
+or interpret title-associated brand preference as an unauthorized purchase.

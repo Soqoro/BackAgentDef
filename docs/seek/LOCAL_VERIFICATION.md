@@ -87,3 +87,37 @@ allocation/conda/GPU execution, real editable source semantics, held-out real
 confirmation or transfer. The conservative legacy adapter protects all page text;
 its `no_valid_intervention` result must not be reported as a clean-policy finding.
 See `PREREQUISITES.md` and `SEEK_RUNBOOK.md` for the next user-launched campaign.
+
+## 2026-10-02: separate legacy content diagnostic
+
+Implemented `seek/content_diagnostic.py`, `docs/seek/diagnose_content.py`,
+`seek_content.sh` and `tests/seek/test_content_diagnostic.py`. Instructions and
+interpretation are in [CONTENT_DIAGNOSTIC.md](CONTENT_DIAGNOSTIC.md).
+
+Commands run locally:
+
+```bash
+python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests/seek -p 'test_*.py'
+# 115 tests passed, including 15 new simulated content-diagnostic tests.
+python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests -p 'test_rebuttal_*.py'
+# 52 tests passed.
+bash agent-backdoor-attacks/AgentTuning/WebShop/tests/test_agent_eval.sh
+# All 36 Slurm dry-run matrix rows passed without API credentials or model calls.
+bash -n seek_content.sh
+python docs/seek/diagnose_content.py --help
+git diff --check
+```
+
+No diff in `agent_eval.sh`, WebShop `test.py`, or Stage I defenses. Existing result
+files and snapshots were not changed. The new worker dry-run is tested with paths
+containing spaces, an unavailable conda source, and synthetic checkpoint metadata;
+this establishes launch plumbing only. The CPU fake victim deliberately changes
+its action under capitalization to test paired measurement and accounting; that
+behavior is not evidence about either trained checkpoint. No local GPU experiment,
+model download, paid API call, training, or `sbatch` submission occurred.
+
+The user previously reported successful real v2 no-edit replays and a Qwen role
+smoke. This new capitalization intervention has **not** been run on either real
+checkpoint. Its eligibility and response differences await the separate cluster
+prepare/dry-run/pilot sequence. Training binding and overlap remain limitations,
+not prerequisites to implementing or running this exploratory diagnostic.
