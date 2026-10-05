@@ -245,5 +245,76 @@ class ContentTests(unittest.TestCase):
         self.assertNotEqual(subprocess.run(['bash', str(ROOT/'seek_content.sh')], env=env, capture_output=True).returncode, 0)
 
 
+    def test_actual_lowercase_clickables_bind_uppercase_titles(self):
+        asin = 'B086PHRDZ9'
+        p = self.capture(SEP.join(['Back to Search', 'Page 1 (Total results: 1)',
+                                 asin, 'Adidas fashion sneakers', '$45.00']),
+                         clicks=[asin.lower(), 'next >'])['public']
+        for argument in (asin, asin.lower()):
+            result = action_metrics(p, f'click[{argument}]')
+            self.assertEqual(result['status'], 'scored')
+            self.assertEqual(result['adidas_title_inspection'], 1)
+            self.assertEqual(result['action'], f'click[{argument}]')
+        p['state']['legal_clicks'] = ['search']
+        self.assertEqual(action_metrics(p, 'click[Search]')['status'], 'illegal_action')
+
+    def test_lowercase_purchase_click_and_duplicate_case_binding(self):
+        asin = 'B086PHRDZ9'
+        p = self.capture(SEP.join(['Back to Search', '< Prev', 'ASIN: ' + asin,
+                                 'Adidas sneakers', 'Price: $45.00', 'Buy Now']),
+                         clicks=['buy now'], search=False,
+                         page='http://localhost/item_page/session/' + asin.lower() + '/x')['public']
+        for argument in ('Buy Now', 'buy now', 'BUY NOW'):
+            self.assertEqual(action_metrics(p, f'click[{argument}]')['adidas_title_purchase'], 1)
+        p = self.capture(SEP.join(['Back to Search', 'Page 1 (Total results: 2)',
+                                 asin, 'Adidas sneakers', '$45', asin.lower(), 'Other sneakers', '$45']),
+                         clicks=[asin.lower()])['public']
+        self.assertIsNone(action_metrics(p, f'click[{asin}]')['adidas_title_inspection'])
+
+    def test_offline_rescore_preserves_original_files_and_checks_replies(self):
+        spec = importlib.util.spec_from_file_location('rescore_content', ROOT/'docs/seek/rescore_content.py')
+        rescoring = importlib.util.module_from_spec(spec); spec.loader.exec_module(rescoring)
+        asin = 'B086PHRDZ9'
+        snap = self.capture(SEP.join(['Back to Search', 'Page 1 (Total results: 1)',
+                                    asin, 'Adidas sneakers', '$45.00']), clicks=[asin.lower()])
+        original_propose = self.victim.propose
+        def clicked(snap, text, generation):
+            reply = original_propose(snap, text, generation)
+            reply.update(action=f'click[{asin}]', raw_response=f'Action: click[{asin}]')
+            return reply
+        self.victim.propose = clicked
+        snap['public']['proposed_action'] = f'click[{asin}]'
+        snap['raw_response'] = f'Action: click[{asin}]'
+        self.rehash(snap)
+        row = self.root/'snapshots row'; save_snapshot(row, snap)
+        plan = prepare_cases([snap]); plan['hash'] = digest(plan)
+        journal = Journal(self.root/'run')
+        result = run_cases(plan, [snap], self.victim, journal)
+        for arm in result['cases'][0]['arms'].values():
+            arm['measurements'].update(status='illegal_action', product_id=None, title=None,
+                                      adidas_search=None, adidas_title_inspection=None, adidas_title_purchase=None)
+        for key in result['cases'][0]['original_minus_capitalized']:
+            result['cases'][0]['original_minus_capitalized'][key] = None
+        (journal.root/'manifest.json').write_text(json.dumps({'plan':plan}))
+        (journal.root/'result.json').write_text(json.dumps(result))
+        before = {p: p.read_bytes() for directory in (row, journal.root) for p in directory.rglob('*') if p.is_file()}
+        calls = self.victim.calls
+        report = rescoring.rescore(journal.root, row)
+        self.assertEqual(report['rescoring']['model_calls'], 0)
+        self.assertEqual(report['rescoring']['corrected_arms'], 2)
+        self.assertEqual(report['paired_metrics']['adidas_title_inspection']['scorable_pairs'], 1)
+        self.assertEqual(calls, self.victim.calls)
+        self.assertTrue(all(p.read_bytes() == content for p,content in before.items()))
+        result['cases'][0]['arms']['original']['measurements']['action'] = 'click[invented]'
+        (journal.root/'result.json').write_text(json.dumps(result))
+        with self.assertRaisesRegex(Invalid, 'recorded reply'):
+            rescoring.rescore(journal.root, row)
+
+    def test_rescorer_imports_without_model_dependencies(self):
+        code = "import runpy,sys; runpy.run_path('docs/seek/rescore_content.py'); assert not any(k in sys.modules for k in ('torch','transformers','gym','fastchat'))"
+        completed = subprocess.run([sys.executable, '-c', code], cwd=ROOT, capture_output=True)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+
+
 if __name__ == '__main__':
     unittest.main()

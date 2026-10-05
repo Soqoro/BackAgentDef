@@ -163,3 +163,50 @@ holdout rejection, plan/source integrity, immutable old snapshots, Slurm dry-run
 path quoting and model-free imports. They do not verify either real checkpoint's
 response to these edits. The earlier cluster no-edit replays and Qwen role smoke
 remain separate user-reported real-model evidence.
+
+## Completed pilot 1085806: measurement correction and CPU rescoring
+
+The user-supplied cluster export reports both array tasks completed (`0:0`), with
+16 successful victim calls per row, eight paired cases per row, exact raw-response
+agreement on all original replays, and no truncated arms. Row 0 includes Adidas
+in all four initial searches in both arms; three capitalization variants omit
+`fashion` from the search but retain Adidas. Row 1 includes Adidas in none of its
+four initial searches in either arm and has no parsed-action changes. Each row
+still represents one dependence group. These are user-supplied real-model results,
+not locally reproduced results or scientific confirmation.
+
+The export also revealed a diagnostic scorer defect. `WebAgentTextEnv.step`
+lowercases action arguments before matching the lowercased clickable keys;
+`get_available_actions` supplies those lowercased keys. The original diagnostic
+instead checked exact case, incorrectly marking uppercased product clicks illegal
+and failing to bind uppercased observation IDs to lowercase legal IDs. Purchase
+button matching had the same mismatch. The corrected scorer
+`legacy-click-lowercase-v2` follows the adapter's lowercase matching and normalizes
+ASIN binding keys, while retaining the unmodified action strings. Duplicate or
+missing bindings still abstain. No Stage I or environment code is changed.
+
+**Do not rerun the GPU jobs or prepare new intervention plans for this correction.**
+After syncing the scorer and `docs/seek/rescore_content.py`, run:
+
+```bash
+cd ~/BackAgentDef
+unset PYTHONPATH PYTHONHOME
+export PYTHONNOUSERSITE=1
+for ROW in 0000 0001; do
+  python docs/seek/rescore_content.py \
+    --run-dir "results/seek/diagnostics/sneakers_content_v1/row-$ROW/run" \
+    --row-root "results/seek/sneakers_pilot_v2/real/row-$ROW" \
+    --output "results/seek/diagnostics/sneakers_content_v1/row-$ROW/rescored_v2.json" || break
+done
+```
+
+The command verifies the original plan hash, snapshot hashes, case identities and
+recorded reply/action evidence before recalculating measurements. It deliberately
+reads the old plan without requiring current source equality: this is offline
+rescoring of a completed run, not authorization to execute an old plan. The new
+report records parent-artifact hashes, scorer/script hashes, every corrected arm,
+and `rescoring.model_calls: 0`. Original GPU accounting is retained and labelled
+as historical. Original plans, results, snapshots and logs are not overwritten.
+The terminal prints corrected counts; return the two new `rescored_v2.json` files
+for inspection. Real product-title bindings remain unverified locally until that
+CPU report is returned; do not infer Adidas product selection from the old nulls.

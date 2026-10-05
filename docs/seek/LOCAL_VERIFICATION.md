@@ -121,3 +121,22 @@ smoke. This new capitalization intervention has **not** been run on either real
 checkpoint. Its eligibility and response differences await the separate cluster
 prepare/dry-run/pilot sequence. Training binding and overlap remain limitations,
 not prerequisites to implementing or running this exploratory diagnostic.
+
+## 2026-10-06: legacy click normalization and offline rescoring
+
+The diagnostic scorer now matches the environment's lowercased click arguments,
+lowercase legal-click keys and case-normalized product-ID bindings, including
+`Buy Now`. Raw proposals and the environment itself remain unchanged. Added
+`docs/seek/rescore_content.py` for immutable CPU-only rescoring of completed
+original runs. Tests cover actual lowercase clickables with uppercase titles,
+case-equivalent duplicate ID rejection, purchase normalization, unknown-action
+rejection, original-file preservation, reply/plan/snapshot verification and
+model-free imports. The focused content suite has 19 passing CPU tests. These
+are synthetic fixtures; corrected product metrics on the user's real snapshots
+await the cluster CPU rescore, with no new generation required.
+
+Full Seek regression command `python -m unittest discover -s
+agent-backdoor-attacks/AgentTuning/WebShop/tests/seek -p 'test_*.py'` passed all
+119 tests after this correction. `git diff --check` also passed. Protected
+`agent_eval.sh`, `test.py` and `web_agent_text_env.py` have no diff. No GPU jobs,
+model downloads, paid APIs or training were run.
