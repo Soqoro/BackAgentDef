@@ -150,3 +150,38 @@ range rejection. All eight result-page observations in the user's earlier source
 audit parse to the same Levi's title when supplied a minimal legal-click context;
 this is an observation-parser check, not full snapshot or GPU verification.
 Original cluster artifacts remain untouched; `rescored_v3.json` is a new output.
+
+## 2026-10-06: reviewed lexical diagnostic
+
+Added `seek/lexical_diagnostic.py` and eight synthetic CPU tests; the existing
+`docs/seek/diagnose_content.py` and `seek_content.sh` now support separate lexical
+plans without changing capitalization artifacts or the original Seek controller.
+The complete protocol, semantic review, and ordered cluster commands are in
+[LEXICAL_DIAGNOSTIC.md](LEXICAL_DIAGNOSTIC.md).
+
+Validation run:
+
+```bash
+python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests/seek -p 'test_*.py'
+# 129 tests passed.
+python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests -p 'test_rebuttal_*.py'
+# 52 tests passed.
+bash agent-backdoor-attacks/AgentTuning/WebShop/tests/test_agent_eval.sh
+# All 36 launcher dry-run rows passed.
+bash -n seek_content.sh
+git diff --check
+```
+
+New tests cover exact goal-only variants, unchanged snapshots, review gating and
+wording binding, exposure and initial-page eligibility, real-template lowercase
+Search button handling, held-out rejection, forged edits, no-edit replay failure,
+truncation before generation, CPU plan preparation, and a simulated three-arm
+contrast. The artificial victim's lexical response is deliberately constructed
+for testing; no trained-model effect or semantic equivalence is established.
+
+No changes to `agent_eval.sh`, Stage I defenses, `test.py`, existing results or
+checkpoint files. No GPU work, model download, paid API, training or Slurm
+submission occurred. Outstanding prerequisites: synchronize the code, prepare
+fresh lexical plans on the cluster, review the exact category reformulations,
+and then run the bounded Slurm pilot. The reported semantic-category mechanism
+and product-text observation mechanism remain outside this lexical test's scope.

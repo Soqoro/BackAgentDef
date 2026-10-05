@@ -37,6 +37,14 @@ def summary(plan):
     return {k: v for k, v in plan.items() if k not in ("cases", "source", "hash")}
 
 
+def protocol_module(protocol):
+    from seek import content_diagnostic, lexical_diagnostic
+    for module in (content_diagnostic, lexical_diagnostic):
+        if protocol == module.VERSION:
+            return module
+    raise Invalid('unknown diagnostic protocol')
+
+
 def checked_plan(path):
     plan = read_json(path)
     if plan["hash"] != digest({k: v for k, v in plan.items() if k != "hash"}):
@@ -44,7 +52,7 @@ def checked_plan(path):
     if plan["source"] != source():
         raise Invalid("diagnostic source changed; prepare a fresh plan and output")
     snaps = load_snapshots(plan["row_root"])
-    expected = prepare_cases(snaps, plan["max_cases"])
+    expected = protocol_module(plan["protocol"]).prepare_cases(snaps, plan["max_cases"])
     expected.update(row_root=plan["row_root"], max_cases=plan["max_cases"], source=source())
     expected["hash"] = digest(expected)
     if expected != plan:
@@ -77,6 +85,7 @@ def main():
     prep.add_argument("--row-root", required=True)
     prep.add_argument("--output", required=True, help="new directory outside the original row")
     prep.add_argument("--max-cases", type=int, default=8)
+    prep.add_argument("--protocol", choices=("capitalization", "lexical"), default="capitalization")
     run = commands.add_parser("run", help="one victim GPU, no Qwen/API/environment; requires Slurm unless dry-run")
     run.add_argument("--plan", required=True)
     run.add_argument("--registry", required=True)
@@ -87,20 +96,33 @@ def main():
         if args.command == "prepare":
             row = str(Path(args.row_root).resolve())
             output = separate_output(args.output, row)
-            plan = prepare_cases(load_snapshots(row), args.max_cases)
+            if args.protocol == 'lexical':
+                from seek import lexical_diagnostic as module
+            else:
+                from seek import content_diagnostic as module
+            plan = module.prepare_cases(load_snapshots(row), args.max_cases)
             plan.update(row_root=row, max_cases=args.max_cases, source=source())
             plan["hash"] = digest(plan)
             output.mkdir(parents=True, exist_ok=False)
             immutable_json(output / "plan.json", plan)
             immutable_json(output / "summary.json", summary(plan))
+            if hasattr(module, "review_template"):
+                immutable_json(output / "review.json", module.review_template(plan))
             print(json.dumps(summary(plan), indent=2))
             return 0
         plan, snaps = checked_plan(args.plan)
         output = separate_output(args.output, plan["row_root"])
+        module = protocol_module(plan['protocol'])
+        review = None
+        if not plan['eligible_cases']:
+            raise Invalid('no eligible cases; no GPU diagnostic warranted')
+        if hasattr(module, 'validate_review'):
+            review = read_json(Path(args.plan).parent/'review.json')
+            module.validate_review(plan, review)
         if args.dry_run:
             entry, _ = loader_entry(plan, snaps, args.registry)
             print(json.dumps({"status": "ready" if plan["eligible_cases"] else "inconclusive",
-                              "protocol": VERSION, "checkpoint_alias": entry["alias"],
+                              "protocol": plan["protocol"], "checkpoint_alias": entry["alias"],
                               "eligible_cases": plan["eligible_cases"], "max_victim_calls": plan["max_victim_calls"],
                               "model_calls": 0, "weight_hashes_verified": False, "output": str(output)}, indent=2))
             return 0
@@ -110,10 +132,10 @@ def main():
         if not plan["eligible_cases"]:
             raise Invalid("no eligible cases; no GPU diagnostic warranted")
         output.mkdir(parents=True, exist_ok=False)
-        immutable_json(output / "manifest.json", {"plan": plan, "slurm_job_id": os.environ["SLURM_JOB_ID"],
+        immutable_json(output / "manifest.json", {"plan": plan, "semantic_review": review, "slurm_job_id": os.environ["SLURM_JOB_ID"],
                                                   "initial_status": "incomplete"})
         journal = Journal(output)
-        result = {"protocol": VERSION, "status": "failed", "scientific_confirmation": False, "simulated": False}
+        result = {"protocol": plan["protocol"], "status": "failed", "scientific_confirmation": False, "simulated": False}
         try:
             def interrupted(signum, frame):
                 raise InterruptedError("Slurm termination")
@@ -124,7 +146,10 @@ def main():
             immutable_json(output / "runtime.json", {"checkpoint_identity": entry["identity"],
                            "weights_verified": True, "backend": victim.backend_identity,
                            "gpu": victim.torch.cuda.get_device_name(0), "visible_device": 0})
-            result = run_cases(plan, snaps, victim, journal)
+            if review is None:
+                result = module.run_cases(plan, snaps, victim, journal)
+            else:
+                result = module.run_cases(plan, snaps, victim, journal, review=review)
         except Exception as exc:
             result["error_type"] = type(exc).__name__
             result["reason"] = str(exc) if isinstance(exc, Invalid) else "See worker stderr and events; no successful result assumed"

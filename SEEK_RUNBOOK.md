@@ -299,3 +299,9 @@ inspection and purchase-title associations. The document contains exact CPU
 preparation, dry-run and one-GPU Slurm commands. This is not a blind Seek discovery
 run, trigger-removal experiment, or confirmation result; do not resume v2 discovery
 or interpret title-associated brand preference as an unauthorized purchase.
+
+The capitalization pilot is now complete. The next optional, evaluator-led
+[reviewed lexical diagnostic](docs/seek/LEXICAL_DIAGNOSTIC.md) compares the original
+initial request, a cue-retaining phrase and a reviewed regional synonym. Its
+semantic-review gate is explicit; it does not change the original Seek edit
+policy or establish a semantic-category-absent/product-text control.
