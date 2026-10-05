@@ -140,3 +140,13 @@ agent-backdoor-attacks/AgentTuning/WebShop/tests/seek -p 'test_*.py'` passed all
 119 tests after this correction. `git diff --check` also passed. Protected
 `agent_eval.sh`, `test.py` and `web_agent_text_env.py` have no diff. No GPU jobs,
 model downloads, paid APIs or training were run.
+
+### 2026-10-06: native WebShop price ranges
+
+Scorer v3 accepts WebShop's `$low to $high` price fields for title binding. The
+focused CPU suite passes 21 tests, including the exact exported Levi's title and
+price layout, an Adidas-title positive control, item-page ranges, and malformed
+range rejection. All eight result-page observations in the user's earlier source
+audit parse to the same Levi's title when supplied a minimal legal-click context;
+this is an observation-parser check, not full snapshot or GPU verification.
+Original cluster artifacts remain untouched; `rescored_v3.json` is a new output.

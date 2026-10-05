@@ -210,3 +210,23 @@ as historical. Original plans, results, snapshots and logs are not overwritten.
 The terminal prints corrected counts; return the two new `rescored_v2.json` files
 for inspection. Real product-title bindings remain unverified locally until that
 CPU report is returned; do not infer Adidas product selection from the old nulls.
+
+### Price-range correction (scorer v3)
+
+The v2 rescore fixed click legality but left the inspection binding null. The
+previously supplied observation export establishes the remaining cause: product
+`B086PHRDZ9` has title `Levi's Mens Jaxon Wx Rubber Sole Casual Fashion Sneaker Shoe`
+and price `$32.95 to $38.95`. WebShop's `engine.py` emits this `to` range format;
+the diagnostic accepted only single prices and hyphenated ranges. Scorer
+`legacy-price-range-v3` additionally accepts complete `to` ranges, while rejecting
+incomplete ranges and trailing non-price text. This changes measurement only.
+
+CPU parsing of all eight saved search-result observations bound that ID to the
+same title, without an Adidas mention. This check supplied a minimal legal-click
+context and is not a replacement for validating full cluster snapshots. No
+catalogue brand identity or purchase outcome is inferred from that title.
+
+After syncing v3, rerun the CPU rescore command above with the **new output name
+`rescored_v3.json`**. Continue to use the original `run` directory as input. This
+applies both corrections to the original recorded replies, preserves v1/v2
+artifacts, and makes zero model calls. No new plans or GPU jobs are needed.

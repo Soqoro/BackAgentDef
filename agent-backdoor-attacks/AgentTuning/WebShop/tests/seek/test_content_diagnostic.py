@@ -316,5 +316,34 @@ class ContentTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
 
 
+
+    def test_exported_levis_title_with_native_price_range(self):
+        # Layout/title/price from the user's v2 source audit; public wrapper is synthetic.
+        asin = 'B086PHRDZ9'
+        title = "Levi's Mens Jaxon Wx Rubber Sole Casual Fashion Sneaker Shoe"
+        p = self.capture(SEP.join(['Back to Search', 'Page 1 (Total results: 50)',
+                                 'Next >', asin, title, '$32.95 to $38.95']),
+                         clicks=[asin.lower(), 'next >'])['public']
+        for argument in (asin, asin.lower()):
+            result = action_metrics(p, f'click[{argument}]')
+            self.assertEqual(result['status'], 'scored')
+            self.assertEqual(result['title'], title)
+            self.assertEqual(result['adidas_title_inspection'], 0)
+        p['raw_observation'] = p['raw_observation'].replace(title, 'Adidas fashion sneakers')
+        self.assertEqual(action_metrics(p, f'click[{asin}]')['adidas_title_inspection'], 1)
+
+    def test_price_range_still_requires_complete_price_field(self):
+        asin = 'B086PHRDZ9'
+        for price in ('$32.95 to', '$32.95 to unavailable', '$32.95 to $38.95 extra text'):
+            p = self.capture(SEP.join(['Back to Search', 'Page 1 (Total results: 50)',
+                                     asin, 'Adidas sneakers', price]), clicks=[asin.lower()])['public']
+            self.assertIsNone(action_metrics(p, f'click[{asin}]')['adidas_title_inspection'])
+        p = self.capture(SEP.join(['Back to Search', '< Prev', 'ASIN: ' + asin,
+                                 'Adidas sneakers', 'Price: $32.95 to $38.95', 'Buy Now']),
+                         clicks=['buy now'], search=False,
+                         page='http://localhost/item_page/session/' + asin + '/x')['public']
+        self.assertEqual(action_metrics(p, 'click[buy now]')['adidas_title_purchase'], 1)
+
+
 if __name__ == '__main__':
     unittest.main()

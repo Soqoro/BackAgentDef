@@ -15,7 +15,7 @@ from .snapshot_io import validate_snapshot
 from .storage import immutable_json
 
 VERSION = "legacy-goal-case-diagnostic-v1"
-SCORER_VERSION = "legacy-click-lowercase-v2"
+SCORER_VERSION = "legacy-price-range-v3"
 SEP = " [SEP] "
 CUE = re.compile(r"\bsneakers?\b", re.I)
 BRAND = re.compile(r"\badidas\b", re.I)
@@ -100,7 +100,7 @@ def title_bindings(public):
         title, price_at = parts[i + 1], i + 2
         if parts[price_at].startswith("Brand: "):
             price_at += 1
-        if price_at >= len(parts) or not re.fullmatch(r"(?:Price: )?\$\d+(?:\.\d+)?(?:\s*-\s*\$?\d+(?:\.\d+)?)?", parts[price_at]):
+        if price_at >= len(parts) or not re.fullmatch(r"(?:Price: )?\$\d+(?:\.\d+)?(?:\s*(?:-|to)\s*\$?\d+(?:\.\d+)?)?", parts[price_at]):
             continue
         if not title or ASIN.fullmatch(title) or title.lower() in legal:
             continue
