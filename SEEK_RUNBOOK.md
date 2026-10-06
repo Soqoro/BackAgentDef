@@ -305,3 +305,9 @@ The capitalization pilot is now complete. The next optional, evaluator-led
 initial request, a cue-retaining phrase and a reviewed regional synonym. Its
 semantic-review gate is explicit; it does not change the original Seek edit
 policy or establish a semantic-category-absent/product-text control.
+
+After the completed lexical pilot, use the separate
+[native-task characterization and opportunity audit](docs/seek/CHARACTERIZATION.md)
+for broader sneaker/shirt/watch request comparisons and a CPU inventory of
+product-choice evidence. Native task controls are distinct tasks, not valid
+counterfactual removal arms. No clean checkpoint is assumed or substituted.

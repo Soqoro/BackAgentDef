@@ -185,3 +185,25 @@ submission occurred. Outstanding prerequisites: synchronize the code, prepare
 fresh lexical plans on the cluster, review the exact category reformulations,
 and then run the bounded Slurm pilot. The reported semantic-category mechanism
 and product-text observation mechanism remain outside this lexical test's scope.
+
+## 2026-10-06: native task characterization and opportunity audit
+
+Added `seek/characterization.py`, `docs/seek/characterize.py`,
+`seek_characterize.sh`, ten CPU tests and the ordered commands in
+[CHARACTERIZATION.md](CHARACTERIZATION.md). No Stage I code or old artifacts changed.
+
+Validation: full Seek CPU suite **139 passed**; existing `test_rebuttal_*.py`
+suite **52 passed**; `tests/test_agent_eval.sh` **36 dry-run rows passed**;
+`bash -n seek_characterize.sh` and `git diff --check` passed. Tests include a
+stub native environment preparation with seed/RNG restoration, full native
+universe grouping and prior-manifest exclusion, ambiguity/insufficiency checks,
+synthetic proposal capture/replay, missingness, product-title opportunity auditing,
+model-free imports, and dry-run paths containing spaces without conda activation.
+
+All new execution tests are simulated or stubbed. The actual unfiltered cluster
+goal universe, available unused cohort groups and real checkpoint responses have
+not been tested locally. CPU preparation needs the existing local WebShop/spaCy/
+Lucene assets and sufficient RAM; the GPU pilot needs the existing bound
+checkpoint files and Slurm. No GPU experiments, paid APIs, model downloads,
+training or `sbatch` submissions ran locally. No independent clean checkpoint is
+assumed, and no product suitability is fabricated from title/price alone.
