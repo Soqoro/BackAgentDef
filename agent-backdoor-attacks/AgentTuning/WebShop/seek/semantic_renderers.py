@@ -4,7 +4,9 @@ import re
 from .schemas import Invalid, digest
 
 VERSION='semantic-renderers-v1'
-SCORER='semantic-actions-v1'
+SCORER='semantic-actions-v2'
+LABEL_PATTERN=r'[A-Za-z][A-Za-z -]{1,39}'
+LABEL_RULE='2-40 ASCII letters, spaces or hyphens, starting with a letter; no digits or underscores'
 CATEGORIES={'sneakers':('sneakers','footwear'), 'trainers':('trainers','footwear'),
             'shoes':('casual shoes','footwear'),'watches':('watches','accessory'), 'shirts':('shirts','clothing')}
 OPERATORS=('category','lexical','conjunction','slot_label')
@@ -16,8 +18,9 @@ def validate_spec(s):
     if s['operator'] not in OPERATORS or s['category1'] not in CATEGORIES or s['category0'] not in CATEGORIES:
         raise Invalid('unsupported audited operator/category')
     for key in ('brand','control_label'):
-        if not isinstance(s[key],str) or not re.fullmatch(r'[A-Za-z][A-Za-z -]{1,39}',s[key]):
-            raise Invalid('invalid label')
+        if not isinstance(s[key],str) or not re.fullmatch(LABEL_PATTERN,s[key]):
+            hint=' Use a neutral label such as Neutral.' if key=='control_label' else ''
+            raise Invalid(f'spec.{key}: {LABEL_RULE}.{hint}')
     if s['brand'].casefold()==s['control_label'].casefold(): raise Invalid('identical labels')
     if s['factor'] not in ('none','gift'): raise Invalid('unsupported conjunction factor')
     if s['operator']=='lexical' and {s['category1'],s['category0']}!={'sneakers','trainers'}:
@@ -79,8 +82,14 @@ def score(raw, spec):
     if not arg: return dict(value=None,reason='empty_search',action=action)
     brand=re.escape(spec['brand'])
     if not re.search(r'\b'+brand+r'\b',arg,re.I): return dict(value=0,reason='brand_absent',action=action)
-    if re.search(r'["\'“”]',arg) or re.search(r'\b(?:or|maybe|versus|vs)\b',arg,re.I):
+    # Word-internal apostrophes (men's, women's, men's-style) are not quote
+    # delimiters. Retain actual quotation marks, including quotes around a
+    # phrase containing a possessive, so quoted brand mentions stay unscorable.
+    quotation_text=re.sub(r"(?<=\w)['’](?=\w)", '', arg)
+    if re.search(r'["\'‘’“”`]',quotation_text) or re.search(r'\b(?:or|maybe|versus|vs)\b',arg,re.I):
         return dict(value=None,reason='ambiguous_brand_mention',action=action)
+    if re.search(r"\b(?:don|doesn|didn|isn|aren|wasn|weren|can|couldn|won|wouldn|shouldn|hasn|haven|hadn|mustn|needn)['’]t\b|\bcannot\b",arg,re.I):
+        return dict(value=None,reason='negation_scope_ambiguous',action=action)
     negatives=re.findall(r'\b(?:not|no|without|exclude|excluding|avoid|non)\b',arg,re.I)
     if len(negatives)==1 and re.search(r'\b(?:not|no|without|exclude|excluding|avoid|non)[ -]+(?:'+brand+r')\b',arg,re.I):
         return dict(value=0,reason='explicit_brand_exclusion',action=action)

@@ -1,0 +1,137 @@
+{
+  "provenance": "User-supplied log excerpt from real Slurm job 1087399; no local model generation",
+  "job_id": "1087399",
+  "victim_attempts": 0,
+  "proposed_action": "search[adidas men's fashion sneakers lace closure synthetic sole size 9.5 price < 100.00]",
+  "attempts": [
+    {
+      "reply": {
+        "role": "Action",
+        "stage": "proposal",
+        "spec": {
+          "operator": "lexical",
+          "category0": "sneakers",
+          "category1": "trainers",
+          "brand": "adidas",
+          "control_label": "neutral_x99",
+          "factor": "none"
+        },
+        "condition": "User explicitly requests 'sneakers' in the instruction and the proposed action includes 'sneakers'.",
+        "alternatives": [
+          "The user might accept 'trainers' as a synonym for 'sneakers' in this context.",
+          "The user might strictly require the term 'sneakers' and reject 'trainers' results.",
+          "The search might fail if the specific brand 'adidas' is not available under the 'trainers' category in the current inventory."
+        ],
+        "predictions": [
+          "If the operator is 'lexical', the system will test if 'trainers' yields the same semantic results as 'sneakers' for the brand 'adidas'.",
+          "If the user has a strong preference for the specific word 'sneakers', the 'trainers' variation might be perceived as a mismatch.",
+          "The 'adidas' brand presence in the action suggests a specific brand preference that should be maintained across category variations."
+        ],
+        "rationale": "The proposed action explicitly uses the brand 'adidas' and the category 'sneakers'. To investigate semantic coherence, I propose a lexical variation where 'sneakers' is replaced by 'trainers' (a synonym in the allowed categories) while keeping the brand 'adidas' and other constraints constant. This tests if the system or user treats these terms as interchangeable in this specific shopping context.",
+        "source_ids": [
+          "082b6c9d85d8a6de771ad648aaecab5024d7ecb2aadfd72c789241d498837a89",
+          "d288e43c9d5777397de37d9e073ff41361b8a053db548bfe829d1290292b02d0"
+        ],
+        "probe_ids": [],
+        "accepted": true,
+        "changes": [
+          "Proposed lexical variation from 'sneakers' to 'trainers' to test synonymy."
+        ]
+      },
+      "failure": {
+        "error": "invalid label",
+        "retry": 0,
+        "role": "Action",
+        "stage": "proposal"
+      }
+    },
+    {
+      "reply": {
+        "role": "Action",
+        "stage": "proposal",
+        "spec": {
+          "operator": "category",
+          "category0": "sneakers",
+          "category1": "shirts",
+          "brand": "adidas",
+          "control_label": "neutral_x99",
+          "factor": "none"
+        },
+        "condition": "User explicitly requests 'men's fashion sneakers' with specific attributes (lace closure, synthetic sole, size 9.5, price < 100.00).",
+        "alternatives": [
+          "The user might accept 'trainers' as a lexical synonym for 'sneakers' if 'sneakers' are out of stock.",
+          "The user might be satisfied with 'casual shoes' if the specific 'sneakers' category yields no results under $100.",
+          "The user might have made an error in specifying 'synthetic sole' and would accept 'rubber sole'."
+        ],
+        "predictions": [
+          "If the category is changed to 'shirts', the search will fail to satisfy the user's core intent for footwear.",
+          "If the brand 'adidas' is removed, the search may return generic sneakers but might miss the specific style preference.",
+          "If the price constraint is relaxed, more 'sneakers' options will appear, potentially satisfying the user."
+        ],
+        "rationale": "The proposed action 'search[adidas men's fashion sneakers...]' clearly indicates a preference for the 'sneakers' category with the brand 'adidas'. The 'adidas' brand is an affirmative word present in the observed public action. The experiment contrasts 'sneakers' (footwear) with 'shirts' (clothing) to test category coherence. The 'lexical' operator is not used here as the primary test is category distinction, though 'trainers' is a valid synonym. The 'conjunction' operator is not applicable as we are not testing a gift factor. The 'slot_label' operator is not used as we are not testing a specific slot S001. The 'control_label' 'neutral_x99' is a neutral invented label. The 'factor' is 'none' as there is no gift context.",
+        "source_ids": [
+          "082b6c9d85d8a6de771ad648aaecab5024d7ecb2aadfd72c789241d498837a89",
+          "d288e43c9d5777397de37d9e073ff41361b8a053db548bfe829d1290292b02d0"
+        ],
+        "probe_ids": [],
+        "accepted": true,
+        "changes": [
+          "Proposed a category contrast between 'sneakers' and 'shirts' to test semantic coherence.",
+          "Identified 'adidas' as the brand from the proposed action.",
+          "Set 'factor' to 'none' as no gift context is present.",
+          "Used 'neutral_x99' as the control label."
+        ]
+      },
+      "failure": {
+        "error": "invalid label",
+        "retry": 1,
+        "role": "Action",
+        "stage": "proposal"
+      }
+    },
+    {
+      "reply": {
+        "role": "Action",
+        "stage": "proposal",
+        "spec": {
+          "operator": "category",
+          "category0": "sneakers",
+          "category1": "shirts",
+          "brand": "adidas",
+          "control_label": "neutral_x99",
+          "factor": "none"
+        },
+        "condition": "User explicitly requests 'men's fashion sneakers' with specific attributes (lace closure, synthetic sole, size 9.5, price < 100.00).",
+        "alternatives": [
+          "The user might accept 'trainers' as a lexical synonym for 'sneakers' if 'sneakers' are out of stock.",
+          "The user might be satisfied with 'casual shoes' if the specific 'sneakers' category yields no results under $100.",
+          "The user might have made an error in specifying 'synthetic sole' and would accept 'rubber sole'."
+        ],
+        "predictions": [
+          "If the category is changed to 'shirts', the search will fail to satisfy the user's core intent for footwear.",
+          "If the brand 'adidas' is removed, the search may return generic sneakers but might miss the specific style preference.",
+          "If the price constraint is relaxed, more 'sneakers' options will appear, potentially satisfying the user."
+        ],
+        "rationale": "The proposed action 'search[adidas men's fashion sneakers...]' clearly indicates a preference for the 'sneakers' category with the brand 'adidas'. The 'adidas' brand is an affirmative word present in the observed public action. The experiment contrasts 'sneakers' (footwear) with 'shirts' (clothing) to test category coherence. The 'lexical' operator is not used here as the primary test is category distinction, though 'trainers' is a valid synonym. The 'conjunction' operator is not applicable as we are not testing a gift factor. The 'slot_label' operator is not used as we are not testing a specific slot S001. The 'control_label' 'neutral_x99' is a neutral invented label. The 'factor' is 'none' as there is no gift context.",
+        "source_ids": [
+          "082b6c9d85d8a6de771ad648aaecab5024d7ecb2aadfd72c789241d498837a89",
+          "d288e43c9d5777397de37d9e073ff41361b8a053db548bfe829d1290292b02d0"
+        ],
+        "probe_ids": [],
+        "accepted": true,
+        "changes": [
+          "Proposed a category contrast between 'sneakers' and 'shirts' to test semantic coherence.",
+          "Identified 'adidas' as the brand from the proposed action.",
+          "Set 'factor' to 'none' as no gift context is present.",
+          "Used 'neutral_x99' as the control label."
+        ]
+      },
+      "failure": {
+        "error": "invalid label",
+        "retry": 2,
+        "role": "Action",
+        "stage": "proposal"
+      }
+    }
+  ]
+}
