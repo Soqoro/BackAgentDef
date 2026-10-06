@@ -1,0 +1,498 @@
+{
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "enum": [
+        "seek-semantic-contract-v1"
+      ]
+    },
+    "study_id": {
+      "type": "string"
+    },
+    "claim_id": {
+      "type": "string"
+    },
+    "j": {
+      "type": "integer"
+    },
+    "contract_hash": {
+      "type": "string"
+    },
+    "origin": {
+      "enum": [
+        "incident_led",
+        "evaluator_specified",
+        "simulated"
+      ]
+    },
+    "method": {
+      "enum": [
+        "adaptive",
+        "fixed",
+        "discussion_only",
+        "no_semantic_review"
+      ]
+    },
+    "policy": {
+      "type": "object",
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "identity": {
+          "type": "string"
+        },
+        "snapshot_hash": {
+          "type": "string"
+        },
+        "loader_binding_hash": {
+          "type": "string"
+        },
+        "tokenizer_hash": {
+          "type": "string"
+        },
+        "template_hash": {
+          "type": "string"
+        },
+        "generation_hash": {
+          "type": "string"
+        },
+        "source_hash": {
+          "type": "string"
+        },
+        "scorer_hash": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "alias",
+        "identity",
+        "snapshot_hash",
+        "loader_binding_hash",
+        "tokenizer_hash",
+        "template_hash",
+        "generation_hash",
+        "source_hash",
+        "scorer_hash"
+      ],
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "object",
+      "properties": {
+        "incident_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "probe_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "visibility_cutoff": {
+          "type": "string"
+        },
+        "owner_report": {
+          "type": "string"
+        },
+        "training_status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "incident_ids",
+        "source_ids",
+        "probe_ids",
+        "visibility_cutoff",
+        "owner_report",
+        "training_status"
+      ],
+      "additionalProperties": false
+    },
+    "condition": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "lexical",
+            "semantic",
+            "observation_state",
+            "conjunction"
+          ]
+        },
+        "definition": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "definition"
+      ],
+      "additionalProperties": false
+    },
+    "behavior": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "enum": [
+            "search",
+            "inspection"
+          ]
+        },
+        "target": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "interpretation": {
+          "enum": [
+            "preference_dependence",
+            "contract_violation"
+          ]
+        }
+      },
+      "required": [
+        "operation",
+        "target",
+        "scope",
+        "interpretation"
+      ],
+      "additionalProperties": false
+    },
+    "alternatives": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "predictions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "rationale": {
+      "type": "string"
+    },
+    "comparison_type": {
+      "enum": [
+        "task_preserving_lexical",
+        "controlled_semantic",
+        "constructed_observation"
+      ]
+    },
+    "renderer": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "enum": [
+            "semantic-renderers-v1"
+          ]
+        },
+        "spec": {
+          "type": "object",
+          "properties": {
+            "operator": {
+              "enum": [
+                "category",
+                "lexical",
+                "conjunction",
+                "slot_label"
+              ]
+            },
+            "category1": {
+              "type": "string"
+            },
+            "category0": {
+              "type": "string"
+            },
+            "brand": {
+              "type": "string"
+            },
+            "control_label": {
+              "type": "string"
+            },
+            "factor": {
+              "enum": [
+                "none",
+                "gift"
+              ]
+            }
+          },
+          "required": [
+            "operator",
+            "category1",
+            "category0",
+            "brand",
+            "control_label",
+            "factor"
+          ],
+          "additionalProperties": false
+        },
+        "changed_variables": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "protected_factors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "eligibility": {
+          "enum": [
+            "pre_response_no_truncation"
+          ]
+        },
+        "review": {
+          "type": "object",
+          "properties": {
+            "draft_hash": {
+              "type": "string"
+            },
+            "accepted": {
+              "type": "boolean"
+            },
+            "reviewer": {
+              "type": "string"
+            },
+            "independent": {
+              "type": "boolean"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "draft_hash",
+            "accepted",
+            "reviewer",
+            "independent",
+            "reason",
+            "evidence_ids"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "version",
+        "spec",
+        "changed_variables",
+        "protected_factors",
+        "eligibility",
+        "review"
+      ],
+      "additionalProperties": false
+    },
+    "inference": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "enum": [
+            "paper_anytime_v1"
+          ]
+        },
+        "delta": {
+          "type": "number"
+        },
+        "tau": {
+          "type": "number"
+        },
+        "semantic_eta": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "eta_justification": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "semantic_support": {
+          "enum": [
+            "operational_scope_only",
+            "reviewed_but_bound_unknown",
+            "conditional_on_registered_bound",
+            "independently_bounded"
+          ]
+        },
+        "max_pairs": {
+          "type": "integer"
+        },
+        "batch_pairs": {
+          "type": "integer"
+        },
+        "stopping": {
+          "enum": [
+            "first_certificate_or_budget"
+          ]
+        },
+        "missingness": {
+          "enum": [
+            "fail_closed"
+          ]
+        }
+      },
+      "required": [
+        "method",
+        "delta",
+        "tau",
+        "semantic_eta",
+        "eta_justification",
+        "semantic_support",
+        "max_pairs",
+        "batch_pairs",
+        "stopping",
+        "missingness"
+      ],
+      "additionalProperties": false
+    },
+    "sampling": {
+      "type": "object",
+      "properties": {
+        "design": {
+          "enum": [
+            "iid_uniform_with_replacement"
+          ]
+        },
+        "unit": {
+          "enum": [
+            "paired_background_block"
+          ]
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "pool": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "budget": {
+                "type": "integer"
+              },
+              "phrasing": {
+                "type": "string"
+              },
+              "position": {
+                "type": "integer"
+              },
+              "group": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "budget",
+              "phrasing",
+              "position",
+              "group"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "lineage": {
+          "type": "string"
+        },
+        "independence_justification": {
+          "type": "string"
+        },
+        "excluded_fingerprints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "design",
+        "unit",
+        "seed",
+        "pool",
+        "lineage",
+        "independence_justification",
+        "excluded_fingerprints"
+      ],
+      "additionalProperties": false
+    },
+    "costs": {
+      "type": "object",
+      "properties": {
+        "max_victim_calls": {
+          "type": "integer"
+        },
+        "max_role_calls": {
+          "type": "integer"
+        },
+        "max_retries": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "max_victim_calls",
+        "max_role_calls",
+        "max_retries"
+      ],
+      "additionalProperties": false
+    },
+    "output_scope": {
+      "enum": [
+        "offline_proposals_only"
+      ]
+    },
+    "registered_at": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "study_id",
+    "claim_id",
+    "j",
+    "contract_hash",
+    "origin",
+    "method",
+    "policy",
+    "evidence",
+    "condition",
+    "behavior",
+    "alternatives",
+    "predictions",
+    "rationale",
+    "comparison_type",
+    "renderer",
+    "inference",
+    "sampling",
+    "costs",
+    "output_scope",
+    "registered_at"
+  ],
+  "additionalProperties": false
+}

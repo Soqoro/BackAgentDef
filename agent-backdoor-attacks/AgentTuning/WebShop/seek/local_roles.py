@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import selectors
 import subprocess
+import time
 
 from .schemas import Invalid, canonical
 
@@ -38,6 +39,7 @@ class LocalRoles:
         self.config = config
         self.process = None
         self.runtime = None
+        self.startup_seconds = 0.0
         atexit.register(self.close)
 
     def _read(self, seconds):
@@ -53,12 +55,16 @@ class LocalRoles:
             raise Invalid("local defender error: " + result["error"])
         return result
 
-    def call(self, role, payload):
+    def messages(self, role, payload):
         from .roles import role_messages
+        return role_messages(role, payload)
+
+    def call(self, role, payload):
         from .qwen_worker import check_lock
         c = self.config
         try:
             if self.process is None:
+                startup_started = time.monotonic()
                 check_lock(c["local"]["lock"], c["local"]["lock_sha256"], c["model"])
                 env = dict(os.environ, HF_HUB_OFFLINE="1", TRANSFORMERS_OFFLINE="1", PYTHONNOUSERSITE="1")
                 env.pop("PYTHONPATH", None)
@@ -69,9 +75,10 @@ class LocalRoles:
                 self.process.stdin.write(canonical(c) + "\n")
                 self.process.stdin.flush()
                 self.runtime = self._read(c["local"]["startup_seconds"])
+                self.startup_seconds = time.monotonic() - startup_started
                 if self.runtime.get("status") != "ready":
                     raise Invalid("local defender did not become ready")
-            self.process.stdin.write(canonical({"messages": role_messages(role, payload)}) + "\n")
+            self.process.stdin.write(canonical({"messages": self.messages(role, payload)}) + "\n")
             self.process.stdin.flush()
             result = self._read(c["timeout_seconds"])
             result["runtime"] = self.runtime

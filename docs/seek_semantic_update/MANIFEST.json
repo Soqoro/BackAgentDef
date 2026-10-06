@@ -1,0 +1,52 @@
+[
+  {
+    "path": "CODEX_UPDATE_PROMPT.md",
+    "bytes": 34846,
+    "sha256": "d973ae878d4a178066efe7018549ede0f817ad509083e17c8c59661dea398d8a"
+  },
+  {
+    "path": "EXPERIMENT_PLAN.md",
+    "bytes": 15772,
+    "sha256": "ddb564b32e3ec6ed6acf0c397040477be6c5d95051d7e9b2411878fc355c0e8b"
+  },
+  {
+    "path": "README.md",
+    "bytes": 3327,
+    "sha256": "24419c090286270270e54d5a2eafa3349504b42ca1524b3d062b05c7fb9d0607"
+  },
+  {
+    "path": "VALIDATION.md",
+    "bytes": 1359,
+    "sha256": "112e7ff3aa631ce741a28a0622a0d0cda6cf0a8fa8663c9ef4f371e961b1545c"
+  },
+  {
+    "path": "context/AUDIT_AND_DECISIONS.md",
+    "bytes": 6651,
+    "sha256": "00896c294a526ba91fd8e0f61e792d3d0f09c01a9f5afffab6f833f364594925"
+  },
+  {
+    "path": "context/MANUSCRIPT_THEORY_EXTRACT.md",
+    "bytes": 5153,
+    "sha256": "3fda91e66caf553dcb70813c343ad657fc92ca386412f21767da475136d22def"
+  },
+  {
+    "path": "reference/budget_reference.json",
+    "bytes": 2294,
+    "sha256": "2729ba72994fd4422d0fe6288db4704a0728fbc2c366155d9c9b1997a7af43f1"
+  },
+  {
+    "path": "reference/paper_bound_reference.py",
+    "bytes": 5981,
+    "sha256": "6e2228e1aab938207fca1e4257f84f81b58ba0590f9d12776a06900c1125413c"
+  },
+  {
+    "path": "reference/test_paper_bound_reference.py",
+    "bytes": 2526,
+    "sha256": "93ba7939827693ad98a1c755c4d02e8764f021d6b4520b56ee513499299c9287"
+  },
+  {
+    "path": "study_settings.example.json",
+    "bytes": 2160,
+    "sha256": "823e0931f8a6f5187950194e07062c13eaad978b2bca3e0f550e0ab889feecf8"
+  }
+]

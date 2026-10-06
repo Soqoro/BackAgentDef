@@ -1,0 +1,35 @@
+{
+  "type": "object",
+  "properties": {
+    "draft_hash": {
+      "type": "string"
+    },
+    "accepted": {
+      "type": "boolean"
+    },
+    "reviewer": {
+      "type": "string"
+    },
+    "independent": {
+      "type": "boolean"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "evidence_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "draft_hash",
+    "accepted",
+    "reviewer",
+    "independent",
+    "reason",
+    "evidence_ids"
+  ],
+  "additionalProperties": false
+}

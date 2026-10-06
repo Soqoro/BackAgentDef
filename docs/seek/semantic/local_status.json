@@ -1,0 +1,15 @@
+{
+  "native_status": "pending_missing",
+  "live_cluster_status": null,
+  "model_calls": 0,
+  "evidence_phase": "exploration",
+  "plan_hash": null,
+  "rows": [],
+  "base_reference": {
+    "kind": "base_unpoisoned_reference",
+    "path": null
+  },
+  "owner_report": "user reports two trained query/observation mechanisms",
+  "training_binding": "unverified",
+  "imported": []
+}

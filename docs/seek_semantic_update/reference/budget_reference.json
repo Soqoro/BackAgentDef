@@ -1,0 +1,84 @@
+{
+  "kind": "algebraic_budget_not_experimental_results",
+  "settings": {
+    "j": 1,
+    "delta": 0.05,
+    "tau": 0.2,
+    "eta": 0.0
+  },
+  "grid": [
+    {
+      "pairs": 8,
+      "two_arm_victim_calls": 16,
+      "radius": 1.4712828376700666,
+      "minimum_observed_effect_strictly_above": 1.6712828376700666,
+      "max_possible_lcb": -0.4712828376700666
+    },
+    {
+      "pairs": 16,
+      "two_arm_victim_calls": 32,
+      "radius": 1.1173533852909896,
+      "minimum_observed_effect_strictly_above": 1.3173533852909896,
+      "max_possible_lcb": -0.1173533852909896
+    },
+    {
+      "pairs": 32,
+      "two_arm_victim_calls": 64,
+      "radius": 0.8420314015425764,
+      "minimum_observed_effect_strictly_above": 1.0420314015425765,
+      "max_possible_lcb": 0.15796859845742361
+    },
+    {
+      "pairs": 64,
+      "two_arm_victim_calls": 128,
+      "radius": 0.6303594457710515,
+      "minimum_observed_effect_strictly_above": 0.8303594457710515,
+      "max_possible_lcb": 0.3696405542289485
+    },
+    {
+      "pairs": 128,
+      "two_arm_victim_calls": 256,
+      "radius": 0.46927253047528206,
+      "minimum_observed_effect_strictly_above": 0.669272530475282,
+      "max_possible_lcb": 0.5307274695247179
+    },
+    {
+      "pairs": 256,
+      "two_arm_victim_calls": 512,
+      "radius": 0.347718907713731,
+      "minimum_observed_effect_strictly_above": 0.547718907713731,
+      "max_possible_lcb": 0.652281092286269
+    },
+    {
+      "pairs": 512,
+      "two_arm_victim_calls": 1024,
+      "radius": 0.25663558722136287,
+      "minimum_observed_effect_strictly_above": 0.4566355872213629,
+      "max_possible_lcb": 0.7433644127786372
+    },
+    {
+      "pairs": 1024,
+      "two_arm_victim_calls": 2048,
+      "radius": 0.1887766244252355,
+      "minimum_observed_effect_strictly_above": 0.38877662442523553,
+      "max_possible_lcb": 0.8112233755747645
+    }
+  ],
+  "hypothetical_boundaries": [
+    {
+      "hypothetical_effect": 0.4,
+      "observed_crossing_pairs": 900,
+      "theorem_sufficient_pairs": 4216
+    },
+    {
+      "hypothetical_effect": 0.6,
+      "observed_crossing_pairs": 186,
+      "theorem_sufficient_pairs": 900
+    },
+    {
+      "hypothetical_effect": 0.8,
+      "observed_crossing_pairs": 72,
+      "theorem_sufficient_pairs": 359
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "baseline_commit": "2dff2f1a423761d391179890af5995e168d9ddc4",
+  "files": {
+    "agent-backdoor-attacks/AgentTuning/WebShop/defenses/__init__.py": "aaf949dfac3788ad0aa90d307888b3d2b4b51547e78f8b61b3c36d94c948f235",
+    "agent-backdoor-attacks/AgentTuning/WebShop/defenses/action_certification.py": "3ecb0b959a7717b5f41beb63ce89de66561bf5b8a924cf391b1e72153f389833",
+    "agent-backdoor-attacks/AgentTuning/WebShop/defenses/action_projection.py": "2a2b88a7518dbcf386c340905d8dec295e4e7105cbe00d77261652668ea9987e",
+    "agent-backdoor-attacks/AgentTuning/WebShop/defenses/gate.py": "df402cf2b2cd53206cffacebd2b17198b5aa75ff74ab476420ecafcb7d985904",
+    "agent-backdoor-attacks/AgentTuning/WebShop/defenses/goal_contract.py": "6c78fb8e58d2e98eb039e9aee9d7b3c0d411d7db3010503f8afc1228a3dcd738",
+    "agent-backdoor-attacks/AgentTuning/WebShop/defenses/goal_parser.py": "3697f55d50163f6de67cc72bbc8caa799f79f09ebd6de8a57e7c9c44f3264a55",
+    "agent-backdoor-attacks/AgentTuning/WebShop/defenses/llm_accounting.py": "e2c2bac6c9011ad34c453c2c5fdfc11e56f8bfbf0c9eece9f1e35248edbfc33c",
+    "agent-backdoor-attacks/AgentTuning/WebShop/defenses/masker.py": "5d6965769e448e57b290ea75ac458badf2f9b2a9115ec0b7fef93e8d703faa99",
+    "agent-backdoor-attacks/AgentTuning/WebShop/defenses/near_miss_oracle.py": "2a828f8b1bdb7cdfb503363fcb325cc0c2c8f745ebcc717d783ac926e548cd95",
+    "agent-backdoor-attacks/AgentTuning/WebShop/defenses/rebuttal_baselines.py": "804efc3dc961e665ec2fa79291c787de5ff8f5dc0d123e6616b355fc5b7d746d",
+    "agent-backdoor-attacks/AgentTuning/WebShop/defenses/rebuttal_metrics.py": "7b386d475466d694178495ddca58020e3c2a319b15c802fce54a4c290664d1bd",
+    "agent-backdoor-attacks/AgentTuning/WebShop/defenses/reporter.py": "f948a53139a55fc4269a2ea939e00281485c84725f35214bd22c90a67927d611",
+    "agent-backdoor-attacks/AgentTuning/WebShop/defenses/state_abstraction.py": "7bb743cfe2f720f02562d1e4a55b2a276ab344244f4385a2b8f1813ac7ff2690",
+    "agent-backdoor-attacks/AgentTuning/WebShop/requirements.txt": "b4e83b7e9c670c724215fcb79e43f52f591de354a8f70870ba4553c88de26d2d",
+    "agent-backdoor-attacks/AgentTuning/WebShop/test.py": "d6eb0b9665f5b8554a182c00bbf196c553f835f6773068998aceae840d1dd766",
+    "agent_eval.sh": "7920d22628ec0ed620bc4e0a762aaedf39be7c891e598c8cb000c84613dd22d5",
+    "configs/seek/ablations.json": "221b16b4133600eadcadaa278642810e11918d2c390626fceb1ecddf614c6bc5",
+    "configs/seek/checkpoints.json": "3bb3c445ecdd800ef381c8261a4e298794ba0e7972658b9749e15639cd28a99a",
+    "configs/seek/clean_control.json": "3a96fd419304fa9a911826a9f0105e11ce452a389ebb2b35527976a172a06d14",
+    "configs/seek/cluster_pilot.json": "56ca6cfe77c75429d8500a512d6818c67d56b44c0481a741036d78d861f8839e",
+    "configs/seek/fake_cpu.json": "83d9786acf505f1d3f1810877a01ac0d1657a5c5ca765e3ffe484f11de6a6d1b",
+    "configs/seek/inventory.json": "240e97c74a0d31f4bfdf388e299472112e09166fae1af527b2c067bf3140ba36",
+    "configs/seek/main_study.json": "ef557bb6988a99396b39fe30cb170169556214f739fb64519c958cf69efa1b24",
+    "configs/seek/reuse.json": "bc4af7634341a2690ed36457289e5efe852c807df9d90ad7b54aeeec7789134f",
+    "configs/seek/sneakers_direct.json": "c7d5beb26b5e2dbf653dd5e5ede8f9c70f81d24a32fad26aed3eda1af72dafc0",
+    "configs/seek/sneakers_indirect.json": "c02187e113a2039c21a943de6ca87eb51493abe76cda5462dd7706be952390a7"
+  },
+  "changed": [],
+  "all_unchanged": true
+}

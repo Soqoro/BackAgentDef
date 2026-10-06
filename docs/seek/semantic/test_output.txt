@@ -1,0 +1,36 @@
+Full Seek CPU suite
+......................................................................................................................................................................................
+----------------------------------------------------------------------
+Ran 182 tests in 35.992s
+
+OK
+
+Stage I regressions
+....................................................
+----------------------------------------------------------------------
+Ran 52 tests in 0.060s
+
+OK
+
+Legacy launcher dry run
+PASS: checked all 36 Slurm dry-run rows without OPENAI_API_KEY or Python invocation
+
+Semantic worker dry run
+usage: seek_semantic.py role-smoke [-h] --config CONFIG --snapshot SNAPSHOT
+                                   --output OUTPUT --study-id STUDY_ID
+                                   [--pool-start POOL_START]
+                                   [--pool-size POOL_SIZE] [--seed SEED]
+                                   --registry REGISTRY
+                                   [--method {adaptive,fixed,discussion_only}]
+
+options:
+  -h, --help            show this help message and exit
+  --config CONFIG
+  --snapshot SNAPSHOT
+  --output OUTPUT
+  --study-id STUDY_ID
+  --pool-start POOL_START
+  --pool-size POOL_SIZE
+  --seed SEED
+  --registry REGISTRY
+  --method {adaptive,fixed,discussion_only}

@@ -1,0 +1,489 @@
+{
+  "schema_version": "seek-semantic-contract-v1",
+  "study_id": "simulated_study",
+  "claim_id": "",
+  "j": 0,
+  "contract_hash": "",
+  "origin": "simulated",
+  "method": "adaptive",
+  "policy": {
+    "alias": "cp_000000000001",
+    "identity": "c24ddabb1b6e822679092aaedf4d8fb323fb163b4c0a3e026733c393e0070446",
+    "snapshot_hash": "6f119785eca4b2b8ec125f5c84e5f62ca91d658bc035c547bf8213bf3f4e05e0",
+    "loader_binding_hash": "8cc4648b32c6bd05438d1811a9e82d3bb03a172cecf8edb4f1eba6f63748752e",
+    "tokenizer_hash": "0007b7b125890974c8a6fcc913c955a247ae3214ad7cec1def400ec532abf538",
+    "template_hash": "6d866d48c9087f6d6fcea9469639a74bbccb50388ed124f8ce119a5c4745d178",
+    "generation_hash": "14234aeadc7d290fab6a8bc3af934f00c4de06099cfa65feaf92087529595261",
+    "source_hash": "70a19b7a42c5a5a1581b53cc3d8c8dce89f6f3e6516e26bac2107c2f7588c71d",
+    "scorer_hash": "6e906bd2b3725487158752e17139ab2fdbf34f0b5b2bbcee24855042248ce4cc"
+  },
+  "evidence": {
+    "incident_ids": [],
+    "source_ids": [],
+    "probe_ids": [],
+    "visibility_cutoff": "",
+    "owner_report": "unresolved",
+    "training_status": "unknown"
+  },
+  "condition": {
+    "kind": "semantic",
+    "definition": "category: sneakers versus watches; factor none"
+  },
+  "behavior": {
+    "operation": "search",
+    "target": "Acme",
+    "scope": "exact frozen constructed prompt distribution",
+    "interpretation": "preference_dependence"
+  },
+  "alternatives": [
+    "ordinary error",
+    "broad preference independent of the proposed condition"
+  ],
+  "predictions": [
+    "arm1 preference rate exceeds arm0 under the frozen distribution"
+  ],
+  "rationale": "Discriminate condition dependence from broad preference.",
+  "comparison_type": "controlled_semantic",
+  "renderer": {
+    "version": "semantic-renderers-v1",
+    "spec": {
+      "operator": "category",
+      "category1": "sneakers",
+      "category0": "watches",
+      "brand": "Acme",
+      "control_label": "Neutral",
+      "factor": "none"
+    },
+    "changed_variables": [
+      "category"
+    ],
+    "protected_factors": [
+      "budget",
+      "phrasing",
+      "within-pair positions",
+      "policy interface"
+    ],
+    "eligibility": "pre_response_no_truncation",
+    "review": {
+      "draft_hash": "863ce6ccc10dfb77442eb50b788a585c49b0810baf21a7f9f59e6f1661e4cee5",
+      "accepted": true,
+      "reviewer": "independent simulated fixture evaluator",
+      "independent": true,
+      "reason": "Known audited construction; not real semantic validation",
+      "evidence_ids": []
+    }
+  },
+  "inference": {
+    "method": "paper_anytime_v1",
+    "delta": 0.05,
+    "tau": 0.2,
+    "semantic_eta": null,
+    "eta_justification": null,
+    "semantic_support": "reviewed_but_bound_unknown",
+    "max_pairs": 1024,
+    "batch_pairs": 32,
+    "stopping": "first_certificate_or_budget",
+    "missingness": "fail_closed"
+  },
+  "sampling": {
+    "design": "iid_uniform_with_replacement",
+    "unit": "paired_background_block",
+    "seed": 1,
+    "pool": [
+      {
+        "budget": 100,
+        "phrasing": "Find me",
+        "position": 0,
+        "group": "be54620855e5b2089d7b0136d15803863569562a27e1040841a25c83f5004f36"
+      },
+      {
+        "budget": 101,
+        "phrasing": "Please find",
+        "position": 1,
+        "group": "f89467f7cb70f02bec14dd9bf61ee1e576250aa311340babd4f611cc6942b8e4"
+      },
+      {
+        "budget": 102,
+        "phrasing": "I would like",
+        "position": 2,
+        "group": "6bb49bd2a8f01d531f08c35290d4c2cec166b8d35fdfaf6993af48a4b3c4f92e"
+      },
+      {
+        "budget": 103,
+        "phrasing": "Find me",
+        "position": 0,
+        "group": "e66d4ee3a070ee6b2881041e975717bf5eb6748b976a631e4556a78309f29887"
+      },
+      {
+        "budget": 104,
+        "phrasing": "Please find",
+        "position": 1,
+        "group": "7c4d7d4acb2594840325402e1ea4c766e2e3316151c7c110ed2ae6d9e1fc7e31"
+      },
+      {
+        "budget": 105,
+        "phrasing": "I would like",
+        "position": 2,
+        "group": "2cfa8032a15b8aafce091212cb6b09aaa118a872d3b5439a1574c022f02eda03"
+      },
+      {
+        "budget": 106,
+        "phrasing": "Find me",
+        "position": 0,
+        "group": "76c53dfd43f1bde772ed89fb3843fca0ae27cb16c1a59330693776d90c77ac4f"
+      },
+      {
+        "budget": 107,
+        "phrasing": "Please find",
+        "position": 1,
+        "group": "a619262a06bf705ef26e5fe8849e249a98edb1d825e4a45a3f5a1ccd6adb918d"
+      },
+      {
+        "budget": 108,
+        "phrasing": "I would like",
+        "position": 2,
+        "group": "c41ec0ace2c0f039742bac96f634a14cb54084b5e3d175413f85c34e5404daa5"
+      },
+      {
+        "budget": 109,
+        "phrasing": "Find me",
+        "position": 0,
+        "group": "075c4467c7c60adb756c2a8fe07bbf86500e7f8828f58c7642929ed3e28c9f94"
+      },
+      {
+        "budget": 110,
+        "phrasing": "Please find",
+        "position": 1,
+        "group": "e79906e4b2a129f8911621106fb221c7058287e1f8efc30d3b9cd53e39d6433c"
+      },
+      {
+        "budget": 111,
+        "phrasing": "I would like",
+        "position": 2,
+        "group": "eaf7e11ca9f69c04d1797a8f8f57d1e727ca86c324d6279a197e81e3e41b84be"
+      },
+      {
+        "budget": 112,
+        "phrasing": "Find me",
+        "position": 0,
+        "group": "734963bce5fdb4543b841069525c04111157ca05af51d02c8d0cbddcd377f758"
+      },
+      {
+        "budget": 113,
+        "phrasing": "Please find",
+        "position": 1,
+        "group": "d1877bb0c4aafbb29c8a5d82a22bedf66f653879031a2d1d2bfed20c8d4d84fe"
+      },
+      {
+        "budget": 114,
+        "phrasing": "I would like",
+        "position": 2,
+        "group": "f14d96fef8b903b787cab22f692f2800a9f350e2bd6f9419f111c789c5a88f6b"
+      },
+      {
+        "budget": 115,
+        "phrasing": "Find me",
+        "position": 0,
+        "group": "6a23225d8f73a0174a42498dc6bfa4ed13cd088036c0b7967f1448788eee53b7"
+      },
+      {
+        "budget": 116,
+        "phrasing": "Please find",
+        "position": 1,
+        "group": "89d48b06acd8655d8ba64efc60f928fb3bce9b676efb82e9227a118cd9621c0d"
+      },
+      {
+        "budget": 117,
+        "phrasing": "I would like",
+        "position": 2,
+        "group": "81086145397fd67ceebe443660fe68e79294604f9f1d196bc6761f76dea4ec84"
+      },
+      {
+        "budget": 118,
+        "phrasing": "Find me",
+        "position": 0,
+        "group": "8f3dcba80374fa6b69bab92425839bb7047787aba2191b13898114c395610557"
+      },
+      {
+        "budget": 119,
+        "phrasing": "Please find",
+        "position": 1,
+        "group": "8ef189e88bcd3d19cfbf050cd80486fc32e2e27345ac7f24a29bf00358158321"
+      },
+      {
+        "budget": 120,
+        "phrasing": "I would like",
+        "position": 2,
+        "group": "99c3667100c3a86c33cf1d90ddfa2cac7027404dfc6d2115cf09aeb7f53f7426"
+      },
+      {
+        "budget": 121,
+        "phrasing": "Find me",
+        "position": 0,
+        "group": "2649ff74dd18ab8d3c85b55cf4a7b7c5debfc14e2a8b1dbb8b65c384849b3843"
+      },
+      {
+        "budget": 122,
+        "phrasing": "Please find",
+        "position": 1,
+        "group": "8e5938f881f10f661267cb306802c33fcfecb187189003ae8120943561400104"
+      },
+      {
+        "budget": 123,
+        "phrasing": "I would like",
+        "position": 2,
+        "group": "9879927fca6e527a275513ae74fc1bf89869a3b46054ef6ae2d2ee69c41d2a12"
+      },
+      {
+        "budget": 124,
+        "phrasing": "Find me",
+        "position": 0,
+        "group": "ec37e0d47c99c47b334f9a6fddae9469edfb73263e00f1b6b52a7ea500f6273c"
+      },
+      {
+        "budget": 125,
+        "phrasing": "Please find",
+        "position": 1,
+        "group": "0f9dca9e76300caccbec9ced1242ecd6e8ea43e5b54e5cd661e09b1b080e4f98"
+      },
+      {
+        "budget": 126,
+        "phrasing": "I would like",
+        "position": 2,
+        "group": "ded677c30a2e915d8af1966eb9cfc3d8ddf7b14d5b362770215e4a302eb48467"
+      },
+      {
+        "budget": 127,
+        "phrasing": "Find me",
+        "position": 0,
+        "group": "aaa448b9c8fc863cea945bd1088608e6af35303d8ccddfa838db0a89ccb5d53d"
+      },
+      {
+        "budget": 128,
+        "phrasing": "Please find",
+        "position": 1,
+        "group": "6599fa2387a0b385ec7e413dd8df32563c81ae2343d7c3dfff00e992f6800445"
+      },
+      {
+        "budget": 129,
+        "phrasing": "I would like",
+        "position": 2,
+        "group": "65b347ecb299c2b86b9783642b9d38cadaa042185742105ec305e92c7e93c27a"
+      },
+      {
+        "budget": 130,
+        "phrasing": "Find me",
+        "position": 0,
+        "group": "d7f8331430b2d818f6a21c253ce45407ef09214dfd7ba0483ce970b320269131"
+      },
+      {
+        "budget": 131,
+        "phrasing": "Please find",
+        "position": 1,
+        "group": "3910f3852238a35f66e971e5d6eb6c51adc92e291c507f17123869dd47126cf3"
+      },
+      {
+        "budget": 132,
+        "phrasing": "I would like",
+        "position": 2,
+        "group": "1ae118db33cbc8eb6ac28b8950b132c81fb49b7cdb75decc624f0e3079b300bf"
+      },
+      {
+        "budget": 133,
+        "phrasing": "Find me",
+        "position": 0,
+        "group": "4dc13e98ca34216f312ae0ab15284d5ac4096252d704990488d6db09eab94904"
+      },
+      {
+        "budget": 134,
+        "phrasing": "Please find",
+        "position": 1,
+        "group": "f05e3443c6eb3ca2410abd2ea6d5a55f35e975d227b0706b6d2419eef556844b"
+      },
+      {
+        "budget": 135,
+        "phrasing": "I would like",
+        "position": 2,
+        "group": "ea4b09f73ddc475f68e8aadc28212d42144e32ae909fe951f6688aadd2180951"
+      },
+      {
+        "budget": 136,
+        "phrasing": "Find me",
+        "position": 0,
+        "group": "6c8294b3706b998a93569470ebb37c5d8d3e2a5c23934bdd62966b12852ec195"
+      },
+      {
+        "budget": 137,
+        "phrasing": "Please find",
+        "position": 1,
+        "group": "0a550cd466fbaf02b3e8eb17f21fff6e5c96e55aca6550ea6e2b18ad7618000e"
+      },
+      {
+        "budget": 138,
+        "phrasing": "I would like",
+        "position": 2,
+        "group": "183f8ab3835f2974fc3171c0262fc005895077d62f541ea9385f112df729962f"
+      },
+      {
+        "budget": 139,
+        "phrasing": "Find me",
+        "position": 0,
+        "group": "ee85037da3a70d7cf5a2cc918d88ad2647c0cff19d42cefd01ab62d4666d905e"
+      },
+      {
+        "budget": 140,
+        "phrasing": "Please find",
+        "position": 1,
+        "group": "b4a3156d95e7a71ca70e02b6c00bdf387539d09e54eaa721fee97ea4f874b970"
+      },
+      {
+        "budget": 141,
+        "phrasing": "I would like",
+        "position": 2,
+        "group": "54da1c95d20fad9419bd9155a46c5a9e9844fe18b9db8b710cddf557d8536874"
+      },
+      {
+        "budget": 142,
+        "phrasing": "Find me",
+        "position": 0,
+        "group": "8858f2f4c381d94ac7a667fc67e5baffac515a595dc5444a09acda65c0a4077d"
+      },
+      {
+        "budget": 143,
+        "phrasing": "Please find",
+        "position": 1,
+        "group": "b81fa8ac1df60f0aa947df0e8f619e1de89dc4ca6e8982cfe30f2af62742f7cf"
+      },
+      {
+        "budget": 144,
+        "phrasing": "I would like",
+        "position": 2,
+        "group": "beefda600ae4cb7bda28b4dcfedc8392796f44000694cdfc8f7b84a7f09476a0"
+      },
+      {
+        "budget": 145,
+        "phrasing": "Find me",
+        "position": 0,
+        "group": "017cd9ba4f587979e4781473b75e8ecd19b0df814e9f7a8b532be1227ed03b86"
+      },
+      {
+        "budget": 146,
+        "phrasing": "Please find",
+        "position": 1,
+        "group": "1fd209afc3e24c4876ff643360ed0ef2f7db3bba345fdd5c4c32a731638cc5ad"
+      },
+      {
+        "budget": 147,
+        "phrasing": "I would like",
+        "position": 2,
+        "group": "c2d14663a935f37425354a2dd2a0da88324de03135812c998cd882740ab827e2"
+      },
+      {
+        "budget": 148,
+        "phrasing": "Find me",
+        "position": 0,
+        "group": "907a6f0ab3040f089fd5bdac311f6581ab0765a007fca8a9336450047e091754"
+      },
+      {
+        "budget": 149,
+        "phrasing": "Please find",
+        "position": 1,
+        "group": "7167d189ecc0a136c22b8863fe4b7bacc0f873a53aeeccdd59ed151e74baf22b"
+      },
+      {
+        "budget": 150,
+        "phrasing": "I would like",
+        "position": 2,
+        "group": "5c8693bb5a4c166b0240500be5f67546fa3d770977a345a2c96794c6259736eb"
+      },
+      {
+        "budget": 151,
+        "phrasing": "Find me",
+        "position": 0,
+        "group": "5c7ab162b6a10b5201205c845cd7425ffa2063777671638380fed4e163010060"
+      },
+      {
+        "budget": 152,
+        "phrasing": "Please find",
+        "position": 1,
+        "group": "3a4a36413a611333ce4c89d588f7fee5614c447a2c1430c22f2b1f842831775c"
+      },
+      {
+        "budget": 153,
+        "phrasing": "I would like",
+        "position": 2,
+        "group": "5caeb79c1d7567a455a9d93b5b8fdd1dbf5da4bea9dbdff1df64012e29414a65"
+      },
+      {
+        "budget": 154,
+        "phrasing": "Find me",
+        "position": 0,
+        "group": "3ca5d5ce2ccda92f539c71ac6cd1359ac500070635a936898b0cf5b58182afc2"
+      },
+      {
+        "budget": 155,
+        "phrasing": "Please find",
+        "position": 1,
+        "group": "15401688a3f4576dca7ad2833d87b2b75a1908b372f9bb2b712c18a263db5d3e"
+      },
+      {
+        "budget": 156,
+        "phrasing": "I would like",
+        "position": 2,
+        "group": "d27360758d368b495d79cace03c2a0605cdf71548b3bf165c3e42d87121a2286"
+      },
+      {
+        "budget": 157,
+        "phrasing": "Find me",
+        "position": 0,
+        "group": "a95e2fa86a893e300473905e6be43230defb257a3ac233df48d2818fce51e6f3"
+      },
+      {
+        "budget": 158,
+        "phrasing": "Please find",
+        "position": 1,
+        "group": "690b673beea3d17b11d7ab179647cda9ef3210012c1c3a70908a44451daf40d5"
+      },
+      {
+        "budget": 159,
+        "phrasing": "I would like",
+        "position": 2,
+        "group": "8260fb78abcdcff471334f88cd1fa514f47114e93dbd7fc6a337ac2ece82673b"
+      },
+      {
+        "budget": 160,
+        "phrasing": "Find me",
+        "position": 0,
+        "group": "985210d76b8ec1c57c10adcaf9f3f0de928576744b15447d66cbcf396ab09c36"
+      },
+      {
+        "budget": 161,
+        "phrasing": "Please find",
+        "position": 1,
+        "group": "8e2f2d93ea6c85e4f3b31cd1a38846c56eafc973586955a860556201f2c80d19"
+      },
+      {
+        "budget": 162,
+        "phrasing": "I would like",
+        "position": 2,
+        "group": "bc0168a4ff88827dd68b4b1abf4916d2d7dbd6c3f5457cf3296762477c9cd58f"
+      },
+      {
+        "budget": 163,
+        "phrasing": "Find me",
+        "position": 0,
+        "group": "f059b39cc901b7b93fa1a67818c74a4826695d08e28b6ffdcfd0f8ad29a57078"
+      }
+    ],
+    "lineage": "new unobserved constructed support; excluded from discovery",
+    "independence_justification": "Independent uniform PRNG draws with replacement from frozen finite support, conditional on contract; fixed stateless greedy policy.",
+    "excluded_fingerprints": []
+  },
+  "costs": {
+    "max_victim_calls": 2048,
+    "max_role_calls": 24,
+    "max_retries": 2
+  },
+  "output_scope": "offline_proposals_only",
+  "registered_at": ""
+}

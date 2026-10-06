@@ -1,0 +1,75 @@
+{
+  "kind": "algebraic_budget_not_results",
+  "method": "paper_anytime_v1",
+  "j": 1,
+  "delta": 0.05,
+  "tau": 0.2,
+  "semantic_eta": 0.0,
+  "grid": [
+    {
+      "n": 32,
+      "planned_generations": 64,
+      "radius": 0.8420314015425764,
+      "maximum_implemented_lower": 0.15796859845742361,
+      "minimum_observed_implemented_effect_strictly_above": 1.0420314015425765,
+      "minimum_observed_semantic_effect_strictly_above": 1.0420314015425765
+    },
+    {
+      "n": 64,
+      "planned_generations": 128,
+      "radius": 0.6303594457710515,
+      "maximum_implemented_lower": 0.3696405542289485,
+      "minimum_observed_implemented_effect_strictly_above": 0.8303594457710515,
+      "minimum_observed_semantic_effect_strictly_above": 0.8303594457710515
+    },
+    {
+      "n": 128,
+      "planned_generations": 256,
+      "radius": 0.46927253047528206,
+      "maximum_implemented_lower": 0.5307274695247179,
+      "minimum_observed_implemented_effect_strictly_above": 0.669272530475282,
+      "minimum_observed_semantic_effect_strictly_above": 0.669272530475282
+    },
+    {
+      "n": 256,
+      "planned_generations": 512,
+      "radius": 0.347718907713731,
+      "maximum_implemented_lower": 0.652281092286269,
+      "minimum_observed_implemented_effect_strictly_above": 0.547718907713731,
+      "minimum_observed_semantic_effect_strictly_above": 0.547718907713731
+    },
+    {
+      "n": 512,
+      "planned_generations": 1024,
+      "radius": 0.25663558722136287,
+      "maximum_implemented_lower": 0.7433644127786372,
+      "minimum_observed_implemented_effect_strictly_above": 0.4566355872213629,
+      "minimum_observed_semantic_effect_strictly_above": 0.4566355872213629
+    },
+    {
+      "n": 1024,
+      "planned_generations": 2048,
+      "radius": 0.1887766244252355,
+      "maximum_implemented_lower": 0.8112233755747645,
+      "minimum_observed_implemented_effect_strictly_above": 0.38877662442523553,
+      "minimum_observed_semantic_effect_strictly_above": 0.38877662442523553
+    }
+  ],
+  "hypotheticals": [
+    {
+      "effect": 0.4,
+      "observed_implemented_crossing_n": 900,
+      "theorem_sufficient_semantic_n": 4216
+    },
+    {
+      "effect": 0.6,
+      "observed_implemented_crossing_n": 186,
+      "theorem_sufficient_semantic_n": 900
+    },
+    {
+      "effect": 0.8,
+      "observed_implemented_crossing_n": 72,
+      "theorem_sufficient_semantic_n": 359
+    }
+  ]
+}

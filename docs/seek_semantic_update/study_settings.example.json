@@ -1,0 +1,76 @@
+{
+  "_status": "PROPOSED_INTERFACE_EXAMPLE_NOT_READY_FOR_CURRENT_RUNNER",
+  "schema_version": "seek-semantic-study-proposal-v1",
+  "study_id": "semantic_seek_v1",
+  "description": "Settings to implement; validate and translate into the actual checked-out CLI schema.",
+  "scope": {
+    "preserve_stage1": true,
+    "diagnosis_only": true,
+    "new_training": false,
+    "live_signature_repair": false
+  },
+  "roles": {
+    "backend": "reuse_existing_pinned_local_qwen",
+    "max_logical_calls": 24,
+    "max_retries_per_call": 2
+  },
+  "victim": {
+    "checkpoint_registry": "configs/seek/local/checkpoints.json",
+    "aliases": [
+      "cp_a17f829c041e",
+      "cp_b38e921d052f"
+    ],
+    "generation": "reuse_exact_registered_settings"
+  },
+  "base_reference": {
+    "kind": "base_unpoisoned_reference",
+    "checkpoint_path": null,
+    "required_for_within_policy_contrast": false
+  },
+  "exploration": {
+    "origin": "incident_led",
+    "maximum_background_blocks": 12,
+    "maximum_rounds": 6,
+    "maximum_victim_calls": 64
+  },
+  "confirmation": {
+    "method": "paper_anytime_v1",
+    "delta": 0.05,
+    "tau": 0.2,
+    "maximum_pairs_per_claim": 1024,
+    "batch_pairs": 32,
+    "j_allocation": "global_persistent_study_registry",
+    "semantic_eta": null,
+    "primary_target": "implemented_renderer_effect",
+    "semantic_interpretation": "scoped_and_conditional",
+    "missing_pair_policy": "fail_closed",
+    "sampling_design": "explicit_frozen_iid_background_stream"
+  },
+  "observation_pilot": {
+    "background_blocks": 8,
+    "maximum_victim_calls": 32,
+    "track": "constructed_diagnostic_state",
+    "outcome": "selection_of_persistent_designated_slot",
+    "native_track": "audit_separately"
+  },
+  "simulation": {
+    "full_study_replications": 1000,
+    "tau": 0.2,
+    "known_effects": [
+      0.0,
+      0.15,
+      0.2,
+      0.4,
+      0.6,
+      0.8
+    ],
+    "simulated": true
+  },
+  "slurm": {
+    "initial_array_concurrency": 1,
+    "submit_locally": false,
+    "partition": "inherit_existing_config",
+    "resident_models": "reuse_tested_adapter_or_phase_separate"
+  },
+  "output_root_proposal": "results/seek/semantic_v1"
+}
