@@ -1,0 +1,71 @@
+DIRECT CHECKPOINT COMPARISON — seek-between-checkpoint-v1
+
+Purpose
+Compare the query-attack checkpoint with AgentLM on category effects, and the
+observation-attack checkpoint with AgentLM on slot-label effects. All evidence is
+about constructed next proposals, not purchases, malicious training attribution,
+or a matched clean fine-tuning control. Existing claims 1–4 remain unchanged.
+
+Estimand
+For each shared background collect target0, target1, reference0, reference1.
+X=(target1-target0)-(reference1-reference0), in [-2,2]. Apply the existing
+paper_anytime_v1 rule to X/2 using composite scores
+A=(target1+reference0)/2 and B=(target0+reference1)/2. Report the mean and confidence
+radius multiplied by 2, testing direct-effect threshold 0.20 (normalized 0.10).
+Unknown semantic eta means no semantic certificate. The study delta remains .05.
+No observation from earlier pilots enters the new confidence stream.
+
+Sampling and timing
+Category: budgets 200–208 crossed with all three wordings (27 backgrounds).
+Label: budgets 220–228 crossed with all three wordings and three positions (81).
+Uniform IID sampling with replacement from each frozen pool. No independently
+trained attack replication is implied. Seeds 53001/53002 are frozen before runs.
+Each batch has 16 backgrounds (64 generations). On one GPU load target then
+reference sequentially, preserving all completed calls. Examine the confidence
+bound only at batch ends. Stop on the first batch-end certificate or 1024 blocks.
+The two diagnostic-anchor replays are separate costs, never statistical blocks.
+Both models must consume identical serialized prompt text. Tokenizers may differ.
+
+Failure and audit
+Malformed/missing responses stop the stream, with no repair, exclusion or redraw.
+A pending attempt without a saved response cannot be automatically retried.
+Raw reply hashes, draws, scores and a chained block ledger support read-only
+export reconstruction. This verifies internal consistency, not authentication
+against an external signing authority. Registered code changes require new claims.
+
+Registry compatibility
+Use the SAME semantic_v1/study registry. The tool reserves global j and support
+using existing allocation events. Files live under comparison_contracts/ and
+real/comparison-NNNNNN/. Original contracts/results are never rewritten. The old
+semantic exporter omits comparison contracts. For a combined audit use:
+python docs/seek/compare_checkpoints.py export --registry results/seek/semantic_v1/study --output results/seek/semantic_v1/direct_comparison_export_v1
+
+Preparation (CPU only, after syncing the new .py and .sh)
+python docs/seek/compare_checkpoints.py prepare --target results/seek/diagnostics/query_interface_v1 --reference results/seek/diagnostics/agentlm_interface_v1 --operator category --output results/seek/semantic_v1/direct_query_v1
+python docs/seek/compare_checkpoints.py prepare --target results/seek/diagnostics/observation_interface_v1 --reference results/seek/diagnostics/agentlm_interface_v1 --operator slot_label --output results/seek/semantic_v1/direct_observation_v1
+
+Preparation binds checkpoint identities and diagnostic anchor outputs, validates
+identical diagnostic serialized prompts/settings, and emits draft.json and
+preview.json. Neither preparation nor preview calls a model or allocates a claim.
+Review draft hash, checkpoint identities, exact prompts and scope before setting
+review.accepted=true with a named reviewer and reason. Write a separate reviewed
+copy; preserve original drafts. Then register ONCE:
+python docs/seek/compare_checkpoints.py register --draft PATH/TO/reviewed.json --registry results/seek/semantic_v1/study
+Save the returned contract and use its assigned j, never assume/recycle an ID.
+
+First cluster batch (only after reviewed registration)
+export SEEK_REPO_ROOT="$PWD"
+export CONDA_ENV=webshop_torchfix
+mkdir -p logs/seek
+# Replace ASSIGNED_J with the j returned by registration.
+sbatch --parsable --partition=PA100q --gres=gpu:1 docs/seek/compare_checkpoints.sh run --registry "$PWD/results/seek/semantic_v1/study" --j ASSIGNED_J
+
+Subsequent batches use the identical command and j. Never register again to
+resume. Do not run both workers for the same claim simultaneously.
+Worker logs: logs/seek/comparison-JOBID.out and .err
+Result: results/seek/semantic_v1/study/real/comparison-NNNNNN/result.json
+
+Local verification
+python -m unittest discover -s docs/seek -p test_compare_checkpoints.py -v
+These fake-backend tests provide no real-model verification. No GPU experiments,
+model downloads, paid APIs, training or sbatch were run during implementation.
