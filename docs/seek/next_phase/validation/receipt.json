@@ -1,0 +1,32 @@
+{
+  "environment": {
+    "python": "3.12.7",
+    "platform": "Linux-5.15.167.4-microsoft-standard-WSL2-aarch64-with-glibc2.39"
+  },
+  "simulated_tests_not_real_model_verification": true,
+  "suites": [
+    {
+      "command": "python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests/seek -p 'test_*.py' -q",
+      "passed": 236,
+      "includes_new_next_phase_tests": 43
+    },
+    {
+      "command": "python -m unittest discover -s docs/seek -p 'test_*.py' -q",
+      "passed": 12
+    },
+    {
+      "command": "python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests -p 'test_rebuttal*.py' -q",
+      "passed": 52
+    },
+    {
+      "command": "bash agent-backdoor-attacks/AgentTuning/WebShop/tests/test_agent_eval.sh",
+      "passed_shell_rows": 36
+    }
+  ],
+  "additional_checks": [
+    "bash -n seek_next.sh seek_next_investigate.sh seek_next_evaluate.sh",
+    "python -m py_compile seek_next.py agent-backdoor-attacks/AgentTuning/WebShop/seek/next_phase/*.py"
+  ],
+  "protected_files_checked": 22,
+  "protected_files_changed": 0
+}

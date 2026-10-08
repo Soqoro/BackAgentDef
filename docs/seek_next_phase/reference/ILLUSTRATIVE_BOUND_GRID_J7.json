@@ -1,0 +1,154 @@
+{
+  "kind": "planning_arithmetic_not_results",
+  "settings": {
+    "j": 7,
+    "delta": 0.05,
+    "tau": 0.2
+  },
+  "grid": [
+    {
+      "contrast": "paired",
+      "blocks": 32,
+      "scale": 1.0,
+      "radius": 0.957747181185988,
+      "strict_required_mean_eta_zero": 1.157747181185988,
+      "maximum_possible_lcb_eta_zero": 0.042252818814011994
+    },
+    {
+      "contrast": "paired",
+      "blocks": 64,
+      "scale": 1.0,
+      "radius": 0.7081556480151537,
+      "strict_required_mean_eta_zero": 0.9081556480151538,
+      "maximum_possible_lcb_eta_zero": 0.29184435198484626
+    },
+    {
+      "contrast": "paired",
+      "blocks": 128,
+      "scale": 1.0,
+      "radius": 0.5218068640121191,
+      "strict_required_mean_eta_zero": 0.7218068640121191,
+      "maximum_possible_lcb_eta_zero": 0.47819313598788094
+    },
+    {
+      "contrast": "paired",
+      "blocks": 256,
+      "scale": 1.0,
+      "radius": 0.3833292142758936,
+      "strict_required_mean_eta_zero": 0.5833292142758937,
+      "maximum_possible_lcb_eta_zero": 0.6166707857241064
+    },
+    {
+      "contrast": "paired",
+      "blocks": 512,
+      "scale": 1.0,
+      "radius": 0.28085271673303364,
+      "strict_required_mean_eta_zero": 0.48085271673303365,
+      "maximum_possible_lcb_eta_zero": 0.7191472832669663
+    },
+    {
+      "contrast": "paired",
+      "blocks": 1024,
+      "scale": 1.0,
+      "radius": 0.20529205017078073,
+      "strict_required_mean_eta_zero": 0.40529205017078074,
+      "maximum_possible_lcb_eta_zero": 0.7947079498292193
+    },
+    {
+      "contrast": "factorial",
+      "blocks": 32,
+      "scale": 2.0,
+      "radius": 1.915494362371976,
+      "strict_required_mean_eta_zero": 2.115494362371976,
+      "maximum_possible_lcb_eta_zero": 0.08450563762802399
+    },
+    {
+      "contrast": "factorial",
+      "blocks": 64,
+      "scale": 2.0,
+      "radius": 1.4163112960303075,
+      "strict_required_mean_eta_zero": 1.6163112960303074,
+      "maximum_possible_lcb_eta_zero": 0.5836887039696925
+    },
+    {
+      "contrast": "factorial",
+      "blocks": 128,
+      "scale": 2.0,
+      "radius": 1.0436137280242381,
+      "strict_required_mean_eta_zero": 1.243613728024238,
+      "maximum_possible_lcb_eta_zero": 0.9563862719757619
+    },
+    {
+      "contrast": "factorial",
+      "blocks": 256,
+      "scale": 2.0,
+      "radius": 0.7666584285517872,
+      "strict_required_mean_eta_zero": 0.9666584285517872,
+      "maximum_possible_lcb_eta_zero": 1.2333415714482128
+    },
+    {
+      "contrast": "factorial",
+      "blocks": 512,
+      "scale": 2.0,
+      "radius": 0.5617054334660673,
+      "strict_required_mean_eta_zero": 0.7617054334660673,
+      "maximum_possible_lcb_eta_zero": 1.4382945665339326
+    },
+    {
+      "contrast": "factorial",
+      "blocks": 1024,
+      "scale": 2.0,
+      "radius": 0.41058410034156145,
+      "strict_required_mean_eta_zero": 0.6105841003415615,
+      "maximum_possible_lcb_eta_zero": 1.5894158996584387
+    },
+    {
+      "contrast": "between_factorial",
+      "blocks": 32,
+      "scale": 4.0,
+      "radius": 3.830988724743952,
+      "strict_required_mean_eta_zero": 4.030988724743952,
+      "maximum_possible_lcb_eta_zero": 0.16901127525604798
+    },
+    {
+      "contrast": "between_factorial",
+      "blocks": 64,
+      "scale": 4.0,
+      "radius": 2.832622592060615,
+      "strict_required_mean_eta_zero": 3.032622592060615,
+      "maximum_possible_lcb_eta_zero": 1.167377407939385
+    },
+    {
+      "contrast": "between_factorial",
+      "blocks": 128,
+      "scale": 4.0,
+      "radius": 2.0872274560484763,
+      "strict_required_mean_eta_zero": 2.2872274560484764,
+      "maximum_possible_lcb_eta_zero": 1.9127725439515237
+    },
+    {
+      "contrast": "between_factorial",
+      "blocks": 256,
+      "scale": 4.0,
+      "radius": 1.5333168571035745,
+      "strict_required_mean_eta_zero": 1.7333168571035744,
+      "maximum_possible_lcb_eta_zero": 2.4666831428964255
+    },
+    {
+      "contrast": "between_factorial",
+      "blocks": 512,
+      "scale": 4.0,
+      "radius": 1.1234108669321345,
+      "strict_required_mean_eta_zero": 1.3234108669321345,
+      "maximum_possible_lcb_eta_zero": 2.8765891330678652
+    },
+    {
+      "contrast": "between_factorial",
+      "blocks": 1024,
+      "scale": 4.0,
+      "radius": 0.8211682006831229,
+      "strict_required_mean_eta_zero": 1.0211682006831229,
+      "maximum_possible_lcb_eta_zero": 3.1788317993168773
+    }
+  ]
+}

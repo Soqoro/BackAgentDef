@@ -1,0 +1,1 @@
+PASS: checked all 36 Slurm dry-run rows without OPENAI_API_KEY or Python invocation

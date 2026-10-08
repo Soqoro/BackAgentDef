@@ -1,0 +1,41 @@
+Independent handoff arithmetic tests only. No repository, GPU or raw-cluster validation.
+
+test_all_between_binary_corners (test_contrast_math.ContrastTests.test_all_between_binary_corners) ... ok
+test_all_constant_outcomes_zero_interaction (test_contrast_math.ContrastTests.test_all_constant_outcomes_zero_interaction) ... ok
+test_all_factorial_binary_corners (test_contrast_math.ContrastTests.test_all_factorial_binary_corners) ... ok
+test_between_factorial_radius_is_four_times_base (test_contrast_math.ContrastTests.test_between_factorial_radius_is_four_times_base) ... ok
+test_between_interaction_range (test_contrast_math.ContrastTests.test_between_interaction_range) ... ok
+test_between_pair_range (test_contrast_math.ContrastTests.test_between_pair_range) ... ok
+test_block_outside_range (test_contrast_math.ContrastTests.test_block_outside_range) ... ok
+test_complete_census (test_contrast_math.ContrastTests.test_complete_census) ... ok
+test_confirmation_census_budget (test_contrast_math.ContrastTests.test_confirmation_census_budget) ... ok
+test_constant_brand_effect_has_no_interaction (test_contrast_math.ContrastTests.test_constant_brand_effect_has_no_interaction) ... ok
+test_equality_does_not_certify (test_contrast_math.ContrastTests.test_equality_does_not_certify) ... ok
+test_eta_uses_raw_units (test_contrast_math.ContrastTests.test_eta_uses_raw_units) ... ok
+test_extra_cell_rejected (test_contrast_math.ContrastTests.test_extra_cell_rejected) ... ok
+test_factorial_radius_is_twice_base (test_contrast_math.ContrastTests.test_factorial_radius_is_twice_base) ... ok
+test_general_nonsymmetric_range (test_contrast_math.ContrastTests.test_general_nonsymmetric_range) ... ok
+test_interaction_range (test_contrast_math.ContrastTests.test_interaction_range) ... ok
+test_invalid_counts_and_delta (test_contrast_math.ContrastTests.test_invalid_counts_and_delta) ... ok
+test_invalid_outcome_rejected (test_contrast_math.ContrastTests.test_invalid_outcome_rejected) ... ok
+test_missing_cell_rejected (test_contrast_math.ContrastTests.test_missing_cell_rejected) ... ok
+test_missing_census_support (test_contrast_math.ContrastTests.test_missing_census_support) ... ok
+test_no_blocks_not_zero_effect (test_contrast_math.ContrastTests.test_no_blocks_not_zero_effect) ... ok
+test_no_silent_weight_normalization (test_contrast_math.ContrastTests.test_no_silent_weight_normalization) ... ok
+test_null_eta_is_not_zero (test_contrast_math.ContrastTests.test_null_eta_is_not_zero) ... ok
+test_optional_between_three_way_range (test_contrast_math.ContrastTests.test_optional_between_three_way_range) ... ok
+test_optional_three_way_range (test_contrast_math.ContrastTests.test_optional_three_way_range) ... ok
+test_pair_range (test_contrast_math.ContrastTests.test_pair_range) ... ok
+test_pilot_budget (test_contrast_math.ContrastTests.test_pilot_budget) ... ok
+test_positive_interaction_orientation (test_contrast_math.ContrastTests.test_positive_interaction_orientation) ... ok
+test_report_claim1_arithmetic (test_contrast_math.ContrastTests.test_report_claim1_arithmetic) ... ok
+test_report_claim2_arithmetic_rounding (test_contrast_math.ContrastTests.test_report_claim2_arithmetic_rounding) ... ok
+test_report_claim5_arithmetic (test_contrast_math.ContrastTests.test_report_claim5_arithmetic) ... ok
+test_report_claim6_arithmetic_rounding (test_contrast_math.ContrastTests.test_report_claim6_arithmetic_rounding) ... ok
+test_reversing_one_factor_reverses_sign (test_contrast_math.ContrastTests.test_reversing_one_factor_reverses_sign) ... ok
+test_unscorable_census_not_completed (test_contrast_math.ContrastTests.test_unscorable_census_not_completed) ... ok
+
+----------------------------------------------------------------------
+Ran 34 tests in 0.003s
+
+OK

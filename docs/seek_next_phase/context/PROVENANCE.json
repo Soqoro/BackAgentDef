@@ -1,0 +1,18 @@
+{
+  "pack_date": "2026-10-08",
+  "report_original_filename": "Pasted markdown(2).md",
+  "report_sha256": "3ff01f9543cfd7be8d17944ec8b4d18b44ffa15e8a7aac727653193ddb14ba10",
+  "manuscript_sha256": "f48726fb50a84b409c2f73ed617995e15fb9fe94b04b0ca788aaf2fa7ae39d09",
+  "scope": "Planning handoff grounded in supplied report; no current repository or cluster raw archive inspected for this update.",
+  "report_registry_head": "d444996f50be5be41625076055f13f32a375c986a5f78bef2a81d00193de7247",
+  "checkpoint_names": [
+    "cp_a17f829c041e",
+    "cp_b38e921d052f",
+    "AgentLM-7B"
+  ],
+  "not_available_here": [
+    "current Seek source checkout",
+    "complete cluster registry event chain",
+    "raw final four-response blocks"
+  ]
+}
