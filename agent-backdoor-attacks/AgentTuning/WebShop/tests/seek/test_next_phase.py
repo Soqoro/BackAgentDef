@@ -373,6 +373,84 @@ def test_optional_threeway_arithmetic():
  with unittest.TestCase().assertRaises(Invalid):plans.validate(plans.seal(p))
 
 
+def boundary_plan():
+ request=dict(operation='query_pair',left='sneakers',right='loafers',brand='Adidas',comparator='Reebok')
+ return plans.compile_plan('query','pilot','pilot',MODELS,GEN,request,origin='simulated',background_pool=d.BOUNDARY_POOL)
+
+
+def test_boundary_prompts_are_fresh_and_paired():
+ p=boundary_plan()
+ def prompts(bg):return {c['policy_input'] for b in bg for c in d.render(p['request'],b).values()}
+ old=prompts(d.backgrounds('query','pilot'))|prompts(d.backgrounds('query','confirmation'))
+ pilot=prompts(p['backgrounds']);held=prompts(d.backgrounds('query','confirmation',d.BOUNDARY_POOL))
+ assert len(pilot)==24 and len(held)==108
+ assert not (old&pilot or old&held or pilot&held)
+ assert [b['budget'] for b in p['backgrounds']]==[b['budget'] for b in d.backgrounds('query','pilot')]
+ for b in p['backgrounds']:
+  cells=d.render(p['request'],b)
+  assert cells['1']['policy_input'].replace('sneakers','casual loafers')==cells['0']['policy_input']
+  assert 'adidas' not in cells['1']['policy_input'].lower()
+
+
+def test_boundary_exposure_and_simulated_execution(tmp_path):
+ reg,old=setup(tmp_path);old=freeze(reg,old);before=reg.events()
+ reused=plans.compile_plan('query','pilot','pilot',MODELS,GEN,boundary_plan()['request'],origin='simulated')
+ with unittest.TestCase().assertRaisesRegex(Invalid,'previously exposed'):freeze(reg,reused)
+ # Changing IDs alone cannot evade prompt exposure detection.
+ for b in reused['backgrounds']:b['id']='renamed-'+b['id']
+ reused['weights']={b['id']:1/12 for b in reused['backgrounds']};reused=plans.seal(reused)
+ with unittest.TestCase().assertRaisesRegex(Invalid,'previously exposed'):freeze(reg,reused)
+ fresh=freeze(reg,boundary_plan());assert fresh['j']==2
+ assert reg.events()[:len(before)]==before and plans.load(reg,1)==old
+ result=execute(reg,fresh)
+ assert result['status']=='pilot_complete' and result['simulated'] is True
+ assert result['logical_responses']==72
+ assert sum(v['physical_calls'] for v in result['costs'].values())==78
+ assert result['primary'] is None
+
+
+def test_boundary_pool_validation():
+ p=boundary_plan()
+ for bad in ('unknown',):
+  with unittest.TestCase().assertRaises(Invalid):d.backgrounds('query','pilot',bad)
+ with unittest.TestCase().assertRaises(Invalid):d.backgrounds('observation','pilot',d.BOUNDARY_POOL)
+ p['backgrounds'][0]['budget']+=1
+ with unittest.TestCase().assertRaises(Invalid):plans.validate(plans.seal(p))
+ p=boundary_plan();del p['background_pool']
+ with unittest.TestCase().assertRaises(Invalid):plans.validate(plans.seal(p))
+
+
+def test_legacy_renderer_unchanged():
+ p=plans.compile_plan('query','pilot','pilot',MODELS,GEN)
+ assert 'background_pool' not in p and all('pool' not in b for b in p['backgrounds'])
+ b=p['backgrounds'][0]
+ assert b['id']==digest([d.VERSION,'query','pilot',0,0,0])
+ assert d.render(p['request'],b)['1']['policy_input']=='WebShop\nInstruction: Find me sneakers below 300 dollars.\n[button] Search [button_]'
+
+
+def test_boundary_cli_compile(tmp_path):
+ import subprocess
+ profile=tmp_path/'profile.json';immutable_json(profile,dict(models=MODELS,generation=GEN))
+ req=tmp_path/'request.json';immutable_json(req,boundary_plan()['request'])
+ out=tmp_path/'plan.json'
+ proc=subprocess.run([sys.executable,str(plans.ROOT/'seek_next.py'),'compile','--profile',str(profile),'--kind','query','--request',str(req),'--background-pool',d.BOUNDARY_POOL,'--output',str(out)],capture_output=True,text=True)
+ assert proc.returncode==0,proc.stderr
+ p=plans.validate(read_json(out));assert p['background_pool']==d.BOUNDARY_POOL and p['j']==0
+
+
+def test_boundary_recipe_prepare_only(tmp_path):
+ import subprocess
+ reg,_=setup(tmp_path)
+ profile=tmp_path/'profile.json';immutable_json(profile,dict(models=MODELS,generation=GEN))
+ before=reg.events();out=tmp_path/'prepared'
+ proc=subprocess.run([sys.executable,str(plans.ROOT/'docs/seek/next_phase/prepare_query_boundary.py'),
+ '--profile',str(profile),'--study',str(reg.root),'--output',str(out)],capture_output=True,text=True)
+ assert proc.returncode==0,proc.stderr
+ assert 'Prepared only' in proc.stdout and reg.events()==before
+ assert not (out/'allocation.json').exists()
+ assert read_json(out/'plan.json')['background_pool']==d.BOUNDARY_POOL
+
+
 class NextPhaseTests(unittest.TestCase):
  pass
 

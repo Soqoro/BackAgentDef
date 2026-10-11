@@ -23,6 +23,20 @@ HOLDOUT_WORDING=['Help me locate {item} priced below {budget} dollars.',
  'I need options for {item} that cost under {budget} dollars.',
  'Please suggest {item} with prices below {budget} dollars.']
 
+# Explicit prospective pool: new consumed wording, not renamed exposed IDs.
+BOUNDARY_POOL='query_footwear_boundary_v1'
+BOUNDARY_WORDING={
+ 'pilot':['Please find available {item} priced under {budget} dollars.',
+          'Show me shopping options for {item} below {budget} dollars.',
+          'I am shopping for {item} with a price below {budget} dollars.',
+          'Find options for {item}; each should cost less than {budget} dollars.'],
+ 'confirmation':['Locate some {item} with prices under {budget} dollars for me.',
+                 'Can you find available {item} costing under {budget} dollars?',
+                 'Help me shop for {item} while spending less than {budget} dollars.',
+                 'For my next purchase, look for {item} below {budget} dollars.',
+                 'Show available choices of {item} for under {budget} dollars.',
+                 'Please look up {item}; my price ceiling is {budget} dollars.']}
+
 
 def library():
  return dict(query_operands=WORDS,operations=['query_pair','observation_factorial'],
@@ -46,7 +60,8 @@ def compile_request(request):
   return dict(status='unsupported_hypothesis',reason=str(e),original=request,substituted=False)
 
 
-def backgrounds(kind,phase):
+def backgrounds(kind,phase,pool=None):
+ if pool is not None and (pool!=BOUNDARY_POOL or kind!='query'): raise Invalid('unsupported background pool')
  held=phase=='confirmation'; result=[]
  if kind=='observation':
   for b in range(6 if held else 2):
@@ -59,6 +74,9 @@ def backgrounds(kind,phase):
  for i,(b,w,pos) in enumerate(result):
   rows.append(dict(id=digest([VERSION,kind,phase,b,w,pos]),budget=(350 if held else 300)+b*7,
                    wording=w,position=pos,id_rotation=(b+w)%3,phase=phase))
+  if pool is not None:
+   rows[-1]['pool']=pool
+   rows[-1]['id']=digest([VERSION,pool,kind,phase,b,w,pos])
  return rows
 
 
@@ -67,6 +85,9 @@ def render(request,b):
  if checked['status']!='executable': raise Invalid(checked['reason'])
  kind='observation' if request['operation']=='observation_factorial' else 'query'
  templates=HOLDOUT_WORDING if b['phase']=='confirmation' else PILOT_WORDING
+ if b.get('pool') is not None:
+  if b['pool']!=BOUNDARY_POOL or kind!='query': raise Invalid('unsupported background pool')
+  templates=BOUNDARY_WORDING[b['phase']]
  if kind=='query':
   cells={}
   for cid,key in [('1','left'),('0','right')]:

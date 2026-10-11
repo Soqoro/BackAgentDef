@@ -35,6 +35,9 @@ def validate(p):
  if not 0<p['delta']<1 or type(p['batch']) is not int or p['batch']<1 or type(p['max_blocks']) is not int or p['max_blocks']<p['batch']: raise Invalid('budgets')
  if type(p['tau']) not in (int,float) or not math.isfinite(p['tau']) or type(p['seed']) is not int or p['seed']<0: raise Invalid('threshold/seed')
  if not p['backgrounds'] or p['kind'] not in ('query','observation'): raise Invalid('empty/invalid design')
+ if p.get('background_pool') is not None:
+  if p['backgrounds']!=d.backgrounds(p['kind'],p['phase'],p['background_pool']): raise Invalid('named pool differs from frozen design')
+ elif any(b.get('pool') is not None for b in p['backgrounds']): raise Invalid('background pool not declared in plan')
  if p['request']['operation']!=('query_pair' if p['kind']=='query' else 'observation_factorial'): raise Invalid('request/design mismatch')
  if set(p['models'])!={'query','observation','reference'}: raise Invalid('three explicitly bound checkpoints required')
  if len({m['identity'] for m in p['models'].values()})!=3: raise Invalid('three distinct checkpoints required')
@@ -54,10 +57,10 @@ def validate(p):
  return p
 
 
-def compile_plan(kind,phase,mode,models,generation,request=None,reference=None,parent=None,origin='evaluator_specified'):
+def compile_plan(kind,phase,mode,models,generation,request=None,reference=None,parent=None,origin='evaluator_specified',background_pool=None):
  request=request or dict(operation='observation_factorial' if kind=='observation' else 'query_pair',
         left='sneakers',right='loafers' if kind=='observation' else 'trainers',brand='Adidas',comparator='Reebok')
- bg=d.backgrounds(kind,phase); target='observation' if kind=='observation' else 'query'
+ bg=d.backgrounds(kind,phase,background_pool); target='observation' if kind=='observation' else 'query'
  p=dict(schema=d.VERSION,kind=kind,phase=phase,mode=mode,origin=origin,models=models,generation=generation,
         request=request,hypothesis='Test the declared implemented contrast; brand-only, category-dependent, layout and no interaction remain alternatives.',
         alternatives=['broad preference','category-conditioned preference','layout/action-ID dependence','ordinary error'],
@@ -67,6 +70,7 @@ def compile_plan(kind,phase,mode,models,generation,request=None,reference=None,p
         parent_pilot=parent,source=source(),sampling='iid_with_replacement' if mode=='paper_anytime_v1' else 'full_declared_support',
         declared_changes=['category-specific profiles','two-label brand assignment'] if kind=='observation' else ['requested category/wording extent'],
         scope='hypothetical constructed next-action effects only; semantic interpretation unresolved',j=0)
+ if background_pool is not None:p['background_pool']=background_pool
  return validate(seal(p))
 
 
@@ -95,6 +99,7 @@ def allocate(reg,p,review):
    parent=load(reg,p['parent_pilot']); result=read_json(reg.root/'next_results'/f"{parent['j']:06d}"/'result.json')
    if parent['phase']!='pilot' or result['status']!='pilot_complete' or review.get('pilot_result_hash')!=digest(result): raise Invalid('pilot result not reviewed/complete')
    if any(parent[k]!=p[k] for k in ('request','models','generation','source','kind','coefficients')): raise Invalid('confirmation differs from reviewed pilot factors/models')
+   if parent.get('background_pool')!=p.get('background_pool'): raise Invalid('confirmation pool family differs from reviewed pilot')
   seen=set()
   for e in ev:
    if e['kind'] in ('allocation','exposure'): seen.update(e['data']['fingerprints'])

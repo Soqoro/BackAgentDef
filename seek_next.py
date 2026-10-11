@@ -19,7 +19,7 @@ def parser():
  a=s.add_parser('audit');a.add_argument('--input',required=True);a.add_argument('--output',required=True);a.add_argument('--archive',action='store_true')
  a=s.add_parser('package');a.add_argument('--input',required=True);a.add_argument('--output',required=True)
  a=s.add_parser('profile');a.add_argument('--query',required=True);a.add_argument('--observation',required=True);a.add_argument('--reference',required=True);a.add_argument('--output',required=True)
- a=s.add_parser('compile');a.add_argument('--profile',required=True);a.add_argument('--kind',choices=['observation','query'],required=True);a.add_argument('--phase',choices=['pilot','confirmation'],default='pilot');a.add_argument('--mode',choices=['pilot','paper_anytime_v1','finite_support_census_v1'],default='pilot');a.add_argument('--request');a.add_argument('--reference',choices=['reference']);a.add_argument('--parent',type=int);a.add_argument('--output',required=True)
+ a=s.add_parser('compile');a.add_argument('--profile',required=True);a.add_argument('--kind',choices=['observation','query'],required=True);a.add_argument('--phase',choices=['pilot','confirmation'],default='pilot');a.add_argument('--mode',choices=['pilot','paper_anytime_v1','finite_support_census_v1'],default='pilot');a.add_argument('--request');a.add_argument('--background-pool',choices=[design.BOUNDARY_POOL]);a.add_argument('--reference',choices=['reference']);a.add_argument('--parent',type=int);a.add_argument('--output',required=True)
  for cmd in ('preview','resources','review-template'):
   a=s.add_parser(cmd);a.add_argument('--plan',required=True);a.add_argument('--study');a.add_argument('--output')
  a=s.add_parser('freeze');a.add_argument('--plan',required=True);a.add_argument('--review',required=True);a.add_argument('--study',required=True)
@@ -64,7 +64,7 @@ def main(argv=None):
    generation=manifest['generation'];models[name]=entry
   result=dict(models=models,generation=generation,source_manifests={k:digest(read_json(getattr(args,k))) for k in models});immutable_json(args.output,result)
  elif cmd=='compile':
-  profile=read_json(args.profile);result=plans.compile_plan(args.kind,args.phase,args.mode,profile['models'],profile['generation'],read_json(args.request) if args.request else None,args.reference,args.parent);immutable_json(args.output,result)
+  profile=read_json(args.profile);result=plans.compile_plan(args.kind,args.phase,args.mode,profile['models'],profile['generation'],read_json(args.request) if args.request else None,args.reference,args.parent,background_pool=args.background_pool);immutable_json(args.output,result)
  elif cmd in ('preview','resources','review-template'):
   plan=plans.validate(read_json(args.plan))
   if cmd=='preview':result=design.preview(plan)
