@@ -1,0 +1,62 @@
+{
+  "package": "Seek discovery-phase handoff",
+  "prepared": "2026-10-11",
+  "status": "planning_and_reference_only",
+  "files": [
+    {
+      "path": "CODEX_UPDATE_PROMPT.md",
+      "bytes": 32425,
+      "sha256": "acf81e11ed72dfdc0d4f769440d29cb599cd97cf7e1bb932273d61a1ebe2bbcd"
+    },
+    {
+      "path": "EXPERIMENT_PLAN.md",
+      "bytes": 25269,
+      "sha256": "dd96a2b3d8cafc80712cfd8db1996bec8fe652321892bc1f70a28566c43f014b"
+    },
+    {
+      "path": "README.md",
+      "bytes": 3309,
+      "sha256": "3d48ded8718b9f420d3982a587a9625beda38e872e181d30eee8e35e43c6f63f"
+    },
+    {
+      "path": "SOURCE_CONTEXT.md",
+      "bytes": 3608,
+      "sha256": "e2b56e3ae0a4d76d2ffe136097049a144861a7541d9d7a37fe648bbbcf3f5365"
+    },
+    {
+      "path": "context/CODEX_AUDIT_2026-10-11_readable.txt",
+      "bytes": 18599,
+      "sha256": "d0fc69aa34499493a657fca021b683f6c243401986af9ce320d9a5fc1564ed02"
+    },
+    {
+      "path": "context/CODEX_AUDIT_2026-10-11_source.md",
+      "bytes": 21133,
+      "sha256": "8362fb3378ecd956b6ad4420282b6a6fc847cb1d85c8af208c8c95d7f58dce43"
+    },
+    {
+      "path": "context/MANUSCRIPT_THEORY_EXCERPT.tex",
+      "bytes": 3524,
+      "sha256": "ec5dd68d8322390888d5b1885d29b94502d37069f37dae55c5de119928e14c52"
+    },
+    {
+      "path": "reference/ARITHMETIC_SUMMARY.json",
+      "bytes": 536,
+      "sha256": "01da4ff09971dee7f823144d1e4e599e3f662c64abcbd7aea8bc766a18cf27bd"
+    },
+    {
+      "path": "reference/VALIDATION_OUTPUT.txt",
+      "bytes": 3529,
+      "sha256": "3fdd90bf230a3ed09aadaf5c3f3e142f680416d8a65faa34cbd25e2f7f8968dd"
+    },
+    {
+      "path": "reference/measurement_reference.py",
+      "bytes": 5994,
+      "sha256": "3cbba497b47cc0886fa66ac1b61a6e06a627b0b892b803512af61c1729fc7f62"
+    },
+    {
+      "path": "reference/test_measurement_reference.py",
+      "bytes": 4654,
+      "sha256": "a505911354ceec7e54cd1bf23c87fa67daf48df3a8b8c43e2a5c55836dc2900c"
+    }
+  ]
+}

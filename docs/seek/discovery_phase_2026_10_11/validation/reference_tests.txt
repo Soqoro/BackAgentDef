@@ -1,0 +1,34 @@
+test_always_first_zero_brand_swap (__main__.MeasurementReferenceTests.test_always_first_zero_brand_swap) ... ok
+test_between_interaction_range (__main__.MeasurementReferenceTests.test_between_interaction_range) ... ok
+test_brand_main_effect_can_have_zero_interaction (__main__.MeasurementReferenceTests.test_brand_main_effect_can_have_zero_interaction) ... ok
+test_category_conditioned_effect (__main__.MeasurementReferenceTests.test_category_conditioned_effect) ... ok
+test_claim10_lower (__main__.MeasurementReferenceTests.test_claim10_lower) ... ok
+test_claim10_radius (__main__.MeasurementReferenceTests.test_claim10_radius) ... ok
+test_claim10_stopping_path (__main__.MeasurementReferenceTests.test_claim10_stopping_path) ... ok
+test_coefficient_mismatch_rejected (__main__.MeasurementReferenceTests.test_coefficient_mismatch_rejected) ... ok
+test_empty_census_rejected (__main__.MeasurementReferenceTests.test_empty_census_rejected) ... ok
+test_eta_adjustment (__main__.MeasurementReferenceTests.test_eta_adjustment) ... ok
+test_global_index_penalty (__main__.MeasurementReferenceTests.test_global_index_penalty) ... ok
+test_interaction_range (__main__.MeasurementReferenceTests.test_interaction_range) ... ok
+test_invalid_cell_rejected (__main__.MeasurementReferenceTests.test_invalid_cell_rejected) ... ok
+test_invalid_delta_rejected (__main__.MeasurementReferenceTests.test_invalid_delta_rejected) ... ok
+test_method_budget (__main__.MeasurementReferenceTests.test_method_budget) ... ok
+test_missing_census_cell_rejected (__main__.MeasurementReferenceTests.test_missing_census_cell_rejected) ... ok
+test_nonfinite_census_cell_rejected (__main__.MeasurementReferenceTests.test_nonfinite_census_cell_rejected) ... ok
+test_observation_budget (__main__.MeasurementReferenceTests.test_observation_budget) ... ok
+test_pair_range (__main__.MeasurementReferenceTests.test_pair_range) ... ok
+test_query_optional_budget (__main__.MeasurementReferenceTests.test_query_optional_budget) ... ok
+test_radius_scaled (__main__.MeasurementReferenceTests.test_radius_scaled) ... ok
+test_raw_upper_not_clipped (__main__.MeasurementReferenceTests.test_raw_upper_not_clipped) ... ok
+test_strict_equality_does_not_pass (__main__.MeasurementReferenceTests.test_strict_equality_does_not_pass) ... ok
+test_thousand_studies_narrower_hypothetical_interval (__main__.MeasurementReferenceTests.test_thousand_studies_narrower_hypothetical_interval) ... ok
+test_two_studies_wide_interval (__main__.MeasurementReferenceTests.test_two_studies_wide_interval) ... ok
+test_unknown_eta_is_not_zero (__main__.MeasurementReferenceTests.test_unknown_eta_is_not_zero) ... ok
+test_weighted_census (__main__.MeasurementReferenceTests.test_weighted_census) ... ok
+test_zero_index_rejected (__main__.MeasurementReferenceTests.test_zero_index_rejected) ... ok
+test_zero_n_rejected (__main__.MeasurementReferenceTests.test_zero_n_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 29 tests in 0.001s
+
+OK

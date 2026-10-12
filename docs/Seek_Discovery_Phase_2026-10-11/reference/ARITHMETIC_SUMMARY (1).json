@@ -1,0 +1,17 @@
+{
+  "purpose": "handoff arithmetic only; no experiment executed",
+  "claim10_radius_reference": 0.7228984665299145,
+  "paired_scale": 1.0,
+  "interaction_scale": 2.0,
+  "between_interaction_scale": 4.0,
+  "proposed_budget_caps": {
+    "method_discovery_logical": 128,
+    "method_evaluator_paired_logical": 288,
+    "method_defender_logical_cap": 288,
+    "observation_bridge_core": 96,
+    "observation_competence_core": 24,
+    "observation_anchors": 6,
+    "query_panel_minimal_core": 108,
+    "query_panel_expanded_core": 324
+  }
+}

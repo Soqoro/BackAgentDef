@@ -1,0 +1,484 @@
+{
+  "schema": "seek-simulation-campaign-result-v2",
+  "simulated": true,
+  "manifest": {
+    "schema": "seek-simulation-campaign-v2",
+    "simulated": true,
+    "source": {
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/next_phase/investigation.py": "7d95504ba8f8538b638aabd3a32cf79de362d75b2c92ab5b0504d6f07bc4807c",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/next_phase/__init__.py": "787e4d947727dcfe04f0edfa6ca16cb44109bb7f7e1461f9d5e1c38d2cf10e1b",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/next_phase/simulation.py": "8cbc68f7eabfb8299785ac127b272eaee67c7f44a92d10d673933d85dec52d12",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/next_phase/engine.py": "5f25a9d6871273b6f6c354a8bbbedb9a19584f6dd960c70deca751c025669a04",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/next_phase/plans.py": "8b1d5621b1a86aa8d4192dfb78c540e9c6379b6c4e6cdb3345ca2a2312bf280e",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/next_phase/audit.py": "b895b3ce6d7cfc60afcb760f53f9e2a91590ee3dc61be6ca823b031006ce3874",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/next_phase/design.py": "415215437d52166ad674de347efe4100dd697890d3a8c452a2724722b675d460",
+      "seek_next.py": "cad9e414ee0891026d5d3363763954dc19f2b750deb60c05caeeb8faeec26b22",
+      "seek_next.sh": "13e8d2d8f48c576af79dafa91088f913b8201b31a908c41ee8dcf14c7aed140b",
+      "seek_next_investigate.sh": "91f53665ded7582531a21f5904ad4b46cc8f4305dc00b3ac148eaec52e248b43",
+      "seek_next_evaluate.sh": "43aa2c48f5d988c1d22b1eb7c854bbd4061b381028feaad2d3787f3a364abcc1",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/provenance.py": "cda53dff8800337b78e346f1af55669caa2165797e4568ee378de6546277a1af",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/semantic_renderers.py": "0f6d4275bd46e873bac14a66002d649c34b6d75dcf9ae41a71b9927f7f9e9e39",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/snapshot_io.py": "5ec065411dfe9780b474937c64aa191692ce9154ca882001695b212c84150450",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/schemas.py": "ddf92571841b1108fe0f3f69ffa738e2486fd5223d369f290c6a6971ac49322b",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/local_roles.py": "c1bbfe9df5577e4117a1482137a6dcb814c6d461bb66b42d594a245816e187cf",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/__init__.py": "b892c115455e8f61b03abaa247d619af0b5291eff31d8e1dcf8038d3b86318d8",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/preservation.py": "8227108a3d7e277ba98b80811e1ee41bfe4c854bc1ada3574a5528aa7cbe603b",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/evaluator.py": "3886bdaa7599fc3ce531388b9bfaa677ccabdf8a0a59b4fa53be51296df4163d",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/characterization.py": "d88b772e87d407f2872b2f1fac0724f8f0f10d52e7bc1ba8f7292393bc512666",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/hypotheses.py": "01ddeaed73cd35d27461a44c917e40cd0e6b0a3638cd0a4a81013d18d8c7af5d",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/collection.py": "a8a146b8c54ccf63c28b5a5c08c82524ebaeed80213820134806081373252073",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/victim.py": "b194c28a6b7f229eaa308ce4b8325e67f16492b0573458c51aa1714720a6f3af",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/signatures.py": "1f39cfc500a5ed30e020ee83f8ab11c6981dd24ad68e25afec22046b09b1a2c7",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/lexical_diagnostic.py": "62d0744adaa6e42b68e52d1a1abd188013f60ce704e2a8d9ac17a0c9f35eabdc",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/roles.py": "99cb367901ea10a952154b5a12f03ba94c87b8e6dc0bf2ed11bd1c96bef4bb53",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/source_audit.py": "04703d141e606c18f4c9c0ec016e45e0a3f41d97fe6aee67b732f9418b5ae81e",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/prompts.py": "70458c3bdc96eb09a303dbc5125b2b69a69771fe88f771b325a1a50f1a12e336",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/semantic_simulation.py": "7d5f2c4c60761796155f90b6c61262fdbf442c77847c43ab22d71fe428237406",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/semantic_registry.py": "2a6714bc692755275378bac7ea958f5c99dc8b54f43362d4d4c6d233a01cf9e6",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/replay.py": "73ca87c6cc41a8652435905206febd8120273c3d423ee02a553a67e0feb5f985",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/storage.py": "6b4470506b4da23a948c7eb832644817156e3b412d1f162547d250652cef12aa",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/semantic_stats.py": "3fb1cce4bbd6dd66e91115889d94ab7df3897161d1aa58bda3a717b96207cd50",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/semantic_runner.py": "ea16d065c9f183537cbb050d0a394be08ea8562c1e5822762b53b894ea3c2173",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/qwen_worker.py": "e046f104405d02bb5977b9eaf51059b8b18bcfa794d1ea73da2382e62028764f",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/semantic_cli.py": "bdb0c7ff4bcc563eda958a49212d2d6f46a3593c8f69da228eacfc8daaad98cd",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/cli.py": "16b1dcc71ba2e8acd678354b4e4e90fa731d7fc9576fb1749630e6eb59d40cdb",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/metrics.py": "08bd5ca232f331932a4ed2a307dcf2b3eea66851a0e1a2e86a509cb1e0527092",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/semantic_evidence.py": "94f537395fe7d2f122a95440cf45f8d362f3036e8fba4504547fc5d2b5fafedb",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/controller.py": "1e894cb2814613a35bb06e64e4ebde4db2570b6924306ba397ac88fe143dd3c1",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/aggregate.py": "e8f7c5c9c0c2124d8c45d711db622f4d8643c09d6cca4834879f1a9a6c6da2b8",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/manifests.py": "c39960ea54cf31f51c5a07bc89b3d65e5db00f5a8e42d19cf12aba27c8991621",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/confirmation.py": "0dbea3e5bc28be65976d4ba3dbce73cfb26e9ec73ce282d57d33db53ba39085f",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/content_diagnostic.py": "d30bc13cb45fdf5eea8441f758d9eef47c104ae107cbdc3b22a5acbef689ef34",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/semantic_roles.py": "1e3724e2d5b12433168caa9944ef96cb634eb5ba8f14cbd9082431c25bbfcecf",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/semantic_contracts.py": "f49f11a2b1fa4948c13be250b5e1f4b8471bb559f70496a85114bff649d0a887",
+      "agent-backdoor-attacks/AgentTuning/WebShop/test.py": "d6eb0b9665f5b8554a182c00bbf196c553f835f6773068998aceae840d1dd766",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/__init__.py": "eb314f6ad9f2d23c53b9394cbd2c6507334729d2cc046df1205cf3420aafda0f",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/methods.py": "fbaf5d214f2e44833746a6a7bf1b5588f1951e3a07419340e2d013697279bfcd",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/panels.py": "478bb1e2018b1edba2c511d36baf51fabee67d3bdf1405abb020cfcac767a881",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/campaign.py": "9eb0865ad72995e9467883fceb8140a1d912c1be4c74a4c27a0b41412d192a93",
+      "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/common.py": "71b5ef447d385c38267454a5d9d7e45f759dffb3efdda3a2d384181a07cc357e",
+      "seek_discovery.py": "db9b3951d90c91a468054525effb3622146e6e4b07817e23d969acbd7045492b",
+      "seek_discovery.sh": "f71dc00848b3ca6505f2fca4bf0993ddeea9681f7da685f5717388f1a697fd22"
+    },
+    "replications": 2,
+    "cap": 64,
+    "seed": 121012,
+    "schedule": "adaptive",
+    "batch": 16,
+    "delta": 0.05,
+    "threshold": 0.2,
+    "cases": [
+      "null",
+      "boundary",
+      "strong",
+      "lexical_only",
+      "synonym_invariant",
+      "sparse_conjunction",
+      "missing_hypothesis",
+      "malformed",
+      "ordinary_preference",
+      "eta_misspecified"
+    ],
+    "hash": "a8c5455dfddc961e058be2747fb8548f455d41ce9bd73adb49f743d204acdd2f"
+  },
+  "completed_studies": 2,
+  "horizon_summary": {
+    "64": {
+      "any_false": 0,
+      "studies": 2,
+      "interval": [
+        0,
+        0.6576197724933469
+      ],
+      "covered": 2
+    }
+  },
+  "family_false_certificates": {
+    "count": 0,
+    "denominator": 2,
+    "interval": [
+      0,
+      0.6576197724933469
+    ]
+  },
+  "simultaneous_checked_coverage": {
+    "count": 2,
+    "denominator": 2,
+    "interval": [
+      0.34238022750665303,
+      1
+    ]
+  },
+  "scenarios": {
+    "strong:scale1": {
+      "studies": 2,
+      "certificates": 2,
+      "failures": 0,
+      "blocks": 96,
+      "truth": 1,
+      "certificate_interval": [
+        0.34238022750665303,
+        1
+      ],
+      "mean_blocks": 48.0
+    },
+    "strong:scale2": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 0,
+      "blocks": 128,
+      "truth": 1,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 64.0
+    },
+    "strong:scale4": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 0,
+      "blocks": 128,
+      "truth": 1,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 64.0
+    },
+    "lexical_only:scale1": {
+      "studies": 2,
+      "certificates": 2,
+      "failures": 0,
+      "blocks": 96,
+      "truth": 1.0,
+      "certificate_interval": [
+        0.34238022750665303,
+        1
+      ],
+      "mean_blocks": 48.0
+    },
+    "lexical_only:scale2": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 0,
+      "blocks": 128,
+      "truth": 1.0,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 64.0
+    },
+    "lexical_only:scale4": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 0,
+      "blocks": 128,
+      "truth": 1.0,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 64.0
+    },
+    "ordinary_preference:scale1": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 0,
+      "blocks": 128,
+      "truth": 0.8,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 64.0
+    },
+    "ordinary_preference:scale2": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 0,
+      "blocks": 128,
+      "truth": 0.8,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 64.0
+    },
+    "ordinary_preference:scale4": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 0,
+      "blocks": 128,
+      "truth": 0.8,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 64.0
+    },
+    "sparse_conjunction:scale1": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 0,
+      "blocks": 128,
+      "truth": 0.1,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 64.0
+    },
+    "sparse_conjunction:scale2": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 0,
+      "blocks": 128,
+      "truth": 0.1,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 64.0
+    },
+    "sparse_conjunction:scale4": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 0,
+      "blocks": 128,
+      "truth": 0.1,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 64.0
+    },
+    "null:scale1": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 0,
+      "blocks": 128,
+      "truth": 0,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 64.0
+    },
+    "null:scale2": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 0,
+      "blocks": 128,
+      "truth": 0,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 64.0
+    },
+    "null:scale4": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 0,
+      "blocks": 128,
+      "truth": 0,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 64.0
+    },
+    "boundary:scale1": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 0,
+      "blocks": 128,
+      "truth": 0.2,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 64.0
+    },
+    "boundary:scale2": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 0,
+      "blocks": 128,
+      "truth": 0.2,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 64.0
+    },
+    "boundary:scale4": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 0,
+      "blocks": 128,
+      "truth": 0.2,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 64.0
+    },
+    "synonym_invariant:scale1": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 0,
+      "blocks": 128,
+      "truth": 0.0,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 64.0
+    },
+    "synonym_invariant:scale2": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 0,
+      "blocks": 128,
+      "truth": 1.0,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 64.0
+    },
+    "synonym_invariant:scale4": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 0,
+      "blocks": 128,
+      "truth": 1.0,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 64.0
+    },
+    "malformed:scale1": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 2,
+      "blocks": 0,
+      "truth": 0,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 0.0
+    },
+    "malformed:scale2": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 2,
+      "blocks": 0,
+      "truth": 0,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 0.0
+    },
+    "malformed:scale4": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 2,
+      "blocks": 0,
+      "truth": 0,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 0.0
+    },
+    "missing_hypothesis:scale1": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 2,
+      "blocks": 0,
+      "truth": 0,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 0.0
+    },
+    "missing_hypothesis:scale2": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 2,
+      "blocks": 0,
+      "truth": 0,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 0.0
+    },
+    "missing_hypothesis:scale4": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 2,
+      "blocks": 0,
+      "truth": 0,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 0.0
+    },
+    "eta_misspecified:scale1": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 0,
+      "blocks": 128,
+      "truth": 0.8,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 64.0
+    },
+    "eta_misspecified:scale2": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 0,
+      "blocks": 128,
+      "truth": 0.8,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 64.0
+    },
+    "eta_misspecified:scale4": {
+      "studies": 2,
+      "certificates": 0,
+      "failures": 0,
+      "blocks": 128,
+      "truth": 0.8,
+      "certificate_interval": [
+        0,
+        0.6576197724933469
+      ],
+      "mean_blocks": 64.0
+    }
+  },
+  "logical_responses": 14556,
+  "total_measured_study_seconds": 0.007670249999819134,
+  "this_invocation_seconds": 0.014866920000031314,
+  "limitations": [
+    "Study-level events, not per-check replicates",
+    "No model verification",
+    "No calibration conclusion from smoke",
+    "Semantic assumption stress is not a theorem-failure test",
+    "No real registry writes"
+  ]
+}

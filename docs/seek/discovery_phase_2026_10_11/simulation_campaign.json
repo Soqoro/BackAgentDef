@@ -1,0 +1,14 @@
+{
+  "schema": "seek-simulation-run-recipe-v1",
+  "simulated": true,
+  "replications_per_schedule": 1000,
+  "schedules": ["adaptive", "fixed"],
+  "seed": 121012,
+  "cap": 2048,
+  "batch": 16,
+  "horizons": [64, 256, 1024, 2048],
+  "delta": 0.05,
+  "threshold": 0.2,
+  "status": "prepared_not_run",
+  "note": "Each independent study includes every known-rule scenario at scales 1/2/4. Replications are not repeated checks. Full run requires --large."
+}

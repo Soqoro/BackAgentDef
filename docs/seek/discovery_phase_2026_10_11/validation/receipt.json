@@ -1,0 +1,65 @@
+{
+  "date": "2026-10-12",
+  "timezone": "Asia/Singapore",
+  "python": "3.12.7",
+  "simulated_cpu_only": true,
+  "suites": [
+    {
+      "command": "python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests/seek -p 'test_*.py' -q",
+      "passed": 255,
+      "log": "seek_tests.txt"
+    },
+    {
+      "command": "python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests/seek -p test_discovery_phase.py -q",
+      "passed": 13,
+      "log": "discovery_tests.txt"
+    },
+    {
+      "command": "python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests -p 'test_rebuttal*.py' -q",
+      "passed": 52,
+      "log": "stage1_tests.txt"
+    },
+    {
+      "command": "python -m unittest discover -s docs/seek -p 'test_*.py' -q",
+      "passed": 12,
+      "log": "docs_tests.txt"
+    },
+    {
+      "command": "python 'docs/Seek_Discovery_Phase_2026-10-11/reference/test_measurement_reference (1).py'",
+      "passed": 29,
+      "log": "reference_tests.txt"
+    }
+  ],
+  "overlap": "13 discovery tests are a subset of the 255-test Seek suite. No nested totals added.",
+  "stage1_shell_dry_runs": 36,
+  "protected_files": 24,
+  "protected_files_changed": 0,
+  "legacy_execution_files_changed": 0,
+  "other_checks": [
+    "bash -n seek_discovery.sh seek_next.sh seek_next_investigate.sh seek_next_evaluate.sh",
+    "python -m py_compile seek_discovery.py seek/discovery_phase/*.py",
+    "git diff --check"
+  ],
+  "fake_trace": {
+    "path": "simulated/release_trace/adaptive_seek/result.json",
+    "status": "candidate_frozen",
+    "logical_victim_responses": 10,
+    "defender_logical_calls": 24
+  },
+  "simulation_smoke": {
+    "path": "simulated/release_campaign/result.json",
+    "studies": 2,
+    "false_certificates": {
+      "count": 0,
+      "denominator": 2,
+      "interval": [
+        0,
+        0.6576197724933469
+      ]
+    },
+    "logical_responses": 14556
+  },
+  "full_campaign_run": false,
+  "new_cluster_runs": false,
+  "prerequisites": "See NEXT_PHASE_READINESS.md and RUNBOOK_NEXT_PHASE.md"
+}

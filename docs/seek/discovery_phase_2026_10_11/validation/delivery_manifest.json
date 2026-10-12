@@ -1,0 +1,14 @@
+{
+  "seek_discovery.py": "e580a2b9e30e29484fa4442b4a6d4109018fb0c0af90e98914a4f0853bf71094",
+  "seek_discovery.sh": "f71dc00848b3ca6505f2fca4bf0993ddeea9681f7da685f5717388f1a697fd22",
+  "agent-backdoor-attacks/AgentTuning/WebShop/tests/seek/test_discovery_phase.py": "58aa83aa52defd360e9131b6346bdd967ea0314cb7609b9bd0f4817281c77654",
+  "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/__init__.py": "eb314f6ad9f2d23c53b9394cbd2c6507334729d2cc046df1205cf3420aafda0f",
+  "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/methods.py": "5226da77407d44a26daf19dd2e6108d629e95d0ac67122a7ab58b662b4dae6b2",
+  "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/panels.py": "478bb1e2018b1edba2c511d36baf51fabee67d3bdf1405abb020cfcac767a881",
+  "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/campaign.py": "9eb0865ad72995e9467883fceb8140a1d912c1be4c74a4c27a0b41412d192a93",
+  "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/common.py": "ab3b1a4fd4d8a05d50e0ee5ebf67ed4b835f03380b05dc5b8bce5df515da3fb5",
+  "docs/seek/discovery_phase_2026_10_11/RUNBOOK_NEXT_PHASE.md": "24ec0120e9cf6669a89ec328ac52cb9a39162e9511d9709bcc50c51b64a9317e",
+  "docs/seek/discovery_phase_2026_10_11/AUDIT_ADDENDUM.md": "e133549f6368c8b12428ef817e362f1c5cb170596f82790588caeca26e05f88b",
+  "docs/seek/discovery_phase_2026_10_11/NEXT_PHASE_READINESS.md": "56679b5c50c6f2036de230ead88e22ba3c1f161f03844d76480222b0d958eaf9",
+  "docs/seek/discovery_phase_2026_10_11/simulation_campaign.json": "96128a88cbff0539f0d7d79b4833887c11820c752f8a8745e0eb7aa4a8f20d75"
+}
