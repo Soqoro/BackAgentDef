@@ -12,7 +12,7 @@ import unittest
 from unittest.mock import patch
 
 WEB=Path(__file__).resolve().parents[2];sys.path.insert(0,str(WEB))
-from seek.discovery_phase import common as c,methods as m,panels as p,campaign,role_check,role_probe,role_followup,role_recovery,role_tokens
+from seek.discovery_phase import common as c,methods as m,panels as p,campaign,role_check,role_probe,role_followup,role_recovery,role_tokens,role_audit
 from seek.schemas import Invalid,digest
 from seek.storage import read_json,immutable_json,atomic_json
 from seek.semantic_registry import Registry
@@ -105,6 +105,23 @@ class DiscoveryTests(unittest.TestCase):
                 with self.assertRaises(Invalid):role_recovery.validate(altered)
             with patch.object(role_tokens,'measure',return_value={'input_tokens':11000}):
                 with self.assertRaises(Invalid):role_recovery.prepare(tmp/'failed')
+            with patch.object(role_tokens,'measure',side_effect=AssertionError('audit must not load tokenizer or model')):
+                audit=role_audit.audit(tmp/'recovered')
+                self.assertEqual(audit['status'],'local_evidence_reconstructed')
+                self.assertEqual(len(audit['discussion']),4)
+                self.assertEqual(len(audit['rubric']),4)
+                self.assertEqual(audit['reasoning_assessment'],'requires explicit qualitative review')
+                self.assertFalse(audit['method_matrix_unlocked'])
+                self.assertFalse(audit['token_receipt_freshly_remeasured'])
+                self.assertEqual(audit['model_calls'],0)
+                self.assertEqual(reg.events(),events_before)
+                output=role_audit.write(tmp/'recovered',tmp/'audit')
+                self.assertEqual(read_json(output['output']),audit)
+                self.assertEqual(role_audit.write(tmp/'recovered',tmp/'audit'),output)
+                with self.assertRaises(Invalid):role_audit.write(tmp/'recovered',tmp/'recovered/audit')
+                damaged=read_json(tmp/'recovered/result.json');damaged['history'][-1]['weakener']='tampered'
+                atomic_json(tmp/'recovered/result.json',c.seal(damaged))
+                with self.assertRaisesRegex(Invalid,'completed response binding'):role_audit.audit(tmp/'recovered')
 
     def test_role_preflight_over_cap_never_calls_backend(self):
         class Capped(Roles):

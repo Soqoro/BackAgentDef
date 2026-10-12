@@ -1,7 +1,8 @@
 # Cluster runbook — discovery phase, 12 October 2026
 
-For the single-Goal recovery after the confirmed input-cap failure, use
-[ROLE_GOAL_RECOVERY_V1.md](ROLE_GOAL_RECOVERY_V1.md) before another method matrix.
+For the current CPU-only development-case audit, use
+[ROLE_REASONING_AUDIT_V1.md](ROLE_REASONING_AUDIT_V1.md). No further GPU run is
+authorized by this audit; preserve the earlier recovery instructions below.
 Historical run instructions below remain preserved.
 
 These commands match `seek_discovery.py`. None has been submitted locally.

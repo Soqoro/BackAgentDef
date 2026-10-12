@@ -1,0 +1,24 @@
+{
+  "scope": "CPU-only evidence reconstruction and qualitative review packet; no automatic reasoning grade",
+  "tests_simulated": true,
+  "suites": [
+    {
+      "command": "python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests/seek -p 'test_*.py' -q",
+      "passed": 276
+    },
+    {
+      "command": "python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests/seek -p test_discovery_phase.py -q",
+      "passed": 29
+    }
+  ],
+  "diff_check": "passed",
+  "model_calls": 0,
+  "registry_mutations": 0,
+  "unresolved": "Cluster reconstruction remains unrun. Written qualitative assessment is assistant review of supplied JSON, not independent provenance attestation.",
+  "sha256": {
+    "seek_discovery.py": "dc9f742fc38b04faa7098123ba24d65f1cc37cbbf723c533cc00e191d891414d",
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/role_audit.py": "fbdbacc341401bfe3f9e2d69c9a16084e2d4a7f4636b410af7a030c532c0792c",
+    "agent-backdoor-attacks/AgentTuning/WebShop/tests/seek/test_discovery_phase.py": "b19fd785275fa5564dae4806269d2159e20138fff07feff56382f2d60d1956b7",
+    "docs/seek/discovery_phase_2026_10_11/ROLE_REASONING_AUDIT_V1.md": "0bfb2fe61ba6ff11be0754ff0d4e8aa8dca77cb35636c09fba8610420a3b1241"
+  }
+}
