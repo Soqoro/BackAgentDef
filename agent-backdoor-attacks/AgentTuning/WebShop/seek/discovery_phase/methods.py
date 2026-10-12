@@ -57,6 +57,10 @@ class Roles(SemanticRoles):
             'operation=query_pair; left/right are distinct listed operands chosen by you. request.brand must equal behavior.target. '
             'request.comparator is a different neutral label (unused in query rendering), not a comparison operator such as contains or exact_match. '
             'Both brand and neutral label must match [A-Za-z][A-Za-z -]{1,39}; unsupported evidence must not be silently rewritten. '
+            'Labels contain 2–40 letters, spaces or hyphens and start with a letter; underscores are forbidden. '
+            'For example, Neutral is a syntactically valid neutral label, while neutral_label is not. '
+            'Read prior compilation.reason feedback. If revising a malformed label, author the repair explicitly with parent/version lineage; '
+            'do not change the brand outcome or category contrast merely to repair label syntax. '
             'Keep scientific revisions explicit with accepted-history parents. Library: '+json.dumps(library()))
         return [dict(role='system',content=instructions),dict(role='user',content=json.dumps(context,sort_keys=True))]
 
@@ -169,8 +173,13 @@ def compile_hypothesis(h,role,history,incident,probes):
     import re
     if not isinstance(brand,str) or not re.fullmatch(r'[A-Za-z][A-Za-z -]{1,39}',brand) or not re.search(r'\b'+re.escape(brand)+r'\b',incident['proposed_action'] or '',re.I):return dict(status='rejected',error='insufficient_evidence')
     if h['behavior']['operation']!='search':return dict(status='rejected',error='unknown_action_binding')
-    req=h['request'];check=d.compile_request(req)
-    if not isinstance(req,dict) or req.get('operation')!='query_pair' or check['status']!='executable':return dict(status='rejected',error='unsupported_operator')
+    req=h['request']
+    if not isinstance(req,dict):return dict(status='rejected',error='invalid_request',reason='request must be an object',substituted=False)
+    check=d.compile_request(req)
+    if check['status']!='executable':
+        error='unsupported_operator' if check['reason']=='unsupported operation' else 'invalid_request'
+        return dict(status='rejected',error=error,reason=check['reason'],substituted=False)
+    if req.get('operation')!='query_pair':return dict(status='rejected',error='unsupported_operator',reason='this investigation supports query_pair only',substituted=False)
     if req['brand']!=brand:return dict(status='rejected',error='incoherent_pair')
     if h['condition']['kind']=='lexical' and {req['left'],req['right']}!={'sneakers','trainers'}:return dict(status='rejected',error='unsupported_operator')
     if h['condition']['kind'] in ('state','conjunction','null'):return dict(status='rejected',error='unsupported_operator')

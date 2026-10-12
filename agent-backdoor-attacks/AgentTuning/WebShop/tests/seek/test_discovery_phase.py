@@ -201,6 +201,41 @@ class DiscoveryTests(unittest.TestCase):
             altered=c.seal(dict(plan,source={'old':'source'}))
             with self.assertRaises(Invalid):role_check.run(altered,CheckRoles(),tmp/'different')
 
+    def test_role_check_compiler_feedback_and_author_label_repair(self):
+        class Repairing(Roles):
+            messages=m.Roles.messages
+            def call(self,role,payload):
+                self.payloads.append(copy.deepcopy(payload))
+                req=dict(operation='query_pair',left='sneakers',right='trainers',brand='Adidas',comparator='neutral_label')
+                if payload['history']:
+                    # Simulated author repair, never a controller substitution.
+                    req['comparator']='Neutral'
+                h=hypothesis(role,payload['history'],payload['incident'],req,kind='lexical')
+                return dict(text=json.dumps(h),finish_reason='stop',refusal=False,usage={'total_tokens':10})
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp=Path(tmp);reg,parent=method_plan(tmp);before=reg.events()
+            plan=role_check.prepare(parent,1,{})
+            backend=Repairing();r=role_check.run(plan,backend,tmp/'check')
+            first=r['history'][0]
+            self.assertEqual(first['compilation'],dict(status='rejected',error='invalid_request',reason='invalid comparator',substituted=False))
+            self.assertEqual(first['request']['comparator'],'neutral_label')
+            self.assertEqual(backend.payloads[1]['history'][0],first)
+            messages=read_json(tmp/'check/requests/02-0.json')['messages']
+            self.assertEqual(json.loads(messages[1]['content'])['history'][0]['compilation']['reason'],'invalid comparator')
+            self.assertIn('underscores are forbidden',messages[0]['content'])
+            for h in r['history'][1:]:
+                self.assertEqual(h['compilation']['status'],'executable')
+                self.assertEqual(h['request'],dict(first['request'],comparator='Neutral'))
+                self.assertTrue(h['parents'])
+            self.assertEqual(r['defender_attempts'],4)
+            self.assertEqual(r['victim_calls'],0)
+            self.assertEqual(reg.events(),before)
+            # Persistently invalid authored requests stay rejected and unchanged.
+            stubborn=Repairing()
+            stubborn.call=lambda role,payload: dict(text=json.dumps(hypothesis(role,payload['history'],payload['incident'],first['request'],kind='lexical')),finish_reason='stop',refusal=False)
+            rejected=role_check.run(plan,stubborn,tmp/'rejected')
+            self.assertTrue(all(h['compilation']['status']=='rejected' and h['request']==first['request'] for h in rejected['history']))
+
     def test_role_check_abstention_and_bounded_failure(self):
         class Abstaining(Roles):
             messages=m.Roles.messages

@@ -1,0 +1,24 @@
+{
+  "scope": "Prospective exact compiler rejection feedback and author-only neutral label repair",
+  "cpu_tests_simulated": true,
+  "suites": [
+    {
+      "command": "python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests/seek -p 'test_*.py' -q",
+      "passed": 267
+    },
+    {
+      "command": "python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests/seek -p test_discovery_phase.py -q",
+      "passed": 20
+    }
+  ],
+  "shell_syntax": "bash -n seek_role_check.sh passed",
+  "diff_check": "passed",
+  "gpu_jobs": 0,
+  "registry_mutations": 0,
+  "unresolved": "Real Qwen label repair requires fresh v4 cluster output and human review. Simulated author tests do not establish real-model behavior.",
+  "sha256": {
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/methods.py": "b7e50c7b4ee2767abe82b9131780069b64c970fc586fa85296aef9a596b63e63",
+    "agent-backdoor-attacks/AgentTuning/WebShop/tests/seek/test_discovery_phase.py": "2269f4a2d45775a94af243642e090955ee0aa3e8e2b3c755fd7a4740a21e21d3",
+    "docs/seek/discovery_phase_2026_10_11/ROLE_COMPILER_CHECK_V4.md": "3cda5e5265683d920d5d5690165fca0bb72f1a34d052cd8a72aff9ea48da9513"
+  }
+}
