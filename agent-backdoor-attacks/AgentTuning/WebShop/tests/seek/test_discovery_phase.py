@@ -129,6 +129,43 @@ class DiscoveryTests(unittest.TestCase):
             self.assertEqual(empty['status'],'prerequisite_missing')
             self.assertEqual(empty['diagnostics']['snapshot_count'],0)
 
+    def test_role_prompt_exact_ids_retry_lineage_and_abstention(self):
+        payload=dict(incident={'case_id':'public-case','proposed_action':'search[boots]'},history=[],evidence=[])
+        original=copy.deepcopy(payload)
+        messages=m.Roles.__new__(m.Roles).messages('Action',payload)
+        instructions=messages[0]['content'];context=json.loads(messages[1]['content'])
+        self.assertEqual(payload,original)
+        self.assertEqual(context['response_requirements']['evidence_ids'],['public-case'])
+        self.assertEqual(context['response_requirements']['allowed_parent_ids'],[])
+        self.assertIn('rejected previous_reply is NOT accepted history',instructions)
+        self.assertIn('request=null',instructions)
+        self.assertNotIn('Adidas',instructions)
+        h=hypothesis('Action',[],payload['incident'])
+        h.update(abstain=True,accepted=False,stop=True,request=None)
+        self.assertEqual(m.compile_hypothesis(h,'Action',[],payload['incident'],[])['status'],'abstained')
+
+    def test_real_failure_shape_and_defender_accounting(self):
+        class BadReplies(Roles):
+            def call(self,role,payload):
+                h=hypothesis(role,payload['history'],payload['incident'])
+                h['evidence_ids']=[]
+                if payload.get('previous_reply'):
+                    h.update(id='retry',version=2,parents=['hyp-0'])
+                return dict(text=json.dumps(h),finish_reason='stop',refusal=False,usage={'total_tokens':10})
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp=Path(tmp);reg,plan=method_plan(tmp)
+            def no_victim(*args):raise AssertionError('validation failure must not call victim')
+            r=m.run(plan,0,'adaptive_seek',BadReplies(),no_victim,reg,tmp/'bad')
+            self.assertEqual(r['status'],'backend_failure')
+            self.assertEqual(r['history'],[])
+            self.assertEqual([x['code'] for x in r['failure_details']],['incident evidence binding','revision lineage'])
+            self.assertEqual(r['defender_costs']['physical_calls'],2)
+            self.assertEqual(r['defender_costs']['reported_tokens'],20)
+            self.assertEqual(r['logical_victim_responses'],0)
+            from seek.storage import events
+            log=events(tmp/'bad/defender/events.jsonl')
+            self.assertTrue(all(x['data']['role']=='Action' for x in log if x['kind']=='call_attempt'))
+
     def test_paper_rule_and_scales(self):
         self.assertAlmostEqual(d.radius(10,64),.7228984665299145)
         self.assertAlmostEqual(1-d.radius(10,64),.2771015334700855)

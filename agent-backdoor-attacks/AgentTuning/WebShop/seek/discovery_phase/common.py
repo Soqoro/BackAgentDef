@@ -123,9 +123,9 @@ def responses(v,cells,generation,out,binding,score,reg=None):
     return rows
 
 
-def costs(folder):
+def costs(folder,journal_subdir='journal'):
     from ..storage import events
-    es=events(Path(folder)/'journal/events.jsonl')
+    es=events(Path(folder)/journal_subdir/'events.jsonl')
     replies=[e['data']['result'] for e in es if e['kind']=='call_complete']
     return dict(physical_calls=sum(e['kind']=='call_attempt' for e in es),cache_hits=sum(e['kind']=='cache_hit' for e in es),
                 reported_tokens=sum(r.get('usage',{}).get('total_tokens',0) for r in replies),tokens_reported=any('usage' in r for r in replies))

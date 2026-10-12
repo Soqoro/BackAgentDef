@@ -1,0 +1,25 @@
+{
+  "scope": "prospective role contract repair and defender journal accounting",
+  "simulated_cpu_only": true,
+  "tests": [
+    {
+      "command": "python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests/seek -p 'test_*.py' -q",
+      "passed": 264
+    },
+    {
+      "command": "python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests/seek -p test_discovery_phase.py -q",
+      "passed": 17
+    }
+  ],
+  "protected_files_checked": 24,
+  "protected_files_changed": [],
+  "registry_mutations": 0,
+  "gpu_jobs": 0,
+  "real_model_verification": "pending new reviewed development-reuse pilot; claim 11 preserved",
+  "files": {
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/methods.py": "5c23569f80d9bbb822c19e2d9c3844df89080ad093432081e524cf060d929672",
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/common.py": "39b5a654f198641406ec194b75a70dd6bfd2fd75282a34b9de718881f6ef5126",
+    "agent-backdoor-attacks/AgentTuning/WebShop/tests/seek/test_discovery_phase.py": "8f42f90cf0b25aadf96f189aa9039f97b2b5fc549b1e8ca5abdbe6f785843ee3",
+    "docs/seek/discovery_phase_2026_10_11/ROLE_REPAIR_V2.md": "3785d8e484aca87a96c9c315bd97d015a39d030ac241b6b58a86d1e15572a67a"
+  }
+}

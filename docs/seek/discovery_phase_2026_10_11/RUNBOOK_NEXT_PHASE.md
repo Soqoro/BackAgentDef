@@ -199,6 +199,10 @@ and exact token freshness have not been verified locally.
 
 ## 3. One adaptive prefix, then review
 
+For the claim-11 validation failure reported in job 1094017_0, use the
+[versioned development repair](ROLE_REPAIR_V2.md). Preserve its failed result;
+do not run the old frozen plan against changed role-prompt sources.
+
 Use the existing pinned Qwen config used by `seek_next.py bench-run` (it contains
 `agents.local`, including its installed Python/lock). Do not guess a new model ID.
 The shell requires a real JSON allocation and checks source/file prerequisites
