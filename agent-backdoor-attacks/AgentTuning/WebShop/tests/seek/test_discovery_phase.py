@@ -9,9 +9,10 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 WEB=Path(__file__).resolve().parents[2];sys.path.insert(0,str(WEB))
-from seek.discovery_phase import common as c,methods as m,panels as p,campaign,role_check,role_probe,role_followup
+from seek.discovery_phase import common as c,methods as m,panels as p,campaign,role_check,role_probe,role_followup,role_recovery,role_tokens
 from seek.schemas import Invalid,digest
 from seek.storage import read_json,immutable_json,atomic_json
 from seek.semantic_registry import Registry
@@ -64,6 +65,62 @@ def method_plan(tmp):
 
 
 class DiscoveryTests(unittest.TestCase):
+    def test_goal_recovery_only_and_cap_fail_closed(self):
+        class Capped(Roles):
+            messages=m.Roles.messages
+            def call(self,role,payload):
+                if len(payload['history'])==7:raise Invalid('local defender error: ValueError: defender input exceeds cap; truncation forbidden')
+                h=hypothesis(role,payload['history'],payload['incident'],payload['history'][-1]['request'])
+                h['probe_ids']=['development-probe-0']
+                return dict(text=json.dumps(h),finish_reason='stop',refusal=False,usage={'total_tokens':10})
+        class Final(Capped):
+            def call(self,role,payload):
+                self.payloads.append(copy.deepcopy(payload))
+                h=hypothesis(role,payload['history'],payload['incident'],payload['history'][-1]['request'])
+                h['probe_ids']=['development-probe-0']
+                return dict(text=json.dumps(h),finish_reason='stop',refusal=False,usage={'total_tokens':10})
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp=Path(tmp);reg,probe,review=self.probe_fixture(tmp,{'local':{'max_input_tokens':8192}})
+            role_probe.run(probe,review,Policy,reg,tmp/'probe')
+            plan=role_followup.prepare(tmp/'probe')
+            failed=role_check.run(plan,Capped(),tmp/'failed')
+            self.assertEqual(failed['defender_attempts'],4) # Deterministic cap error is not retried.
+            self.assertEqual(failed['new_history_entries'],3)
+            self.assertEqual(failed['failure_details'][-1]['code'],'input_cap_exceeded')
+            before=(tmp/'failed/result.json').read_bytes();events_before=reg.events()
+            with patch.object(role_tokens,'measure',return_value={'input_tokens':8646,'model_loaded':False}):
+                draft=role_recovery.prepare(tmp/'failed')
+                with self.assertRaises(Invalid):role_recovery.validate(draft)
+                recovery=role_recovery.approve(draft,'CPU reviewer');role_recovery.validate(recovery)
+                backend=Final();result=role_check.run(recovery,backend,tmp/'recovered')
+                self.assertEqual(result['new_history_entries'],1)
+                self.assertEqual(result['defender_attempts'],1)
+                self.assertEqual(result['history'][:7],failed['history'])
+                self.assertEqual(backend.payloads[0],read_json(tmp/'failed/requests/04-0.json')['key']['payload'])
+                self.assertEqual(result['history'][-1]['author'],'Goal')
+                self.assertEqual(result['victim_calls'],0)
+                self.assertEqual((tmp/'failed/result.json').read_bytes(),before)
+                self.assertEqual(reg.events(),events_before)
+                altered=c.seal(dict(recovery,roles=['Goal','Action']))
+                with self.assertRaises(Invalid):role_recovery.validate(altered)
+            with patch.object(role_tokens,'measure',return_value={'input_tokens':11000}):
+                with self.assertRaises(Invalid):role_recovery.prepare(tmp/'failed')
+
+    def test_role_preflight_over_cap_never_calls_backend(self):
+        class Capped(Roles):
+            messages=m.Roles.messages
+            def preflight(self,messages):return dict(input_tokens=9000,simulated=True)
+            def call(self,*args):raise AssertionError('no generation allowed')
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp=Path(tmp);reg,parent=method_plan(tmp)
+            plan=role_check.prepare(parent,1,{'local':{'max_input_tokens':8192}})
+            result=role_check.run(plan,Capped(),tmp/'check')
+            self.assertEqual(result['defender_attempts'],0)
+            self.assertEqual(result['defender_costs']['physical_calls'],0)
+            self.assertEqual(len(result['failure_details']),1)
+            self.assertEqual(result['failure_details'][0]['stage'],'preflight')
+            self.assertEqual(result['failure_details'][0]['code'],'input_cap_exceeded')
+
     def test_role_followup_preserves_evidence_and_lineage_without_victim(self):
         class FollowRoles(Roles):
             messages=m.Roles.messages
@@ -113,10 +170,10 @@ class DiscoveryTests(unittest.TestCase):
             obj=read_json(row);obj['reply']['raw_response']='fabricated';atomic_json(row,obj)
             with self.assertRaises(Invalid):role_followup.prepare(tmp/'probe')
 
-    def probe_fixture(self,tmp):
+    def probe_fixture(self,tmp,agents=None):
         class CheckRoles(Roles):messages=m.Roles.messages
         reg,parent=method_plan(tmp)
-        rp=role_check.prepare(parent,1,{})
+        rp=role_check.prepare(parent,1,agents or {})
         req=dict(operation='query_pair',left='sneakers',right='trainers',brand='Adidas',comparator='Neutral')
         result=role_check.run(rp,CheckRoles(request=req),tmp/'roles')
         plan=role_probe.prepare(parent,rp,result)

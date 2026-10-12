@@ -1,10 +1,19 @@
 """Bounded development-reuse role check; no victim loader or study allocation."""
 import copy
 import json
+import subprocess
 from pathlib import Path
 from ..schemas import Invalid, digest
 from ..storage import Journal, immutable_json, read_json
 from . import common as c, methods
+
+
+def payload_for(plan, role, history):
+    payload=dict(incident=copy.deepcopy(plan['incident']['public']),history=copy.deepcopy(history),
+        evidence=copy.deepcopy(plan.get('evidence',[])),role=role,library=methods.library(),round=0,
+        phase='development_role_check',remaining_victim=0,must_finalize=True)
+    if 'followup_task' in plan:payload.update(followup_task=plan['followup_task'],evidence_limits=plan['evidence_limits'])
+    return payload
 
 
 def prepare(parent, index, agents):
@@ -41,8 +50,12 @@ def validate(plan):
 
 
 def run(plan, backend, output):
-    followup=plan.get('schema')=='seek-role-evidence-followup-v1'
-    if followup:
+    recovery=plan.get('schema')=='seek-role-goal-recovery-v1'
+    followup=recovery or plan.get('schema')=='seek-role-evidence-followup-v1'
+    if recovery:
+        from .role_recovery import validate as validate_recovery
+        validate_recovery(plan)
+    elif followup:
         from .role_followup import validate as validate_followup
         validate_followup(plan)
     else:validate(plan)
@@ -60,19 +73,26 @@ def run(plan, backend, output):
     try:
         for role in plan['roles']:
             logical+=1;accepted=None
-            payload=dict(incident=copy.deepcopy(plan['incident']['public']),history=copy.deepcopy(history),
-                         evidence=evidence,role=role,library=methods.library(),round=0,
-                         phase='development_role_check',remaining_victim=0,must_finalize=True)
-            if followup:payload.update(followup_task=plan['followup_task'],evidence_limits=plan['evidence_limits'])
-            for retry in range(2):
-                reply=None;stage='transport';attempts+=1
+            payload=payload_for(plan,role,history)
+            for retry in range(plan['attempts_per_call']):
+                reply=None;stage='preflight'
                 key=dict(plan=plan['hash'],role=role,call=logical,retry=retry,payload=copy.deepcopy(payload))
                 kh=digest(key)
                 if journal.completed(kh) is None and any(e['kind']=='call_attempt' and e['data']['key']==kh for e in journal.records):
                     raise Invalid('unknown prior role execution; preserve and inspect interrupted output')
                 immutable_json(out/'requests'/f'{logical:02d}-{retry}.json',dict(key=key,messages=backend.messages(role,payload)))
                 try:
-                    reply=journal.call(key,'defender','development_role_check',8,lambda:backend.call(role,payload))
+                    if not backend.simulated:
+                        from .role_tokens import measure
+                        counts=measure(plan['agents'],backend.messages(role,payload))
+                    elif hasattr(backend,'preflight'):counts=backend.preflight(backend.messages(role,payload))
+                    else:counts=dict(input_tokens=None,simulated=True)
+                    immutable_json(out/'preflight'/f'{logical:02d}-{retry}.json',counts)
+                    cap=plan['agents'].get('local',{}).get('max_input_tokens')
+                    if counts['input_tokens'] is not None and cap is not None and counts['input_tokens']>cap:
+                        raise Invalid('defender input exceeds cap; truncation forbidden')
+                    stage='transport';attempts+=1
+                    reply=journal.call(key,'defender','development_role_check',plan['max_attempts'],lambda:backend.call(role,payload))
                     stage='validation'
                     if reply.get('finish_reason')!='stop' or reply.get('refusal'):raise Invalid('incomplete reply')
                     value=json.loads(reply['text'])
@@ -80,10 +100,12 @@ def run(plan, backend, output):
                     if followup and not value['probe_ids']:raise Invalid('followup must reference supplied probe evidence')
                     accepted=dict(value,compilation=check,experiment_status=check['status'])
                     history.append(accepted);break
-                except (Invalid,ValueError,KeyError,TypeError,OSError) as exc:
-                    code=str(exc) if stage=='validation' and isinstance(exc,Invalid) else type(exc).__name__
+                except (Invalid,ValueError,KeyError,TypeError,OSError,subprocess.SubprocessError) as exc:
+                    over_cap=isinstance(exc,Invalid) and 'defender input exceeds cap; truncation forbidden' in str(exc)
+                    code='input_cap_exceeded' if over_cap else str(exc) if stage=='validation' and isinstance(exc,Invalid) else type(exc).__name__
                     detail=dict(role=role,call=logical,retry=retry,stage=stage,code=code)
                     failures.append(detail);journal.emit('role_failure',detail)
+                    if over_cap or stage=='preflight':break
                     payload.update(validation_error=code,previous_reply=reply.get('text','') if isinstance(reply,dict) else '')
             if accepted is None:failed=True;break
     finally:
@@ -97,5 +119,6 @@ def run(plan, backend, output):
         semantic_interpretation='requires human review',
         scope='Role interpretation only; no probes, candidate evaluation, or method comparison'))
     if followup:result=c.seal(dict(result,initial_history_entries=len(plan['initial_history']),new_history_entries=len(history)-len(plan['initial_history']),probe_result_hash=plan['probe_result_hash']))
+    if recovery:result=c.seal(dict(result,schema='seek-role-goal-recovery-result-v1',failed_result_hash=plan['failed_result_hash']))
     immutable_json(out/'result.json',result)
     return result

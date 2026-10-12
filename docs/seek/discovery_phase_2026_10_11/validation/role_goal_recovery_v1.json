@@ -1,0 +1,29 @@
+{
+  "scope": "Single missing Goal recovery with reviewed input cap and tokenizer-only preflight",
+  "cpu_tests_simulated": true,
+  "suites": [
+    {
+      "command": "python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests/seek -p 'test_*.py' -q",
+      "passed": 276
+    },
+    {
+      "command": "python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests/seek -p test_discovery_phase.py -q",
+      "passed": 29,
+      "note": "Rerun after moving token receipts to separate preflight directory"
+    }
+  ],
+  "shell_syntax": "bash -n seek_role_check.sh passed",
+  "gpu_jobs": 0,
+  "registry_mutations": 0,
+  "recovery_maximum_defender_attempts": 1,
+  "victim_calls": 0,
+  "input_cap": 10240,
+  "unresolved": "Cluster tokenizer count, source evidence reconstruction, user review, GPU execution and final Goal reasoning remain unverified locally. Token counts in CPU tests are simulated.",
+  "sha256": {
+    "seek_discovery.py": "f9c403e43699ec26d68c1df11731c985313a5fd90c02e174a8dc6a4ed7707754",
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/role_check.py": "098575b0d647527d77e41a620e64d60a5c531ad8d6b4805d387e6f73ac53d597",
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/role_recovery.py": "d98647d07acd3f2a5b2ec172c4b632fb61b30458353ca685785cba491e522f8f",
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/role_tokens.py": "70ae036fc28906a56418857aac3f99f83ab20bf76321c9592fa94013988df0d4",
+    "agent-backdoor-attacks/AgentTuning/WebShop/tests/seek/test_discovery_phase.py": "3cb3861a7ab2684112de4ee97226c433bbd073ef4e148735c4fb87c71748eeed"
+  }
+}

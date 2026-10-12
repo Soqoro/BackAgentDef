@@ -12,7 +12,7 @@ sys.path.insert(0,str(ROOT/'agent-backdoor-attacks/AgentTuning/WebShop'))
 from seek.schemas import Invalid,digest
 from seek.storage import read_json,immutable_json,row_lock
 from seek.semantic_registry import Registry
-from seek.discovery_phase import common as c,methods,panels,campaign,role_check,role_probe,role_followup
+from seek.discovery_phase import common as c,methods,panels,campaign,role_check,role_probe,role_followup,role_recovery
 
 
 def parser():
@@ -21,6 +21,7 @@ def parser():
     a=s.add_parser('role-check-prepare');a.add_argument('--study',required=True);a.add_argument('--allocation',required=True);a.add_argument('--index',type=int,required=True);a.add_argument('--qwen-config',required=True);a.add_argument('--output',required=True)
     a=s.add_parser('role-check');a.add_argument('--plan',required=True);a.add_argument('--output',required=True);a.add_argument('--dry-run',action='store_true')
     a=s.add_parser('role-followup-prepare');a.add_argument('--probe-root',required=True);a.add_argument('--output',required=True)
+    a=s.add_parser('role-recovery-prepare');a.add_argument('--failed-root',required=True);a.add_argument('--output',required=True)
     a=s.add_parser('role-probe-prepare');a.add_argument('--study',required=True);a.add_argument('--allocation',required=True);a.add_argument('--role-plan',required=True);a.add_argument('--role-result',required=True);a.add_argument('--output',required=True)
     a=s.add_parser('role-probe-review');a.add_argument('--plan',required=True);a.add_argument('--output',required=True)
     a=s.add_parser('role-probe');a.add_argument('--plan',required=True);a.add_argument('--review',required=True);a.add_argument('--study',required=True);a.add_argument('--output',required=True);a.add_argument('--dry-run',action='store_true')
@@ -60,7 +61,13 @@ def loader(entry,g):
 
 def main():
     a=parser().parse_args();result=None
-    if a.cmd=='role-followup-prepare':
+    if a.cmd=='role-recovery-prepare':
+        draft=role_recovery.prepare(a.failed_root)
+        print(json.dumps(dict(old_cap=draft['old_input_cap'],new_cap=draft['new_input_cap'],input_preflight=draft['input_preflight'],preserved_history_entries=len(draft['initial_history']),roles=draft['roles'],max_attempts=1,victim_calls=0,scope=draft['scope']),indent=2))
+        if input('Approve the preserved final Goal request with a 10240-token input cap and one defender attempt? Type yes: ').strip().lower()!='yes':raise Invalid('recovery not approved')
+        plan=role_recovery.approve(draft,getpass.getuser());immutable_json(a.output,plan)
+        result=dict(status='prepared',plan=a.output,hash=plan['hash'],max_logical_calls=1,max_attempts=1,victim_calls=0,registry_mutations=0)
+    elif a.cmd=='role-followup-prepare':
         plan=role_followup.prepare(a.probe_root);immutable_json(a.output,plan)
         result=dict(status='prepared',plan=a.output,hash=plan['hash'],probe_result_hash=plan['probe_result_hash'],roles=plan['roles'],max_logical_calls=4,max_attempts=8,victim_calls=0,registry_mutations=0,development_reuse=True)
     elif a.cmd=='role-probe-prepare':
@@ -93,11 +100,12 @@ def main():
                     development_reuse=True,max_logical_calls=4,max_attempts=8,victim_calls=0,registry_mutations=0)
     elif a.cmd=='role-check':
         plan=read_json(a.plan)
-        if plan.get('schema')=='seek-role-evidence-followup-v1':role_followup.validate(plan)
+        if plan.get('schema')=='seek-role-goal-recovery-v1':role_recovery.validate(plan)
+        elif plan.get('schema')=='seek-role-evidence-followup-v1':role_followup.validate(plan)
         else:role_check.validate(plan)
         if a.dry_run:
             result=dict(status='ready',scope=plan['scope'],
-                        development_reuse=True,max_logical_calls=4,max_attempts=8,victim_calls=0,registry_mutations=0)
+                        development_reuse=True,max_logical_calls=plan['max_logical_calls'],max_attempts=plan['max_attempts'],victim_calls=0,registry_mutations=0)
         else:
             if plan['simulated']:raise Invalid('CLI role check requires real plan; fake backends belong in CPU tests')
             gpu()
