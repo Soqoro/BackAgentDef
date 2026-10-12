@@ -4,6 +4,7 @@ import itertools
 import json
 import random
 import time
+from collections import Counter
 from pathlib import Path
 from ..schemas import Invalid, digest
 from ..storage import read_json, immutable_json, Journal
@@ -30,22 +31,44 @@ class Roles(SemanticRoles):
 
 def select(row_root,reg,allow_reuse=False,rejections=None):
     from ..snapshot_io import validate_snapshot
-    root=Path(row_root);records={r['case_id']:r for r in read_json(root/'replay.json')['records']}
+    root=Path(row_root);replay_path=root/'replay.json'
+    records={r['case_id']:r for r in read_json(replay_path)['records']} if replay_path.is_file() else {}
     exposed={f for e in reg.events() if e['kind'] in ('allocation','exposure') for f in e['data']['fingerprints']}
     eligible=[];rejected=[];seen=set();groups=set();rejections=rejections or {}
-    for path in sorted((root/'snapshots').glob('*.json')):
+    paths=sorted((root/'snapshots').glob('*.json'))
+    counts=Counter();exposure_counts=Counter();candidate_groups=set();all_groups=set()
+    def reject(case,reason):
+        counts[reason]+=1
+        rejected.append(dict(case=case,reason=reason))
+    for path in paths:
         s=read_json(path);validate_snapshot(s);pub=old.public(s['public']);case=pub['case_id'];r=records.get(case,{})
-        if s['public']['split'] not in ('development','discovery') or r.get('status')!='replay_valid' or not r.get('raw_answer_equal') or r.get('context_truncated') or r.get('snapshot_hash')!=s['hash']:continue
+        all_groups.add(s['public']['dependence_group'])
+        gates=[(s['public']['split'] not in ('development','discovery'),'non_exploration_split'),
+               (case not in records,'missing_replay_record'),(r.get('status')!='replay_valid','replay_not_valid'),
+               (not r.get('raw_answer_equal'),'raw_answer_not_equal'),(bool(r.get('context_truncated')),'context_truncated'),
+               (r.get('snapshot_hash')!=s['hash'],'replay_snapshot_hash_mismatch')]
+        reason=next((reason for failed,reason in gates if failed),None)
+        if reason:
+            reject(case,reason);continue
         # Selection depends only on a visible parsed search proposal, not brand/effect.
-        if not (pub['proposed_action'] or '').lower().startswith('search['):continue
+        if not (pub['proposed_action'] or '').lower().startswith('search['):
+            reject(case,'not_search_proposal');continue
         runtime=s['runtime'];prompt=runtime.get('serialized_prompt');ids=runtime.get('encoded_ids')
         # Snapshots use policy prompt fields at top level in some saved schemas.
         prompt=prompt or s.get('serialized_prompt');ids=ids or s.get('encoded_ids')
         if prompt is None or ids is None or ids!=runtime.get('full_ids'):
-            rejected.append(dict(case=case,reason='missing exact consumed prompt/tokens'));continue
+            reject(case,'missing_exact_consumed_prompt_tokens');continue
         group=s['public']['dependence_group'];fp={digest(prompt),digest(ids),group,digest(['source_group',group])}
+        candidate_groups.add(group)
         reuse=bool(fp&exposed)
-        if (reuse and not allow_reuse) or fp&seen or group in groups:continue
+        for label,values in [('prompt',{digest(prompt)}),('tokens',{digest(ids)}),('source_group',{group,digest(['source_group',group])})]:
+            if values&exposed:exposure_counts[label]+=1
+        if reuse and not allow_reuse:
+            reject(case,'previously_exposed');continue
+        if group in groups:
+            reject(case,'duplicate_source_group');continue
+        if fp&seen:
+            reject(case,'duplicate_prompt_or_tokens');continue
         rejection=rejections.get(case)
         shield=s.get('shield_report',{})
         if rejection is None and s['public'].get('track')!='raw_audit' and 'action_certification_rejection' in shield.get('reasons',[]):
@@ -59,7 +82,11 @@ def select(row_root,reg,allow_reuse=False,rejections=None):
         seen.update(fp);groups.add(group)
     # Hash ordering fixed before any method performance, not sorted by attack success.
     eligible.sort(key=lambda x:digest(['query-incidents-v1',x['snapshot_hash']]))
-    return dict(status='ready' if len(eligible)>=4 else 'prerequisite_missing',selected=eligible[:4],eligible=len(eligible),rejected=rejected,
+    diagnostics=dict(snapshot_count=len(paths),replay_file_present=replay_path.is_file(),replay_record_count=len(records),
+                     source_groups=len(all_groups),candidate_groups_before_exposure=len(candidate_groups),eligible_groups=len(groups),
+                     exclusion_counts=dict(counts),exposure_overlap_counts=dict(exposure_counts),
+                     counting='Each snapshot has one first exclusion; exposure overlap counts may overlap.',allow_development_reuse=allow_reuse)
+    return dict(status='ready' if len(eligible)>=4 else 'prerequisite_missing',selected=eligible[:4],eligible=len(eligible),rejected=rejected,diagnostics=diagnostics,
                 prerequisite=None if len(eligible)>=4 else 'Four distinct replay-valid query exploration source groups with consumed prompt/tokens; collect new groups using seek_eval collection/replay. Do not use confirmation snapshots or relabel duplicates.')
 
 

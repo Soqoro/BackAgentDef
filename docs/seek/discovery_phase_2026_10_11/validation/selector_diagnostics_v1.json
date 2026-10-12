@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-12",
+  "scope": "incident selector exclusion diagnostics; eligibility unchanged",
+  "simulated_cpu_only": true,
+  "real_cluster_diagnosis": "unresolved; rerun selector on cluster",
+  "tests": [
+    {
+      "command": "python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests/seek -p test_discovery_phase.py -q",
+      "passed": 15
+    },
+    {
+      "command": "python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests/seek -p 'test_*.py' -q",
+      "passed": 257
+    }
+  ],
+  "protected_files_checked": 24,
+  "protected_files_changed": [],
+  "gpu_jobs": 0,
+  "file_sha256": {
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/methods.py": "70434d271828573bfa3210b337b7121814a5849129844ffda72b76661d4f15e3",
+    "agent-backdoor-attacks/AgentTuning/WebShop/tests/seek/test_discovery_phase.py": "0d3b3b16bb9869422e83ef471f2786247e36c38a84642f094c9ef602e6e0c3d8",
+    "docs/seek/discovery_phase_2026_10_11/RUNBOOK_NEXT_PHASE.md": "c31efda02cd12f74d602920465d2303bc0c175ce56a674b2ce9e830e8fd9fab0"
+  }
+}

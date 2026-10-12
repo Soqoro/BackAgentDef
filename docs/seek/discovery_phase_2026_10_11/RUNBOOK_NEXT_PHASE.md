@@ -57,6 +57,47 @@ fills the bank with renamed duplicates. `--allow-development-reuse` is only for
 an explicitly labeled reused-development study with four distinct groups; it
 cannot turn one group into four. Supply a fresh output filename for that version.
 
+### Diagnose an empty incident bank (CPU only)
+
+Older selector reports recorded only token-capture exclusions in `rejected`;
+an empty list did not mean every eligibility check passed. The selector now
+records each snapshot's first exclusion and separate, possibly overlapping
+exposure counts. Validation of corrupt snapshots still fails closed.
+After transferring this patch, run this without changing the registry or old
+incident report:
+
+```bash
+cd "$HOME/BackAgentDef"
+python - <<'PY'
+import json
+import subprocess
+import sys
+from pathlib import Path
+from datetime import datetime, timezone
+
+stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
+out = Path('configs/seek/local/discovery_phase_v1') / ('incidents_diagnostic_' + stamp + '.json')
+run = subprocess.run([
+    sys.executable, 'seek_discovery.py', 'incidents',
+    '--row', 'results/seek/sneakers_pilot_v2/real/row-0000',
+    '--study', 'results/seek/semantic_v1/study', '--output', str(out),
+], capture_output=True, text=True)
+if run.returncode not in (0, 2) or not out.is_file():
+    raise SystemExit(run.stderr or run.stdout or 'No diagnostic report written')
+report = json.loads(out.read_text())
+if 'diagnostics' not in report:
+    raise SystemExit('Update the cluster checkout to include the selector diagnostics patch.')
+print('Saved:', out)
+print(json.dumps({k: report[k] for k in ('status', 'eligible', 'diagnostics')}, indent=2))
+PY
+```
+
+Zero snapshots or a missing replay file calls for checking the input row first.
+`previously_exposed` identifies recorded support reuse; `duplicate_source_group`
+identifies within-bank duplication. Neither can be fixed by renaming evidence.
+The counts do not establish whether a backdoor exists. Review the diagnostics
+before scheduling collection; preserve the original bank and completed claims.
+
 If new incident collection is required, independently review a new Seek collection
 configuration/task manifest with **four distinct development/discovery groups**,
 query checkpoint binding, current environment fingerprint, `shield_incident`

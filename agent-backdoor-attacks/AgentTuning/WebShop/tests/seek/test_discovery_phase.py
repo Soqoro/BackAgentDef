@@ -64,6 +64,71 @@ def method_plan(tmp):
 
 
 class DiscoveryTests(unittest.TestCase):
+    def selector_fixture(self, tmp, edits=None, replay_edits=None):
+        # Full simulated snapshots pass the same schema/hash validation as captures.
+        from seek.collection import collect_fake
+        from seek.manifests import load_config
+        from seek.victim import FakeVictim
+        from seek.storage import Journal
+        config=load_config(WEB.parents[2]/'configs/seek/fake_cpu.json')
+        _,snaps=collect_fake(config,config['rows'][0],FakeVictim(),Journal(tmp/'fixture'),tmp/'fixture')
+        base=snaps[0];row=tmp/'row';records=[]
+        for i in range(4):
+            snap=copy.deepcopy(base)
+            snap['public'].update(case_id=digest(['case',i]),dependence_group=digest(['group',i]),split='discovery',proposed_action='search[shoes]')
+            snap['runtime'].update(serialized_prompt='prompt '+str(i),encoded_ids=[i+1],full_ids=[i+1])
+            if edits:edits(i,snap)
+            snap['hash']=digest({k:v for k,v in snap.items() if k!='hash'})
+            immutable_json(row/'snapshots'/f'{i}.json',snap)
+            record=dict(case_id=snap['public']['case_id'],snapshot_hash=snap['hash'],status='replay_valid',raw_answer_equal=True,context_truncated=False)
+            if replay_edits:replay_edits(i,record)
+            records.append(record)
+        immutable_json(row/'replay.json',dict(records=records))
+        reg,_=f.setup(tmp)
+        return row,reg
+
+    def test_selector_exposure_and_duplicates_are_counted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp=Path(tmp);row,reg=self.selector_fixture(tmp)
+            ready=m.select(row,reg)
+            self.assertEqual(ready['status'],'ready')
+            self.assertEqual(ready['diagnostics']['snapshot_count'],4)
+            for incident in ready['selected']:
+                reg.append('exposure',dict(fingerprints=incident['fingerprints']))
+            blocked=m.select(row,reg)
+            self.assertEqual(blocked['eligible'],0)
+            self.assertEqual(blocked['diagnostics']['exclusion_counts'],{'previously_exposed':4})
+            self.assertEqual(blocked['diagnostics']['exposure_overlap_counts'],dict(prompt=4,tokens=4,source_group=4))
+            reused=m.select(row,reg,allow_reuse=True)
+            self.assertEqual(reused['status'],'ready')
+            self.assertTrue(all(x['development_reuse'] for x in reused['selected']))
+        with tempfile.TemporaryDirectory() as tmp:
+            row,reg=self.selector_fixture(Path(tmp),lambda i,s:s['public'].update(dependence_group=digest('one group')))
+            result=m.select(row,reg)
+            self.assertEqual(result['eligible'],1)
+            self.assertEqual(result['diagnostics']['exclusion_counts'],{'duplicate_source_group':3})
+            self.assertEqual(result['diagnostics']['candidate_groups_before_exposure'],1)
+
+    def test_selector_replay_split_action_and_missing_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            def edit(i,s):
+                if i==0:s['public']['split']='confirmation_removal'
+                if i==1:s['public']['proposed_action']='click[item]'
+            def replay(i,r):
+                if i==2:r['raw_answer_equal']=False
+                if i==3:r['snapshot_hash']=digest('wrong snapshot')
+            tmp=Path(tmp);row,reg=self.selector_fixture(tmp,edit,replay)
+            result=m.select(row,reg)
+            self.assertEqual(result['diagnostics']['exclusion_counts'],dict(non_exploration_split=1,not_search_proposal=1,raw_answer_not_equal=1,replay_snapshot_hash_mismatch=1))
+            self.assertEqual(len(result['rejected']),4)
+            (row/'replay.json').unlink()
+            result=m.select(row,reg)
+            self.assertFalse(result['diagnostics']['replay_file_present'])
+            self.assertEqual(result['diagnostics']['exclusion_counts'],dict(non_exploration_split=1,missing_replay_record=3))
+            empty=m.select(tmp/'absent',reg)
+            self.assertEqual(empty['status'],'prerequisite_missing')
+            self.assertEqual(empty['diagnostics']['snapshot_count'],0)
+
     def test_paper_rule_and_scales(self):
         self.assertAlmostEqual(d.radius(10,64),.7228984665299145)
         self.assertAlmostEqual(1-d.radius(10,64),.2771015334700855)
