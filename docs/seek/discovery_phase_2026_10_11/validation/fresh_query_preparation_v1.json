@@ -1,0 +1,25 @@
+{
+  "date": "2026-10-12",
+  "scope": "Fresh query acquisition preparation",
+  "simulated_cpu_only": true,
+  "tests": [
+    {
+      "command": "python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests/seek -p 'test_*.py' -q",
+      "passed": 262
+    },
+    {
+      "command": "python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests/seek -p test_fresh_query_preparation.py -q",
+      "passed": 5
+    }
+  ],
+  "protected_files_checked": 24,
+  "protected_files_changed": [],
+  "registry_mutations": 0,
+  "gpu_jobs": 0,
+  "cluster_verification": "unavailable: verify inventory/assets/profile, then collect/replay and check exact prompt/token freshness",
+  "files": {
+    "docs/seek/prepare_fresh_query.py": "484699a830dfb909d3b12d0e406fbfca0a863c75b347ab681e883dc68ff1abdc",
+    "agent-backdoor-attacks/AgentTuning/WebShop/tests/seek/test_fresh_query_preparation.py": "4aca424485c45bbc035a7bd76db9a6c1be921f4843d435d684573bae04273906",
+    "docs/seek/discovery_phase_2026_10_11/RUNBOOK_NEXT_PHASE.md": "ac1ef8aa811d82333c3580c42b83a177d81ab1d7b3640cade3e519207811f335"
+  }
+}

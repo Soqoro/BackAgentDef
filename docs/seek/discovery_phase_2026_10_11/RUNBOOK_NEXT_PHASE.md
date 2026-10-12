@@ -98,29 +98,104 @@ identifies within-bank duplication. Neither can be fixed by renaming evidence.
 The counts do not establish whether a backdoor exists. Review the diagnostics
 before scheduling collection; preserve the original bank and completed claims.
 
-If new incident collection is required, independently review a new Seek collection
-configuration/task manifest with **four distinct development/discovery groups**,
-query checkpoint binding, current environment fingerprint, `shield_incident`
-track, bounded task/step limits, and a new run ID. This configuration cannot be
-fabricated from unavailable cluster inventory. Do not change old split assignments
-or use confirmation tasks. Existing executable collection/replay commands are:
+### Prepare fresh query acquisition automatically
+
+The old query row was checked on the cluster: eight snapshots, one source group,
+four non-search proposals and four previously exposed search proposals. It cannot
+supply four distinct incidents even with development reuse enabled.
+
+`prepare_fresh_query.py` performs no model calls and writes only a new directory.
+It verifies the current environment assets/source and inventory, binds the query
+checkpoint and generation to the method profile, scans existing snapshots and
+pre-call captures, and excludes registered support and reserved task lineage.
+It first tries unused original exploration groups, retaining group IDs and splits.
+If those are insufficient, it selects an entirely new cohort from unassigned
+inventory components, excluding every previously assigned task/product component.
+This fallback is reported explicitly; it is not verified training-data exclusion.
+The inventory's catalogue, filter and goal order must still match the original.
+
+The four groups have one acquisition step each. Raw-audit capture costs at most
+eight responses (defended plus raw), with four additional replay responses. The
+existing collector may execute each defended action in its isolated environment;
+the raw-audit proposal is not executed. These are raw-audit incidents, not
+asserted authorization violations. Exact consumed-prompt/token freshness and
+usable search proposals remain checks after acquisition. No claim is allocated.
+
+After syncing the implementation, prepare and check on the cluster:
 
 ```bash
-# Set to the newly reviewed collection config and an available partition first.
-: "${SEEK_INCIDENT_CONFIG:?reviewed fresh collection configuration required}"
-: "${SEEK_PARTITION:?choose an available cluster partition}"
-python seek_eval.py preflight --config "$SEEK_INCIDENT_CONFIG" --phase collect --metadata-only
-SEEK_CONFIG="$SEEK_INCIDENT_CONFIG" SEEK_PHASE=collect \
-  sbatch --partition="$SEEK_PARTITION" --array=0-0%1 seek_eval.sh
-# After collection succeeds (not as an automatic dependency chain):
-SEEK_CONFIG="$SEEK_INCIDENT_CONFIG" SEEK_PHASE=replay \
-  sbatch --partition="$SEEK_PARTITION" --array=0-0%1 seek_eval.sh
+(
+set -euo pipefail
+cd "$HOME/BackAgentDef"
+python docs/seek/prepare_fresh_query.py \
+  --query-config configs/seek/local/v2/cluster_pilot.json \
+  --environment-config configs/seek/local/base_reference_v2/cluster_pilot.json \
+  --inventory results/seek/base_reference_inventory_v2/real/row-0000/inventory.json \
+  --profile configs/seek/local/next_phase_v1/profile.json \
+  --study results/seek/semantic_v1/study \
+  --history-root results/seek \
+  --output configs/seek/local/query_incidents_fresh_v1 \
+  --run-id query_incidents_fresh_v1 --groups 4
+python seek_eval.py preflight \
+  --config configs/seek/local/query_incidents_fresh_v1/cluster_pilot.json \
+  --phase collect --metadata-only
+)
 ```
 
-Collection uses the existing isolated WebShop acquisition workflow; discovery
-probes themselves never call env.step or execute actions. Rerun `incidents` on
-the new row with a new output filename. Insufficient usable proposals remain a
-prerequisite, not permission to select by future method performance.
+After the preparation report and preflight show ready, submit acquisition. PA100q
+is a suggested partition from the user's earlier report, not verified current
+availability; this needs only the 7B query victim, not the 27B defender. Submit
+replay separately after collection succeeds. No local submission was performed.
+
+```bash
+(
+set -euo pipefail
+cd "$HOME/BackAgentDef"
+mkdir -p logs/seek
+export SEEK_CONFIG="$PWD/configs/seek/local/query_incidents_fresh_v1/cluster_pilot.json"
+export SEEK_RUN_ROOT="$PWD/results/seek"
+export SEEK_PHASE=collect
+sbatch --partition=PA100q --array=0-0%1 seek_eval.sh
+)
+```
+
+After collection completes, this verifies the output before submitting replay:
+
+```bash
+(
+set -euo pipefail
+cd "$HOME/BackAgentDef"
+python - <<'PY_CHECK'
+import json
+from pathlib import Path
+row = Path('results/seek/query_incidents_fresh_v1/real/row-0000')
+r = json.loads((row / 'collect.json').read_text())
+assert r['status'] == 'complete' and r['simulated'] is False and r['captured'] == 4, r
+print('Collection complete:', r)
+PY_CHECK
+export SEEK_CONFIG="$PWD/configs/seek/local/query_incidents_fresh_v1/cluster_pilot.json"
+export SEEK_RUN_ROOT="$PWD/results/seek"
+export SEEK_PHASE=replay
+sbatch --partition=PA100q --array=0-0%1 seek_eval.sh
+)
+```
+
+After replay completes:
+
+```bash
+cd "$HOME/BackAgentDef"
+python seek_discovery.py incidents \
+  --row results/seek/query_incidents_fresh_v1/real/row-0000 \
+  --study results/seek/semantic_v1/study \
+  --output configs/seek/local/query_incidents_fresh_v1/incidents.json
+```
+
+Proceed to method preparation only with `status: ready`. Use this new incident
+file in section 2's method preparation command. Preserve any failed/shortfall
+report; do not enable reuse, rename groups, or automatically expand acquisition
+until the recorded exclusions are reviewed. The method-plan freeze and engineering
+pilot review gates remain required. Cluster paths/assets, live response validity,
+and exact token freshness have not been verified locally.
 
 ## 3. One adaptive prefix, then review
 
