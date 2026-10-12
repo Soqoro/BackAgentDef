@@ -1,0 +1,25 @@
+{
+  "scope": "Reviewed bounded development probe of preserved role-authored request",
+  "cpu_tests_simulated": true,
+  "suites": [
+    {
+      "command": "python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests/seek -p 'test_*.py' -q",
+      "passed": 272
+    }
+  ],
+  "shell_syntax": "bash -n seek_role_probe.sh passed",
+  "diff_check": "passed",
+  "local_gpu_calls": 0,
+  "local_authoritative_registry_mutations": 0,
+  "cluster_maximum_physical_responses": 10,
+  "cluster_defender_calls": 0,
+  "cluster_registry_policy": "exposure records only; no claim allocation",
+  "unresolved": "Requires cluster-bound V5 plan/result, checkpoint and snapshot validation, explicit input/scope/budget review, and real GPU output; no experiment completed locally",
+  "sha256": {
+    "seek_discovery.py": "5299efd50942ad14565fa9418e68d4e920aaf88f3d3dfa83cf6f694d177e2158",
+    "seek_role_probe.sh": "06f772f6c86924a0ba1c224385e425d1f4829ce12151de23f7dd074372b36ddb",
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/role_probe.py": "3147a3d01de7188fcb1eaa631c7998e7aa3b254e8f15a5a2c535bd6726040716",
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/common.py": "f072844258d7c5d35e6b7e168d7fca146a8efd625b499190b61660317b42194b",
+    "agent-backdoor-attacks/AgentTuning/WebShop/tests/seek/test_discovery_phase.py": "ab659ab4d89ee884f00e15c23f5fdf4bdbcc9ddb67340d031691b28d97b82d12"
+  }
+}

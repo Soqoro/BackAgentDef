@@ -12,7 +12,7 @@ sys.path.insert(0,str(ROOT/'agent-backdoor-attacks/AgentTuning/WebShop'))
 from seek.schemas import Invalid,digest
 from seek.storage import read_json,immutable_json,row_lock
 from seek.semantic_registry import Registry
-from seek.discovery_phase import common as c,methods,panels,campaign,role_check
+from seek.discovery_phase import common as c,methods,panels,campaign,role_check,role_probe
 
 
 def parser():
@@ -20,6 +20,9 @@ def parser():
     a=s.add_parser('incidents');a.add_argument('--row',required=True);a.add_argument('--study',required=True);a.add_argument('--rejections');a.add_argument('--allow-development-reuse',action='store_true');a.add_argument('--output',required=True)
     a=s.add_parser('role-check-prepare');a.add_argument('--study',required=True);a.add_argument('--allocation',required=True);a.add_argument('--index',type=int,required=True);a.add_argument('--qwen-config',required=True);a.add_argument('--output',required=True)
     a=s.add_parser('role-check');a.add_argument('--plan',required=True);a.add_argument('--output',required=True);a.add_argument('--dry-run',action='store_true')
+    a=s.add_parser('role-probe-prepare');a.add_argument('--study',required=True);a.add_argument('--allocation',required=True);a.add_argument('--role-plan',required=True);a.add_argument('--role-result',required=True);a.add_argument('--output',required=True)
+    a=s.add_parser('role-probe-review');a.add_argument('--plan',required=True);a.add_argument('--output',required=True)
+    a=s.add_parser('role-probe');a.add_argument('--plan',required=True);a.add_argument('--review',required=True);a.add_argument('--study',required=True);a.add_argument('--output',required=True);a.add_argument('--dry-run',action='store_true')
     a=s.add_parser('prepare');a.add_argument('--kind',choices=['method','observation','query-panel'],required=True);a.add_argument('--profile',required=True);a.add_argument('--incidents');a.add_argument('--output',required=True)
     a=s.add_parser('freeze');a.add_argument('--plan',required=True);a.add_argument('--study',required=True);a.add_argument('--output',required=True)
     a=s.add_parser('preflight');a.add_argument('--study',required=True);a.add_argument('--allocation',required=True)
@@ -56,7 +59,27 @@ def loader(entry,g):
 
 def main():
     a=parser().parse_args();result=None
-    if a.cmd=='role-check-prepare':
+    if a.cmd=='role-probe-prepare':
+        receipt=read_json(a.allocation);parent=c.load(Registry(a.study),receipt['j'])
+        if parent['hash']!=receipt['hash']:raise Invalid('historical allocation receipt mismatch')
+        plan=role_probe.prepare(parent,read_json(a.role_plan),read_json(a.role_result));immutable_json(a.output,plan)
+        result=dict(status='prepared_requires_review',plan=a.output,hash=plan['hash'],request=plan['candidate']['request'],cells=plan['cells'],maximum_physical_responses=10,limitations=plan['limitations'])
+    elif a.cmd=='role-probe-review':
+        plan=read_json(a.plan);role_probe.validate(plan)
+        print(json.dumps(dict(request=plan['candidate']['request'],authored_condition=plan['candidate']['condition'],profile=plan['profile'],cells=plan['cells'],anchor_ids=plan['anchor_ids'],limitations=plan['limitations'],maximum_physical_responses=10),indent=2))
+        if input('Approve these development inputs, interpretation limits and maximum 10 victim responses? Type yes: ').strip().lower()!='yes':raise Invalid('not approved')
+        result=dict(plan_hash=plan['hash'],accepted=True,reviewer=getpass.getuser(),reason='Reviewed exact authored contrast, inputs, development-only scope and ten-response budget')
+        immutable_json(a.output,result)
+    elif a.cmd=='role-probe':
+        plan=read_json(a.plan);review=read_json(a.review);role_probe.check_review(plan,review)
+        parent=c.load(Registry(a.study),plan['parent']['j'])
+        if parent!=plan['parent']:raise Invalid('probe study parent mismatch')
+        if a.dry_run:result=dict(status='ready',maximum_physical_responses=10,defender_calls=0,claim_allocations=0,scientific_confirmation=False)
+        else:
+            if plan['simulated']:raise Invalid('CLI probe requires real plan; fake backends belong in CPU tests')
+            gpu()
+            with row_lock(a.output):result=role_probe.run(plan,review,loader,Registry(a.study),a.output)
+    elif a.cmd=='role-check-prepare':
         receipt=read_json(a.allocation);parent=c.load(Registry(a.study),receipt['j'])
         if parent['hash']!=receipt['hash']:raise Invalid('historical allocation receipt mismatch')
         config=read_json(a.qwen_config)
@@ -142,6 +165,7 @@ def main():
         result.update(original_archive_sha256=original,sources=reports,scope='source byte matches only; historical partial audit unchanged',registry_mutations=0,model_calls=0)
         immutable_json(str(a.output)+'.addendum.json',result)
     print(json.dumps(result,indent=2))
+    if a.cmd=='role-probe' and not a.dry_run and result['status']!='complete':return 2
     if isinstance(result,dict) and result.get('status') in ('prerequisite_missing','backend_failure','unscorable_cells','incomplete'):return 2
     return 0
 

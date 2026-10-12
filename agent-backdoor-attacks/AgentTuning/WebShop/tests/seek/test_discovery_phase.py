@@ -11,7 +11,7 @@ import tempfile
 import unittest
 
 WEB=Path(__file__).resolve().parents[2];sys.path.insert(0,str(WEB))
-from seek.discovery_phase import common as c,methods as m,panels as p,campaign,role_check
+from seek.discovery_phase import common as c,methods as m,panels as p,campaign,role_check,role_probe
 from seek.schemas import Invalid,digest
 from seek.storage import read_json,immutable_json,atomic_json
 from seek.semantic_registry import Registry
@@ -64,6 +64,77 @@ def method_plan(tmp):
 
 
 class DiscoveryTests(unittest.TestCase):
+    def probe_fixture(self,tmp):
+        class CheckRoles(Roles):messages=m.Roles.messages
+        reg,parent=method_plan(tmp)
+        rp=role_check.prepare(parent,1,{})
+        req=dict(operation='query_pair',left='sneakers',right='trainers',brand='Adidas',comparator='Neutral')
+        result=role_check.run(rp,CheckRoles(request=req),tmp/'roles')
+        plan=role_probe.prepare(parent,rp,result)
+        review=dict(plan_hash=plan['hash'],accepted=True,reviewer='CPU',reason='simulated review')
+        return reg,plan,review
+
+    def test_role_probe_exact_request_review_and_bounded_execution(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp=Path(tmp);reg,plan,review=self.probe_fixture(tmp);before=reg.events()
+            self.assertEqual(plan['candidate']['request'],plan['role_result']['history'][2]['request'])
+            self.assertEqual(len(plan['cells']),8)
+            self.assertEqual(plan['maximum_physical_responses'],10)
+            calls=[]
+            def loader(e,g):calls.append('load');return Policy(e,g)
+            with self.assertRaises(Invalid):role_probe.run(plan,dict(review,accepted=False),loader,reg,tmp/'bad')
+            self.assertEqual(calls,[])
+            result=role_probe.run(plan,review,loader,reg,tmp/'probe')
+            self.assertEqual(result['status'],'complete')
+            self.assertEqual(result['costs']['physical_calls'],10)
+            self.assertEqual(len(result['paired_results']),4)
+            self.assertTrue(result['anchors_stable'])
+            self.assertFalse(result['sampling_certificate'])
+            self.assertEqual(result['defender_calls'],0)
+            new=reg.events()[len(before):]
+            self.assertTrue(new)
+            self.assertTrue(all(e['kind']=='exposure' for e in new))
+            self.assertEqual(role_probe.run(plan,review,loader,reg,tmp/'probe'),result)
+            self.assertEqual(calls,['load'])
+            altered=c.seal(dict(plan,maximum_physical_responses=12))
+            with self.assertRaises(Invalid):role_probe.check_review(altered,dict(review,plan_hash=altered['hash']))
+            altered=copy.deepcopy(plan);altered['candidate']['request']['right']='loafers';altered=c.seal(altered)
+            with self.assertRaises(Invalid):role_probe.validate(altered)
+            # No model is loaded by CLI dry-run; registry lineage remains checked.
+            pp=tmp/'plan.json';rr=tmp/'review.json';immutable_json(pp,plan);immutable_json(rr,review)
+            cli=subprocess.run([sys.executable,str(c.plans.ROOT/'seek_discovery.py'),'role-probe','--plan',str(pp),'--review',str(rr),'--study',str(reg.root),'--output',str(tmp/'dry'),'--dry-run'],capture_output=True,text=True)
+            self.assertEqual(cli.returncode,0,cli.stderr)
+            self.assertFalse((tmp/'dry').exists())
+
+    def test_role_probe_unscorable_and_source_bindings(self):
+        class Malformed(Policy):
+            def propose(self,*args):
+                r=super().propose(*args);r['raw_response']='not an action';return r
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp=Path(tmp);reg,plan,review=self.probe_fixture(tmp)
+            r=role_probe.run(plan,review,Malformed,reg,tmp/'probe')
+            self.assertEqual(r['status'],'unscorable_cells')
+            self.assertIsNone(r['descriptive_mean'])
+            self.assertEqual(len(r['paired_results']),4)
+            self.assertTrue(all(x['difference'] is None for x in r['paired_results']))
+            wrong=c.seal(dict(plan['role_result'],source_plan_hash='wrong'))
+            with self.assertRaises(Invalid):role_probe.prepare(plan['parent'],plan['role_plan'],wrong)
+            wrong=copy.deepcopy(plan['role_result']);wrong['history'][3]['request']['right']='loafers';wrong=c.seal(wrong)
+            with self.assertRaises(Invalid):role_probe.prepare(plan['parent'],plan['role_plan'],wrong)
+
+    def test_role_probe_unstable_and_interrupted_fail_closed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp=Path(tmp);reg,plan,review=self.probe_fixture(tmp)
+            r=role_probe.run(plan,review,lambda e,g:f.Victim(e,g,unstable=True),reg,tmp/'unstable')
+            self.assertEqual(r['status'],'determinism_unresolved')
+            self.assertIsNone(r['descriptive_mean'])
+            self.assertEqual(r['costs']['physical_calls'],10)
+            from seek.storage import Journal
+            Journal(tmp/'interrupted/query/journal').emit('call_attempt',dict(key='unknown'))
+            def forbidden(*args):raise AssertionError('must not load after interrupted attempt')
+            with self.assertRaisesRegex(Invalid,'interrupted probe'):
+                role_probe.run(plan,review,forbidden,reg,tmp/'interrupted')
+
     def selector_fixture(self, tmp, edits=None, replay_edits=None):
         # Full simulated snapshots pass the same schema/hash validation as captures.
         from seek.collection import collect_fake
