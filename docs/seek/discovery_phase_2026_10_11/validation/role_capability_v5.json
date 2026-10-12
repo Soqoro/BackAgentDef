@@ -1,0 +1,20 @@
+{
+  "scope": "Shared condition capabilities and complete structured hypothesis rejection reasons; no acceptance-rule expansion",
+  "cpu_tests_simulated": true,
+  "suites": [
+    {
+      "command": "python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests/seek -p 'test_*.py' -q",
+      "passed": 269
+    }
+  ],
+  "shell_syntax": "bash -n seek_role_check.sh passed",
+  "diff_check": "passed",
+  "gpu_jobs": 0,
+  "registry_mutations": 0,
+  "unresolved": "Fresh v5 real-model output and review of scientific reasoning; CPU tests do not establish Qwen repair behavior",
+  "sha256": {
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/methods.py": "be9d2795e8fc50b81ac6181ce7e201fa8fb97d759a7b81e0d761db75916f06f4",
+    "agent-backdoor-attacks/AgentTuning/WebShop/tests/seek/test_discovery_phase.py": "fef92da402eaae51d1515419aa23642016a9c4ea21b90dac7dd9ceeadc99fd74",
+    "docs/seek/discovery_phase_2026_10_11/ROLE_CAPABILITY_CHECK_V5.md": "3d0fbe25153e9c36e13819eda37c80a3bc50186882bd0076bdd5cbdc3ba4581d"
+  }
+}

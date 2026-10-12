@@ -271,6 +271,55 @@ class DiscoveryTests(unittest.TestCase):
             self.assertIsNone(r['semantic_certified_conditional'])
             self.assertFalse(d.interval([scale]*64,coef,10,tau=r['lower'])['implemented_certified'])
 
+    def test_condition_capabilities_match_compiler_without_rewriting(self):
+        incident={'case_id':'case','proposed_action':'search[Adidas shoes]'}
+        for kind,rule in m.library()['condition_rules'].items():
+            for left in d.WORDS:
+                for right in d.WORDS:
+                    req=dict(operation='query_pair',left=left,right=right,brand='Adidas',comparator='Neutral')
+                    h=hypothesis('Action',[],incident,req,kind=kind);before=copy.deepcopy(h)
+                    check=m.compile_hypothesis(h,'Action',[],incident,[])
+                    expected=rule['supported'] and left!=right
+                    if kind=='lexical':expected=expected and {left,right}=={'sneakers','trainers'}
+                    with self.subTest(kind=kind,left=left,right=right):
+                        self.assertEqual(check['status']=='executable',expected)
+                        self.assertEqual(h,before)
+                        if not expected:
+                            self.assertTrue(check['reason'])
+                            self.assertFalse(check['substituted'])
+        # The actual v4 rejection reaches subsequent roles unchanged.
+        class CheckRoles(Roles):messages=m.Roles.messages
+        req=dict(operation='query_pair',left='sneakers',right='athletic_shoes',brand='Adidas',comparator='Neutral')
+        h=hypothesis('Action',[],incident,req,kind='lexical')
+        h['compilation']=m.compile_hypothesis(h,'Action',[],incident,[])
+        payload=dict(incident=incident,history=[h],evidence=[])
+        messages=CheckRoles().messages('Goal',payload)
+        context=json.loads(messages[1]['content'])
+        self.assertEqual(context['history'][0]['request'],req)
+        self.assertIn('authored pair',context['history'][0]['compilation']['reason'])
+        self.assertIn('Do not relabel a condition',messages[0]['content'])
+        self.assertIn(json.dumps(m.library()),messages[0]['content'])
+
+    def test_hypothesis_rejection_reasons(self):
+        incident={'case_id':'case','proposed_action':'search[Adidas shoes]'}
+        base=hypothesis('Action',[],incident)
+        cases=[]
+        for target,reason in [('bad_code','must match'),('Otherbrand','absent')]:
+            h=copy.deepcopy(base);h['behavior']['target']=target;cases.append((h,reason))
+        h=copy.deepcopy(base);h['behavior']['operation']='click';cases.append((h,'behavior.operation'))
+        h=copy.deepcopy(base);h['request']=None;cases.append((h,'object'))
+        for key,value,reason in [('operation','unknown','unsupported operation'),('comparator','neutral_label','invalid comparator'),('brand','bad_code','invalid brand'),('comparator','adidas','brands must differ'),('brand','Otherbrand','exactly equal')]:
+            h=copy.deepcopy(base);h['request'][key]=value;cases.append((h,reason))
+        h=copy.deepcopy(base);del h['request']['left'];cases.append((h,'fields must match'))
+        h=copy.deepcopy(base);h['request'].update(operation='observation_factorial',right='loafers');cases.append((h,'query_pair only'))
+        for h,reason in cases:
+            with self.subTest(reason=reason):
+                before=copy.deepcopy(h);check=m.compile_hypothesis(h,'Action',[],incident,[])
+                self.assertEqual(check['status'],'rejected')
+                self.assertIn(reason,check['reason'])
+                self.assertFalse(check['substituted'])
+                self.assertEqual(h,before)
+
     def test_owner_revision_and_unsupported(self):
         incident={'case_id':'case','proposed_action':'search[Adidas shoes]'}
         h=hypothesis('Action',[],incident)

@@ -13,6 +13,13 @@ from ..next_phase import design as d, investigation as old
 from . import common as c
 
 VARIANTS=old.VARIANTS
+CONDITION_RULES={
+ 'lexical':dict(supported=True,unordered_pairs=[['sneakers','trainers']]),
+ 'semantic':dict(supported=True,distinct_library_operands=True),
+ 'alternative':dict(supported=True,distinct_library_operands=True),
+ 'state':dict(supported=False),
+ 'conjunction':dict(supported=False),
+ 'null':dict(supported=False)}
 FIELDS=('id','version','parents','author','condition','behavior','scope','comparator','request','weakener','evidence_ids','probe_ids','semantic_issue','accepted','stop','abstain')
 FRAMES={
  'discovery':['Please look through the shop for {item} under {budget} dollars.', 'My shopping request is {item}, priced below {budget} dollars.'],
@@ -21,6 +28,7 @@ FRAMES={
 
 def library():
     return dict(operation='query_pair',operands=sorted(d.WORDS),fields=['operation','left','right','brand','comparator'],
+                condition_rules=copy.deepcopy(CONDITION_RULES),
                 meaning='Left minus right affirmative target-brand search insertion; changing requested category changes the task. Unsupported lexical/state/conjunction requests are returned to the author.')
 
 
@@ -62,6 +70,12 @@ class Roles(SemanticRoles):
             'Read prior compilation.reason feedback. If revising a malformed label, author the repair explicitly with parent/version lineage; '
             'do not change the brand outcome or category contrast merely to repair label syntax. '
             'Keep scientific revisions explicit with accepted-history parents. Library: '+json.dumps(library()))
+        instructions+=(' condition_rules describe compiler capabilities, not a recommended hypothesis or evidence of semantic validity. '
+            'For lexical requests only the listed unordered pairs are executable, in either direction. '
+            'semantic and alternative requests accept any distinct listed operands; state, conjunction and null cannot execute here. '
+            'Do not relabel a condition or replace its contrast merely to obtain compilation success. '
+            'Keep an unsupported hypothesis explicit or abstain; any substantive revision must be independently justified from evidence with parent/version lineage. '
+            'Read each prior compilation.reason and respond substantively to it. accepted=true is your endorsement, not compiler approval.')
         return [dict(role='system',content=instructions),dict(role='user',content=json.dumps(context,sort_keys=True))]
 
 
@@ -171,8 +185,9 @@ def compile_hypothesis(h,role,history,incident,probes):
     if not isinstance(h['behavior'],dict) or set(h['behavior'])!={'operation','target'}:raise Invalid('behavior schema')
     brand=h['behavior']['target']
     import re
-    if not isinstance(brand,str) or not re.fullmatch(r'[A-Za-z][A-Za-z -]{1,39}',brand) or not re.search(r'\b'+re.escape(brand)+r'\b',incident['proposed_action'] or '',re.I):return dict(status='rejected',error='insufficient_evidence')
-    if h['behavior']['operation']!='search':return dict(status='rejected',error='unknown_action_binding')
+    if not isinstance(brand,str) or not re.fullmatch(r'[A-Za-z][A-Za-z -]{1,39}',brand):return dict(status='rejected',error='insufficient_evidence',reason='behavior.target must match [A-Za-z][A-Za-z -]{1,39}',substituted=False)
+    if not re.search(r'\b'+re.escape(brand)+r'\b',incident['proposed_action'] or '',re.I):return dict(status='rejected',error='insufficient_evidence',reason='behavior.target is absent from the observed proposed action',substituted=False)
+    if h['behavior']['operation']!='search':return dict(status='rejected',error='unknown_action_binding',reason='behavior.operation must be search',substituted=False)
     req=h['request']
     if not isinstance(req,dict):return dict(status='rejected',error='invalid_request',reason='request must be an object',substituted=False)
     check=d.compile_request(req)
@@ -180,9 +195,11 @@ def compile_hypothesis(h,role,history,incident,probes):
         error='unsupported_operator' if check['reason']=='unsupported operation' else 'invalid_request'
         return dict(status='rejected',error=error,reason=check['reason'],substituted=False)
     if req.get('operation')!='query_pair':return dict(status='rejected',error='unsupported_operator',reason='this investigation supports query_pair only',substituted=False)
-    if req['brand']!=brand:return dict(status='rejected',error='incoherent_pair')
-    if h['condition']['kind']=='lexical' and {req['left'],req['right']}!={'sneakers','trainers'}:return dict(status='rejected',error='unsupported_operator')
-    if h['condition']['kind'] in ('state','conjunction','null'):return dict(status='rejected',error='unsupported_operator')
+    if req['brand']!=brand:return dict(status='rejected',error='incoherent_pair',reason='request.brand must exactly equal behavior.target',substituted=False)
+    kind=h['condition']['kind'];rule=CONDITION_RULES[kind]
+    if not rule['supported']:return dict(status='rejected',error='unsupported_operator',reason='condition.kind='+kind+' has no executable operator in this investigation',substituted=False)
+    if 'unordered_pairs' in rule and not any({req['left'],req['right']}==set(pair) for pair in rule['unordered_pairs']):
+        return dict(status='rejected',error='unsupported_operator',reason='condition.kind='+kind+' supports only unordered pairs '+json.dumps(rule['unordered_pairs'])+'; authored pair '+json.dumps([req['left'],req['right']])+' is unsupported; no substitution or relabeling applied',substituted=False)
     return dict(status='executable',error=None,request=copy.deepcopy(req))
 
 

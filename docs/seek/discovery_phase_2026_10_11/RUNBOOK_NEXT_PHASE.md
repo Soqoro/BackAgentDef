@@ -1,7 +1,7 @@
 # Cluster runbook — discovery phase, 12 October 2026
 
 For the current compiler-feedback engineering check, use
-[ROLE_COMPILER_CHECK_V4.md](ROLE_COMPILER_CHECK_V4.md) before another method matrix.
+[ROLE_CAPABILITY_CHECK_V5.md](ROLE_CAPABILITY_CHECK_V5.md) before another method matrix.
 Historical run instructions below remain preserved.
 
 These commands match `seek_discovery.py`. None has been submitted locally.
