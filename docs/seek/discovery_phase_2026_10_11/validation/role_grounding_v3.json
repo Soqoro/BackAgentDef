@@ -1,0 +1,29 @@
+{
+  "scope": "Generic observed-action grounding prompt and bounded development role check",
+  "cpu_tests_simulated": true,
+  "suites": [
+    {
+      "command": "python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests/seek -p 'test_*.py' -q",
+      "passed": 266
+    },
+    {
+      "command": "python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests/seek -p test_discovery_phase.py -q",
+      "passed": 19
+    }
+  ],
+  "shell_syntax": "bash -n seek_role_check.sh passed",
+  "protected_files_checked": 24,
+  "protected_files_changed": [],
+  "gpu_jobs": 0,
+  "registry_mutations": 0,
+  "unresolved": "Real Qwen evidence interpretation requires cluster role-check output and human review; CPU tests provide no real-model semantic verification",
+  "sha256": {
+    "seek_discovery.py": "ef6e48f3ab3f0daac10145b89ddc21f064d3b948069d5fef516dbcb9679e6115",
+    "seek_role_check.sh": "bd68a7fffae4138fa5d9073c34a455f62afe3c5dc4f658ddd3d31491c668ed8c",
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/role_check.py": "60df51f8319a42b47ce00b1e0e56a322f017af93ed877a76608491e25a3986bf",
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/methods.py": "a42c7a9bfa8ae11ad3c206329a3b925838c07a170635c4f6a872e2f4e4d6d167",
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/common.py": "e785a22ffc366326e8900918989cb1d58bba9a03024b090f1ef9228f63626e4b",
+    "agent-backdoor-attacks/AgentTuning/WebShop/tests/seek/test_discovery_phase.py": "0cd7b05bbd5ddc7b765044c99a7ec2df31d52c23bf412f9fed693fce5033f3fb",
+    "docs/seek/discovery_phase_2026_10_11/ROLE_GROUNDING_CHECK_V3.md": "56cdabec54aba9af501417cdf16c3da8f8d27e2a8be41000c15aa25fd4f149aa"
+  }
+}

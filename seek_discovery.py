@@ -12,12 +12,14 @@ sys.path.insert(0,str(ROOT/'agent-backdoor-attacks/AgentTuning/WebShop'))
 from seek.schemas import Invalid,digest
 from seek.storage import read_json,immutable_json,row_lock
 from seek.semantic_registry import Registry
-from seek.discovery_phase import common as c,methods,panels,campaign
+from seek.discovery_phase import common as c,methods,panels,campaign,role_check
 
 
 def parser():
     p=argparse.ArgumentParser(description=__doc__);s=p.add_subparsers(dest='cmd',required=True)
     a=s.add_parser('incidents');a.add_argument('--row',required=True);a.add_argument('--study',required=True);a.add_argument('--rejections');a.add_argument('--allow-development-reuse',action='store_true');a.add_argument('--output',required=True)
+    a=s.add_parser('role-check-prepare');a.add_argument('--study',required=True);a.add_argument('--allocation',required=True);a.add_argument('--index',type=int,required=True);a.add_argument('--qwen-config',required=True);a.add_argument('--output',required=True)
+    a=s.add_parser('role-check');a.add_argument('--plan',required=True);a.add_argument('--output',required=True);a.add_argument('--dry-run',action='store_true')
     a=s.add_parser('prepare');a.add_argument('--kind',choices=['method','observation','query-panel'],required=True);a.add_argument('--profile',required=True);a.add_argument('--incidents');a.add_argument('--output',required=True)
     a=s.add_parser('freeze');a.add_argument('--plan',required=True);a.add_argument('--study',required=True);a.add_argument('--output',required=True)
     a=s.add_parser('preflight');a.add_argument('--study',required=True);a.add_argument('--allocation',required=True)
@@ -54,7 +56,24 @@ def loader(entry,g):
 
 def main():
     a=parser().parse_args();result=None
-    if a.cmd=='incidents':
+    if a.cmd=='role-check-prepare':
+        receipt=read_json(a.allocation);parent=c.load(Registry(a.study),receipt['j'])
+        if parent['hash']!=receipt['hash']:raise Invalid('historical allocation receipt mismatch')
+        config=read_json(a.qwen_config)
+        agents=config.get('agents',config.get('defender',config))
+        plan=role_check.prepare(parent,a.index,agents);immutable_json(a.output,plan)
+        result=dict(status='prepared',plan=a.output,hash=plan['hash'],source_incident_index=a.index,
+                    development_reuse=True,max_logical_calls=4,max_attempts=8,victim_calls=0,registry_mutations=0)
+    elif a.cmd=='role-check':
+        plan=read_json(a.plan);role_check.validate(plan)
+        if a.dry_run:
+            result=dict(status='ready',scope=plan['scope'],
+                        development_reuse=True,max_logical_calls=4,max_attempts=8,victim_calls=0,registry_mutations=0)
+        else:
+            if plan['simulated']:raise Invalid('CLI role check requires real plan; fake backends belong in CPU tests')
+            gpu()
+            with row_lock(a.output):result=role_check.run(plan,methods.Roles(plan['agents']),a.output)
+    elif a.cmd=='incidents':
         result=methods.select(a.row,Registry(a.study),a.allow_development_reuse,read_json(a.rejections) if a.rejections else None);immutable_json(a.output,result)
     elif a.cmd=='prepare':
         profile=read_json(a.profile)

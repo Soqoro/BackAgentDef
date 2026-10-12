@@ -199,6 +199,11 @@ and exact token freshness have not been verified locally.
 
 ## 3. One adaptive prefix, then review
 
+The completed v2 all-abstention matrix revealed confusion between user intent
+and observed victim behavior on three incidents. Before further matrix runs,
+use the [bounded role grounding check](ROLE_GROUNDING_CHECK_V3.md). It is an
+explicitly selected development-reuse diagnostic, not a new method trial.
+
 For the claim-11 validation failure reported in job 1094017_0, use the
 [versioned development repair](ROLE_REPAIR_V2.md). Preserve its failed result;
 do not run the old frozen plan against changed role-prompt sources.

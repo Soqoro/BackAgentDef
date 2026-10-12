@@ -11,7 +11,7 @@ import tempfile
 import unittest
 
 WEB=Path(__file__).resolve().parents[2];sys.path.insert(0,str(WEB))
-from seek.discovery_phase import common as c,methods as m,panels as p,campaign
+from seek.discovery_phase import common as c,methods as m,panels as p,campaign,role_check
 from seek.schemas import Invalid,digest
 from seek.storage import read_json,immutable_json,atomic_json
 from seek.semantic_registry import Registry
@@ -165,6 +165,66 @@ class DiscoveryTests(unittest.TestCase):
             from seek.storage import events
             log=events(tmp/'bad/defender/events.jsonl')
             self.assertTrue(all(x['data']['role']=='Action' for x in log if x['kind']=='call_attempt'))
+
+    def test_role_check_grounding_and_no_registry_or_victim(self):
+        class CheckRoles(Roles):
+            messages=m.Roles.messages
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp=Path(tmp);reg,parent=method_plan(tmp);before=reg.events()
+            # Parent source can be historical, but input hash and snapshots stay bound.
+            parent=c.seal(dict(parent,source={'historical':'source'}))
+            plan=role_check.prepare(parent,1,{'fake_backend':True})
+            self.assertTrue(plan['development_reuse'])
+            self.assertEqual(plan['source_plan_hash'],parent['hash'])
+            result=role_check.run(plan,CheckRoles(stop=True),tmp/'check')
+            self.assertEqual(result['status'],'completed_role_check')
+            self.assertEqual(result['defender_costs']['physical_calls'],4)
+            self.assertEqual(result['victim_calls'],0)
+            self.assertEqual(reg.events(),before)
+            self.assertEqual(len(result['history']),4)
+            self.assertTrue(all(h['compilation']['status']=='executable' for h in result['history']))
+            request=read_json(tmp/'check/requests/01-0.json')['messages']
+            self.assertIn('NOT evidence of user intent',request[0]['content'])
+            self.assertIn('absent from the user instruction',request[0]['content'])
+            self.assertNotIn('Adidas',request[0]['content'])
+            self.assertNotIn('source_allocation_j',request[1]['content'])
+            self.assertNotIn('evaluator_selected',request[1]['content'])
+            # An observed output brand need not appear in the instruction.
+            incident=copy.deepcopy(plan['incident']['public'])
+            incident['goal']['instruction']='Find shoes.'
+            h=hypothesis('Action',[],incident)
+            self.assertEqual(m.compile_hypothesis(h,'Action',[],incident,[])['status'],'executable')
+            incident['proposed_action']='search[shoes]'
+            self.assertEqual(m.compile_hypothesis(h,'Action',[],incident,[])['error'],'insufficient_evidence')
+            again=role_check.run(plan,CheckRoles(),tmp/'check')
+            self.assertEqual(again,result)
+            altered=c.seal(dict(plan,source={'old':'source'}))
+            with self.assertRaises(Invalid):role_check.run(altered,CheckRoles(),tmp/'different')
+
+    def test_role_check_abstention_and_bounded_failure(self):
+        class Abstaining(Roles):
+            messages=m.Roles.messages
+            def call(self,role,payload):
+                h=hypothesis(role,payload['history'],payload['incident'])
+                h.update(abstain=True,accepted=False,stop=True,request=None)
+                return dict(text=json.dumps(h),finish_reason='stop',refusal=False,usage={'total_tokens':5})
+        class Broken(Abstaining):
+            def call(self,*args):return dict(text='{}',finish_reason='stop',refusal=False)
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp=Path(tmp);reg,parent=method_plan(tmp)
+            plan=role_check.prepare(parent,0,{})
+            r=role_check.run(plan,Abstaining(),tmp/'abstain')
+            self.assertEqual(r['status'],'completed_role_check')
+            self.assertTrue(all(h['abstain'] for h in r['history']))
+            r=role_check.run(plan,Broken(),tmp/'broken')
+            self.assertEqual(r['status'],'backend_failure')
+            self.assertEqual(r['defender_attempts'],2)
+            self.assertEqual(r['defender_costs']['physical_calls'],2)
+            self.assertEqual(r['history'],[])
+            planpath=tmp/'plan.json';immutable_json(planpath,plan)
+            cli=subprocess.run([sys.executable,str(c.plans.ROOT/'seek_discovery.py'),'role-check','--plan',str(planpath),'--output',str(tmp/'dry'),'--dry-run'],capture_output=True,text=True)
+            self.assertEqual(cli.returncode,0,cli.stderr)
+            self.assertFalse((tmp/'dry').exists())
 
     def test_paper_rule_and_scales(self):
         self.assertAlmostEqual(d.radius(10,64),.7228984665299145)
