@@ -11,7 +11,7 @@ import tempfile
 import unittest
 
 WEB=Path(__file__).resolve().parents[2];sys.path.insert(0,str(WEB))
-from seek.discovery_phase import common as c,methods as m,panels as p,campaign,role_check,role_probe
+from seek.discovery_phase import common as c,methods as m,panels as p,campaign,role_check,role_probe,role_followup
 from seek.schemas import Invalid,digest
 from seek.storage import read_json,immutable_json,atomic_json
 from seek.semantic_registry import Registry
@@ -64,6 +64,55 @@ def method_plan(tmp):
 
 
 class DiscoveryTests(unittest.TestCase):
+    def test_role_followup_preserves_evidence_and_lineage_without_victim(self):
+        class FollowRoles(Roles):
+            messages=m.Roles.messages
+            def call(self,role,payload):
+                self.payloads.append(copy.deepcopy(payload))
+                h=hypothesis(role,payload['history'],payload['incident'],payload['history'][-1]['request'])
+                h['probe_ids']=[e['id'] for e in payload['evidence']]
+                return dict(text=json.dumps(h),finish_reason='stop',refusal=False,usage={'total_tokens':10})
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp=Path(tmp);reg,probe,review=self.probe_fixture(tmp)
+            role_probe.run(probe,review,Policy,reg,tmp/'probe')
+            before=reg.events();plan=role_followup.prepare(tmp/'probe')
+            self.assertEqual(plan['initial_history'],probe['role_result']['history'])
+            rows=read_json(tmp/'probe/query/result.json')['rows']
+            self.assertEqual(plan['evidence'][0]['responses'][0]['raw'],rows[0]['reply']['raw_response'])
+            roles=FollowRoles();r=role_check.run(plan,roles,tmp/'followup')
+            self.assertEqual(r['initial_history_entries'],4)
+            self.assertEqual(r['new_history_entries'],4)
+            self.assertEqual(r['history'][:4],plan['initial_history'])
+            self.assertEqual(r['victim_calls'],0)
+            self.assertEqual(reg.events(),before)
+            self.assertEqual(r['defender_attempts'],4)
+            self.assertEqual(roles.payloads[0]['evidence'],plan['evidence'])
+            self.assertNotIn('profile',roles.payloads[0])
+            self.assertEqual(r['history'][4]['parents'],[r['history'][3]['id']])
+            self.assertEqual(role_check.run(plan,FollowRoles(),tmp/'followup'),r)
+            immutable_json(tmp/'follow-plan.json',plan)
+            cli=subprocess.run([sys.executable,str(c.plans.ROOT/'seek_discovery.py'),'role-check','--plan',str(tmp/'follow-plan.json'),'--output',str(tmp/'dry'),'--dry-run'],capture_output=True,text=True)
+            self.assertEqual(cli.returncode,0,cli.stderr)
+            self.assertFalse((tmp/'dry').exists())
+            changed=copy.deepcopy(plan);changed['evidence'][0]['responses'][0]['raw']='fabricated';changed=c.seal(changed)
+            with self.assertRaises(Invalid):role_followup.validate(changed)
+            summary=read_json(tmp/'probe/result.json');summary['descriptive_mean']=99;atomic_json(tmp/'probe/result.json',c.seal(summary))
+            with self.assertRaisesRegex(Invalid,'summary'):role_followup.prepare(tmp/'probe')
+
+    def test_role_followup_requires_probe_citations_and_raw_integrity(self):
+        class Uncited(Roles):messages=m.Roles.messages
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp=Path(tmp);reg,probe,review=self.probe_fixture(tmp)
+            role_probe.run(probe,review,Policy,reg,tmp/'probe')
+            plan=role_followup.prepare(tmp/'probe')
+            r=role_check.run(plan,Uncited(),tmp/'followup')
+            self.assertEqual(r['status'],'backend_failure')
+            self.assertEqual(r['defender_attempts'],2)
+            self.assertEqual(r['new_history_entries'],0)
+            row=next((tmp/'probe/query/rows').glob('*.json'))
+            obj=read_json(row);obj['reply']['raw_response']='fabricated';atomic_json(row,obj)
+            with self.assertRaises(Invalid):role_followup.prepare(tmp/'probe')
+
     def probe_fixture(self,tmp):
         class CheckRoles(Roles):messages=m.Roles.messages
         reg,parent=method_plan(tmp)

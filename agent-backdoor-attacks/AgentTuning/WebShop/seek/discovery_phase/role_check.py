@@ -41,7 +41,11 @@ def validate(plan):
 
 
 def run(plan, backend, output):
-    validate(plan)
+    followup=plan.get('schema')=='seek-role-evidence-followup-v1'
+    if followup:
+        from .role_followup import validate as validate_followup
+        validate_followup(plan)
+    else:validate(plan)
     if bool(backend.simulated) != plan['simulated']:
         raise Invalid('backend population mismatch')
     out=Path(output)
@@ -51,13 +55,15 @@ def run(plan, backend, output):
         return result
     immutable_json(out/'plan.json',plan)
     immutable_json(out/'public.json',plan['incident']['public'])
-    journal=Journal(out/'defender');history=[];failures=[];logical=0;attempts=0;failed=False
+    journal=Journal(out/'defender');history=copy.deepcopy(plan['initial_history']) if followup else [];failures=[];logical=0;attempts=0;failed=False
+    evidence=copy.deepcopy(plan['evidence']) if followup else []
     try:
         for role in plan['roles']:
             logical+=1;accepted=None
             payload=dict(incident=copy.deepcopy(plan['incident']['public']),history=copy.deepcopy(history),
-                         evidence=[],role=role,library=methods.library(),round=0,
+                         evidence=evidence,role=role,library=methods.library(),round=0,
                          phase='development_role_check',remaining_victim=0,must_finalize=True)
+            if followup:payload.update(followup_task=plan['followup_task'],evidence_limits=plan['evidence_limits'])
             for retry in range(2):
                 reply=None;stage='transport';attempts+=1
                 key=dict(plan=plan['hash'],role=role,call=logical,retry=retry,payload=copy.deepcopy(payload))
@@ -70,7 +76,8 @@ def run(plan, backend, output):
                     stage='validation'
                     if reply.get('finish_reason')!='stop' or reply.get('refusal'):raise Invalid('incomplete reply')
                     value=json.loads(reply['text'])
-                    check=methods.compile_hypothesis(value,role,history,payload['incident'],[])
+                    check=methods.compile_hypothesis(value,role,history,payload['incident'],[e['id'] for e in evidence])
+                    if followup and not value['probe_ids']:raise Invalid('followup must reference supplied probe evidence')
                     accepted=dict(value,compilation=check,experiment_status=check['status'])
                     history.append(accepted);break
                 except (Invalid,ValueError,KeyError,TypeError,OSError) as exc:
@@ -81,7 +88,7 @@ def run(plan, backend, output):
             if accepted is None:failed=True;break
     finally:
         backend.close()
-    result=c.seal(dict(schema='seek-role-grounding-result-v1',plan_hash=plan['hash'],
+    result=c.seal(dict(schema='seek-role-evidence-followup-result-v1' if followup else 'seek-role-grounding-result-v1',plan_hash=plan['hash'],
         status='backend_failure' if failed else 'completed_role_check',simulated=plan['simulated'],
         origin=plan['origin'],development_reuse=True,source_plan_hash=plan['source_plan_hash'],
         source_incident_index=plan['source_incident_index'],history=history,failure_details=failures,
@@ -89,5 +96,6 @@ def run(plan, backend, output):
         victim_calls=0,registry_mutations=0,scientific_confirmation=False,sampling_certificate=False,
         semantic_interpretation='requires human review',
         scope='Role interpretation only; no probes, candidate evaluation, or method comparison'))
+    if followup:result=c.seal(dict(result,initial_history_entries=len(plan['initial_history']),new_history_entries=len(history)-len(plan['initial_history']),probe_result_hash=plan['probe_result_hash']))
     immutable_json(out/'result.json',result)
     return result

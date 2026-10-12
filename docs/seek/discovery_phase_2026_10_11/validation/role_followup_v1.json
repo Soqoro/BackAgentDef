@@ -1,0 +1,27 @@
+{
+  "scope": "No-victim development role continuation using verified probe evidence and original hypothesis lineage",
+  "cpu_tests_simulated": true,
+  "suites": [
+    {
+      "command": "python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests/seek -p 'test_*.py' -q",
+      "passed": 274
+    },
+    {
+      "command": "python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests/seek -p test_discovery_phase.py -q",
+      "passed": 27
+    }
+  ],
+  "shell_syntax": "bash -n seek_role_check.sh passed",
+  "diff_check": "passed",
+  "local_gpu_calls": 0,
+  "authoritative_registry_mutations": 0,
+  "maximum_defender_attempts": 8,
+  "victim_calls": 0,
+  "unresolved": "Real cluster Qwen output and review of evidence-driven reasoning. CPU tests do not complete the continuation.",
+  "sha256": {
+    "seek_discovery.py": "ded5a633979adc02553d35c01b17fe6d5992f6b6f998c79b03d443a392b547fd",
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/role_followup.py": "057813d1752d8293bbc3945731b6fd6530d5076f7175673a8bbd40e6cb061562",
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/role_check.py": "4e90d295615ea92181e213424f733dcc0de5f73eb3a188a9e35326f260dd64c6",
+    "agent-backdoor-attacks/AgentTuning/WebShop/tests/seek/test_discovery_phase.py": "38d167f92f82b13864d1b94afc8c89b99cc16a1d2164b0bc5ee9ba47f3c85d4b"
+  }
+}

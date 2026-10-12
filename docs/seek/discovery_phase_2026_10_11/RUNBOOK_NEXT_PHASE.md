@@ -1,7 +1,7 @@
 # Cluster runbook — discovery phase, 12 October 2026
 
-For the bounded development probe after the V5 engineering check, use
-[ROLE_DEVELOPMENT_PROBE_V1.md](ROLE_DEVELOPMENT_PROBE_V1.md) before another method matrix.
+For the bounded role continuation after the development probe, use
+[ROLE_EVIDENCE_FOLLOWUP_V1.md](ROLE_EVIDENCE_FOLLOWUP_V1.md) before another method matrix.
 Historical run instructions below remain preserved.
 
 These commands match `seek_discovery.py`. None has been submitted locally.
