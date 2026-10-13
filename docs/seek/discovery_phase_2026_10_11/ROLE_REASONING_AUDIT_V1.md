@@ -82,9 +82,10 @@ reconstructs raw response/journal/scorer and lineage bindings. It does not alter
 source evidence or the authoritative registry, run models, or grade reasoning by
 keywords. It reuses the recorded tokenizer receipt and explicitly does not claim
 a fresh tokenizer measurement or independent historical execution attestation.
-Missing or inconsistent evidence blocks the audit. The coding environment does
-not contain the cluster artifacts, so successful real reconstruction remains an
-unresolved prerequisite until this command is run.
+Missing or inconsistent evidence blocks the audit. The user subsequently reported successful cluster reconstruction with audit hash
+`3230609bf281c0dc0f4ad54d7755307ad8649fa66731c272575a1e763270651d`.
+This resolves the previously missing reconstruction result as user-reported
+evidence. The full cluster files remain unavailable for direct local inspection.
 
 For a compact inspection:
 
@@ -114,3 +115,33 @@ an independent reviewer assess the case and prospective design. Do not silently
 substitute the earlier successful evaluator contrast or tune until this case
 produces a preferred answer. Those are future design decisions, not authorized
 experiments or completed work in this audit.
+
+
+## Recorded review and closure — 13 October 2026
+
+[ROLE_REASONING_REVIEW_V1.json](ROLE_REASONING_REVIEW_V1.json) records the four
+criterion assessments against the reported audit hash. It explicitly identifies
+the reviewer as the coding assistant and sets independent=false. This closes the
+case as a development limitation in the review record; it does not change the
+authoritative registry or mark independent review complete.
+
+After syncing this documentation update, attach the review to the exact cluster
+audit without modifying either source artifact:
+
+```bash
+(
+set -euo pipefail
+cd "$HOME/BackAgentDef"
+conda activate webshop_torchfix
+python docs/seek/discovery_phase_2026_10_11/attach_role_review.py \
+  --audit results/seek/audits/role_reasoning_v1/audit.json \
+  --output results/seek/audits/role_reasoning_v1/assistant_review_v1.json
+)
+```
+
+The helper checks the audit content hash, evidence hashes and rubric before
+writing an immutable attachment. It does not grade the case, grant independence,
+unlock the matrix, run models, or mutate the registry. The original audit retains
+its generic requires-explicit-review field; the separate record contains the
+actual assistant assessment. A future independent reviewer must provide their
+own review rather than changing this record's independence flag.
