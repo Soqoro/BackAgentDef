@@ -33,6 +33,14 @@ def inputs():
 
 
 class FreshQueryTests(unittest.TestCase):
+    def test_single_group_hacs_pilot_is_opt_in(self):
+        manifest,inventory=inputs()
+        with self.assertRaises(Invalid):m.choose(manifest,inventory,[],[],[],1)
+        selected,report=m.choose(manifest,inventory,[],[],[],1,hacs_pilot=True)
+        self.assertEqual(report['selected_groups'],1)
+        self.assertEqual(len(report['representatives']),1)
+        with self.assertRaises(Invalid):m.choose(manifest,inventory,[],[],[],4,hacs_pilot=True)
+
     def test_preserves_groups_and_splits_under_source_change(self):
         manifest, inventory = inputs()
         new, report = m.choose(manifest, inventory, [], [], [], 4)

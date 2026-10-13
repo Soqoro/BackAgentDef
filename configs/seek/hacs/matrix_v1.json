@@ -1,0 +1,9 @@
+{
+  "protocol": "seek-hacs-v1",
+  "purpose": "prospective resource specification; CLI enforces these caps",
+  "groups": 4,
+  "variants": 3,
+  "victim_per_run": 32,
+  "anchors_per_run": 2,
+  "defender_per_run": 12
+}

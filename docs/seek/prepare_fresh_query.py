@@ -20,10 +20,10 @@ from seek.victim import file_hash
 FIELDS = ('task_fingerprint', 'instruction_fingerprint', 'trajectory_fingerprint', 'dependence_group')
 
 
-def choose(manifest, inventory, events, historical_manifests, captures, count):
+def choose(manifest, inventory, events, historical_manifests, captures, count, *, hacs_pilot=False):
     """Keep original split/group lineage even when environment source changes."""
-    if type(count) is not int or count < 4:
-        raise Invalid('at least four distinct exploration groups required')
+    if type(count) is not int or (count != 1 if hacs_pilot else count < 4):
+        raise Invalid('HACS pilot requires exactly one group; legacy collection requires at least four')
     validate_manifest(manifest, manifest['namespace'])
     if set(inventory) != {'namespace', 'tasks'}:
         raise Invalid('invalid inventory')
@@ -146,7 +146,7 @@ def prepare(args):
         raise Invalid('history root must contain prior task manifests and captures')
     manifest = read_json(resolve(query['task_manifest']))
     selected, report = choose(manifest, inventory, events,
-                              [read_json(p) for p in manifest_files], [read_json(p) for p in capture_files], args.groups)
+                              [read_json(p) for p in manifest_files], [read_json(p) for p in capture_files], args.groups, hacs_pilot=getattr(args,'hacs_pilot',False))
     config = copy.deepcopy(query)
     config.update(run_id=args.run_id, task_manifest=str(out/'tasks.json'),
                   checkpoint_registry=str(resolve(query['checkpoint_registry'])), run_root=str(history))
@@ -184,6 +184,7 @@ def main():
     for name in ('query-config','environment-config','inventory','profile','study','history-root','output','run-id'):
         p.add_argument('--'+name, required=True)
     p.add_argument('--groups', type=int, default=4)
+    p.add_argument('--hacs-pilot', action='store_true', help='Explicit one-group HACS acquisition; requires --groups 1')
     try:
         print(json.dumps(prepare(p.parse_args()), indent=2))
     except (Invalid, OSError, ValueError, KeyError) as exc:

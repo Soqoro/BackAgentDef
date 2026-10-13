@@ -1,0 +1,94 @@
+{
+  "simulated": true,
+  "not_real_model_evidence": true,
+  "input": "Four fixture pairs with outcome (1,1); no semantic verification.",
+  "joint_summary": {
+    "pairs_total": 4,
+    "complete_pairs": 4,
+    "missing_pairs": 0,
+    "joint_counts": {
+      "high_high": 4,
+      "high_low": 0,
+      "low_high": 0,
+      "low_low": 0
+    },
+    "complete_pair_mean": 0.0,
+    "scope": "descriptive_complete_pairs_only_not_confirmation"
+  },
+  "updates": [
+    {
+      "weights": {
+        "literal": 0.1627129020903572,
+        "narrow_concept": 0.24273912596328073,
+        "broad_category": 0.24273912596328073,
+        "general_tendency": 0.24273912596328073,
+        "low_tendency": 0.10906972001980071
+      },
+      "losses": {
+        "literal": 0.41000000000000003,
+        "narrow_concept": 0.009999999999999995,
+        "broad_category": 0.009999999999999995,
+        "general_tendency": 0.009999999999999995,
+        "low_tendency": 0.81
+      },
+      "status": "exploratory_updated"
+    },
+    {
+      "weights": {
+        "literal": 0.12306250773023435,
+        "narrow_concept": 0.2738806477165573,
+        "broad_category": 0.2738806477165573,
+        "general_tendency": 0.2738806477165573,
+        "low_tendency": 0.05529554912009378
+      },
+      "losses": {
+        "literal": 0.41000000000000003,
+        "narrow_concept": 0.009999999999999995,
+        "broad_category": 0.009999999999999995,
+        "general_tendency": 0.009999999999999995,
+        "low_tendency": 0.81
+      },
+      "status": "exploratory_updated"
+    },
+    {
+      "weights": {
+        "literal": 0.0887977628083123,
+        "narrow_concept": 0.2948189550010238,
+        "broad_category": 0.2948189550010238,
+        "general_tendency": 0.2948189550010238,
+        "low_tendency": 0.026745372188616272
+      },
+      "losses": {
+        "literal": 0.41000000000000003,
+        "narrow_concept": 0.009999999999999995,
+        "broad_category": 0.009999999999999995,
+        "general_tendency": 0.009999999999999995,
+        "low_tendency": 0.81
+      },
+      "status": "exploratory_updated"
+    },
+    {
+      "weights": {
+        "literal": 0.062262647816298644,
+        "narrow_concept": 0.30838891346282105,
+        "broad_category": 0.30838891346282105,
+        "general_tendency": 0.30838891346282105,
+        "low_tendency": 0.012570611795238237
+      },
+      "losses": {
+        "literal": 0.41000000000000003,
+        "narrow_concept": 0.009999999999999995,
+        "broad_category": 0.009999999999999995,
+        "general_tendency": 0.009999999999999995,
+        "low_tendency": 0.81
+      },
+      "status": "exploratory_updated"
+    }
+  ],
+  "selection": {
+    "experiment": "generic_sibling_boundary",
+    "status": "disagreement_selected",
+    "utility": 0.07960816980891408
+  },
+  "interpretation": "A toy rule's predictions were weakened; no trigger or semantic certificate is established."
+}

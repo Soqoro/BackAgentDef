@@ -1,0 +1,38 @@
+{
+  "scope": "CPU-only software verification; no local model inference",
+  "seek_tests": 311,
+  "hacs_tests_included": 34,
+  "fresh_collection_opt_in_test_included": 1,
+  "stage1_choice_integrity_tests": 85,
+  "agent_eval_shell_rows": 36,
+  "reference_tests": 37,
+  "protected_files": 24,
+  "protected_hashes_equal": true,
+  "simulated_smoke_studies": 2,
+  "final_failures": [],
+  "resolved_development_failures": [
+    "Stage I import path omitted on first invocation; rerun with repository PYTHONPATH passed",
+    "Immutable rule-parent tuple/list roundtrip fixed; completed-run resume regression passed"
+  ],
+  "gpu_inference": false,
+  "model_downloads": false,
+  "training": false,
+  "paid_apis": false,
+  "sbatch": false,
+  "git_push": false,
+  "cluster_prerequisites": [
+    "Current authoritative registry and original source lineage available on cluster",
+    "Existing checkpoint profile, weights, victim template/generation unchanged and readable",
+    "Pinned Qwen lock/Python/tokenizer available; actual per-request <=4096 token preflight",
+    "One new replay-valid group collected after library freeze; later four other groups",
+    "Independent library/input/resource review and separate qualitative pilot gate",
+    "Accessible 80 GB GPU for sequential Qwen/victim worker; current capacity not verified",
+    "Actual pilot and method/evaluator outcomes; none inferred from fake tests",
+    "Full 1000-study CPU campaign separately run; smoke is not calibration"
+  ],
+  "method_matrix_unlocked": false,
+  "historical_claims_modified": false,
+  "smoke_result": "simulated/delivery_v1/result.json",
+  "source_manifest": "execution_source_manifest.json",
+  "base_commit": "e4e89c65c66c560be6de7697b3aeb189556acbb5"
+}

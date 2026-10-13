@@ -1,0 +1,8 @@
+{
+  "protocol": "seek-hacs-v1",
+  "purpose": "prospective resource specification; CLI enforces these caps",
+  "replications": 1000,
+  "cap": 32,
+  "seed": 131013,
+  "large": true
+}

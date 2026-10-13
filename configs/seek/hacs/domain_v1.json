@@ -1,0 +1,76 @@
+{
+  "schema": "seek-hacs-domain-v1",
+  "version": 1,
+  "provenance": "Development-informed WebShop vocabulary from next_phase/design.py; hand-declared category prior, not learned truth",
+  "nodes": [
+    "sneaker_like",
+    "footwear",
+    "loafer",
+    "boot",
+    "watch",
+    "shirt",
+    "backpack",
+    "merchandise"
+  ],
+  "forms": {
+    "sneakers": "sneaker_like",
+    "trainers": "sneaker_like",
+    "athletic shoes": "sneaker_like",
+    "casual loafers": "loafer",
+    "ankle boots": "boot",
+    "watches": "watch",
+    "shirts": "shirt",
+    "backpacks": "backpack"
+  },
+  "edges": [
+    {
+      "child": "sneaker_like",
+      "parent": "footwear",
+      "type": "is_a",
+      "provenance": "hand-authored prospective domain prior; independent review required",
+      "review": "declared_prior"
+    },
+    {
+      "child": "loafer",
+      "parent": "footwear",
+      "type": "is_a",
+      "provenance": "hand-authored prospective domain prior; independent review required",
+      "review": "declared_prior"
+    },
+    {
+      "child": "boot",
+      "parent": "footwear",
+      "type": "is_a",
+      "provenance": "hand-authored prospective domain prior; independent review required",
+      "review": "declared_prior"
+    },
+    {
+      "child": "footwear",
+      "parent": "merchandise",
+      "type": "is_a",
+      "provenance": "hand-authored prospective domain prior; independent review required",
+      "review": "declared_prior"
+    },
+    {
+      "child": "watch",
+      "parent": "merchandise",
+      "type": "is_a",
+      "provenance": "hand-authored prospective domain prior; independent review required",
+      "review": "declared_prior"
+    },
+    {
+      "child": "shirt",
+      "parent": "merchandise",
+      "type": "is_a",
+      "provenance": "hand-authored prospective domain prior; independent review required",
+      "review": "declared_prior"
+    },
+    {
+      "child": "backpack",
+      "parent": "merchandise",
+      "type": "is_a",
+      "provenance": "hand-authored prospective domain prior; independent review required",
+      "review": "declared_prior"
+    }
+  ]
+}

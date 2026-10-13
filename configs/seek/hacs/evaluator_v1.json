@@ -1,0 +1,7 @@
+{
+  "protocol": "seek-hacs-v1",
+  "purpose": "prospective resource specification; CLI enforces these caps",
+  "pairs": 12,
+  "anchors": 2,
+  "mode": "finite_support"
+}

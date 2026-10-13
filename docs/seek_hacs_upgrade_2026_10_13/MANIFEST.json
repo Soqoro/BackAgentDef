@@ -1,0 +1,67 @@
+{
+  "package": "Seek_HACS_Upgrade_2026-10-13",
+  "created_date": "2026-10-13",
+  "status": "planning_and_codex_handoff_not_repo_patch",
+  "files": [
+    {
+      "path": "ALGORITHM_DESIGN.md",
+      "bytes": 15032,
+      "sha256": "9f0af8e01818848e2dea38d10ee566c65205ad2e6a252751c0b9537cae6495cd"
+    },
+    {
+      "path": "AUDIT_ANALYSIS.md",
+      "bytes": 5525,
+      "sha256": "0bd7387b636de92219a2a169aa3cf8d66e6f23ca5c22b5e5d7e6722880472fff"
+    },
+    {
+      "path": "CODEX_UPDATE_PROMPT.md",
+      "bytes": 35372,
+      "sha256": "cca9432296d5905a84907b4fb343395e27f15694364e1105f6a4670d56ae560c"
+    },
+    {
+      "path": "EXPERIMENT_PLAN.md",
+      "bytes": 14400,
+      "sha256": "778f128f4a06b26bf588b9b6b09cf8de3467ca82e09f9e77c20cbc6a4c3b854b"
+    },
+    {
+      "path": "README.md",
+      "bytes": 2710,
+      "sha256": "b849eb1fa6318fba77562c93e6215ca5ae1f39dc8689d75dc5f796080bb4caaa"
+    },
+    {
+      "path": "SOURCES.md",
+      "bytes": 2911,
+      "sha256": "149d2f2a003813de76d36aa22972f3626c4a26ecde44c51deffc5510a64f25f1"
+    },
+    {
+      "path": "context/CODEX_AUDIT_2026-10-13_source.md",
+      "bytes": 26890,
+      "sha256": "93a1510adb40b84c2d2debb58eaef872ac1a95b78c26d343333406137f53abb4"
+    },
+    {
+      "path": "context/MANUSCRIPT_THEORY_EXCERPT.tex",
+      "bytes": 3524,
+      "sha256": "ec5dd68d8322390888d5b1885d29b94502d37069f37dae55c5de119928e14c52"
+    },
+    {
+      "path": "reference/hacs_reference.py",
+      "bytes": 12136,
+      "sha256": "12c209f76f72b759666274306d4ced16b692c2ef750ca2bb5a6d34a15e918719"
+    },
+    {
+      "path": "reference/simulated_demo.json",
+      "bytes": 2904,
+      "sha256": "ef7360b30e774abab17729d1a38531ee3611e875e09f0d189f2a27a8288b3811"
+    },
+    {
+      "path": "reference/test_hacs_reference.py",
+      "bytes": 7761,
+      "sha256": "226b03b70b2005fa0d409b7929e715b5255ecbea68f913bf3463c58bd3fc965e"
+    },
+    {
+      "path": "reference/test_output.txt",
+      "bytes": 3594,
+      "sha256": "0dedd60846375ec5ec5770496cccca7cd3d1431898d02f49027c46f72adba232"
+    }
+  ]
+}

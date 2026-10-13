@@ -38,6 +38,8 @@ def parser():
     a=s.add_parser('prompt-audit');a.add_argument('--files',nargs='+',required=True);a.add_argument('--output',required=True)
     a=s.add_parser('simulate');a.add_argument('--output',required=True);a.add_argument('--replications',type=int,default=2);a.add_argument('--cap',type=int,default=64);a.add_argument('--seed',type=int,default=121012);a.add_argument('--schedule',choices=['fixed','adaptive'],default='adaptive');a.add_argument('--large',action='store_true')
     a=s.add_parser('supplement');a.add_argument('--recovery',required=True);a.add_argument('--original-archive',required=True);a.add_argument('--output',required=True)
+    from seek.discovery_phase import hacs_cli
+    hacs_cli.add_parser(s)
     return p
 
 
@@ -62,6 +64,9 @@ def loader(entry,g):
 
 def main():
     a=parser().parse_args();result=None
+    if a.cmd.startswith("hacs-"):
+        from seek.discovery_phase import hacs_cli
+        return hacs_cli.main(a,loader,gpu)
     if a.cmd=='role-audit':
         result=role_audit.write(a.recovery_root,a.output)
     elif a.cmd=='role-recovery-prepare':

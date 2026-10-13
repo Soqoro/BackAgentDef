@@ -1,0 +1,42 @@
+test_arm_loss (test_hacs_reference.ReferenceChecks.test_arm_loss) ... ok
+test_binary_outcome_required (test_hacs_reference.ReferenceChecks.test_binary_outcome_required) ... ok
+test_boundary_separates_class (test_hacs_reference.ReferenceChecks.test_boundary_separates_class) ... ok
+test_claim10_radius (test_hacs_reference.ReferenceChecks.test_claim10_radius) ... ok
+test_cost_penalty (test_hacs_reference.ReferenceChecks.test_cost_penalty) ... ok
+test_coverage_order (test_hacs_reference.ReferenceChecks.test_coverage_order) ... ok
+test_coverage_survives_zero_search_weight (test_hacs_reference.ReferenceChecks.test_coverage_survives_zero_search_weight) ... ok
+test_demo_label (test_hacs_reference.ReferenceChecks.test_demo_label) ... ok
+test_duplicate_does_not_update (test_hacs_reference.ReferenceChecks.test_duplicate_does_not_update) ... ok
+test_empty_weights (test_hacs_reference.ReferenceChecks.test_empty_weights) ... ok
+test_equivalence_class (test_hacs_reference.ReferenceChecks.test_equivalence_class) ... ok
+test_eta_can_prevent_semantic_pass (test_hacs_reference.ReferenceChecks.test_eta_can_prevent_semantic_pass) ... ok
+test_gbs_indistinguishable (test_hacs_reference.ReferenceChecks.test_gbs_indistinguishable) ... ok
+test_gbs_known_four_rules (test_hacs_reference.ReferenceChecks.test_gbs_known_four_rules) ... ok
+test_gbs_no_realizability_claim (test_hacs_reference.ReferenceChecks.test_gbs_no_realizability_claim) ... ok
+test_high_high_vs_low_low (test_hacs_reference.ReferenceChecks.test_high_high_vs_low_low) ... ok
+test_identical_predictions_zero (test_hacs_reference.ReferenceChecks.test_identical_predictions_zero) ... ok
+test_invalid_experiment (test_hacs_reference.ReferenceChecks.test_invalid_experiment) ... ok
+test_invalid_sample_size (test_hacs_reference.ReferenceChecks.test_invalid_sample_size) ... ok
+test_joint_counts (test_hacs_reference.ReferenceChecks.test_joint_counts) ... ok
+test_latest_case_direction (test_hacs_reference.ReferenceChecks.test_latest_case_direction) ... ok
+test_loss_vectors_align (test_hacs_reference.ReferenceChecks.test_loss_vectors_align) ... ok
+test_missing_not_zero (test_hacs_reference.ReferenceChecks.test_missing_not_zero) ... ok
+test_missing_pairs_visible (test_hacs_reference.ReferenceChecks.test_missing_pairs_visible) ... ok
+test_negative_weights (test_hacs_reference.ReferenceChecks.test_negative_weights) ... ok
+test_nonfinite (test_hacs_reference.ReferenceChecks.test_nonfinite) ... ok
+test_normalize (test_hacs_reference.ReferenceChecks.test_normalize) ... ok
+test_partial_discovery_missing (test_hacs_reference.ReferenceChecks.test_partial_discovery_missing) ... ok
+test_planning_arithmetic (test_hacs_reference.ReferenceChecks.test_planning_arithmetic) ... ok
+test_radius_scaling (test_hacs_reference.ReferenceChecks.test_radius_scaling) ... ok
+test_renaming_invariance (test_hacs_reference.ReferenceChecks.test_renaming_invariance) ... ok
+test_selection_avoids_duplicate (test_hacs_reference.ReferenceChecks.test_selection_avoids_duplicate) ... ok
+test_selection_budget (test_hacs_reference.ReferenceChecks.test_selection_budget) ... ok
+test_strict_threshold (test_hacs_reference.ReferenceChecks.test_strict_threshold) ... ok
+test_unknown_eta (test_hacs_reference.ReferenceChecks.test_unknown_eta) ... ok
+test_unknown_not_zero_variance (test_hacs_reference.ReferenceChecks.test_unknown_not_zero_variance) ... ok
+test_unknown_predictions_raise (test_hacs_reference.ReferenceChecks.test_unknown_predictions_raise) ... ok
+
+----------------------------------------------------------------------
+Ran 37 tests in 0.001s
+
+OK
