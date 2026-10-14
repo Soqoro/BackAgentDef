@@ -1,5 +1,9 @@
 # HACS implementation delivery — 13 October 2026
 
+Subsequent cluster failure and correction: [14 October outcome compatibility fix](OUTCOME_COMPATIBILITY_FIX.md).
+The delivery results below describe the original version; the correction requires
+a new source-bound pilot and tokenizer check.
+
 Implemented as an optional policy inside the existing Seek discovery entry point. No local GPU/model calls, downloads, training, paid API calls, Slurm submissions or git push occurred.
 
 - [Exact gated cluster commands](NEXT_ACTIONS.md)

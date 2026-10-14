@@ -330,4 +330,24 @@ def render(e,target,context,phase='discovery'):
     return result
 
 
+def check_outcome_compatibility(target, operands):
+    """Require a target absent from every supported query frame, before search.
+
+    This validates an agent choice; it neither selects another target nor drops
+    experiments to accommodate that choice. Numeric budgets cannot match LABEL.
+    """
+    for word in operands:
+        experiment = dict(left=word, right=word, comparator='Neutral')
+        for phase in ('discovery', 'evaluation'):
+            for context in (0, 1):
+                try:
+                    render(experiment, target, context, phase)
+                except Invalid as exc:
+                    if str(exc) != 'target_leakage':
+                        raise
+                    raise Invalid('outcome_incompatible_with_query_library: target appears in rendered inputs; '
+                                  'do not substitute automatically; choose a separately grounded compatible outcome '
+                                  'or abstain') from exc
+
+
 def score(raw,cell):return d.score(raw,{},cell['request'])

@@ -24,6 +24,8 @@ def messages(role, packet):
         'Return only a JSON object with exactly fields '+json.dumps(REVIEW_FIELDS)+'. '
         'role equals your role. target is a 2-40 ASCII letter/space/hyphen phrase observed affirmatively in the proposed action, '
         'or null with decision=abstain if not grounded. observed must exactly copy packet.factual_acknowledgment. '
+        'A continuing outcome must be absent from all rendered query inputs, including declared operands and template text. '
+        'Do not measure an input operand as unexplained output insertion. Choose your own grounded compatible outcome or abstain; no preferred target is supplied. '
         'decision is continue, finalize, stop, or abstain. experiment_id is an available ID or null. hypothesis_ids are supplied IDs. '
         'prediction_assessment, semantic_objection and reason are nonempty strings. unperformed_test is an unperformed ID or null. '
         'replication is null or {reason:new_context_unresolved_pair,hypotheses:[two actually separated rule IDs]}. '
@@ -74,6 +76,8 @@ def validate_review(value, role, p, target=None):
     if value['target'] is not None:h.outcome(p['incident'],value['target'])
     elif value['decision'] not in ('stop','abstain'):raise Invalid('ungrounded_outcome')
     if target is not None and value['target']!=target:raise Invalid('outcome_change_requires_fresh_contract')
+    if value['target'] is not None and value['decision'] not in ('stop','abstain'):
+        h.check_outcome_compatibility(value['target'],p['capabilities']['operands'])
     ids={e['id'] for e in p['available']}
     if value['experiment_id'] is not None and value['experiment_id'] not in ids:raise Invalid('missing_capability')
     if not isinstance(value['hypothesis_ids'],list) or not set(value['hypothesis_ids'])<={x for g in (p['alternatives'] or {}).get('classes',[]) for x in g}|set((p['alternatives'] or {}).get('unknown',[])):raise Invalid('unknown_hypothesis')

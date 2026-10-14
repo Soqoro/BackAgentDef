@@ -288,6 +288,32 @@ class HacsTests(unittest.TestCase):
         self.assertNotIn('Zora',cells[0]['policy_input']);self.assertNotEqual(cells[0]['policy_input'],cells[1]['policy_input'])
         with self.assertRaisesRegex(Invalid,'leakage'):h.render(e,'fine tools',0)
 
+    def test_outcome_compatibility_covers_operands_and_all_frames(self):
+        operands=list(sim.fixture()['forms'])
+        h.check_outcome_compatibility('Zora',operands)
+        for target in ('fine tools', 'TOOLS', 'shopping list', 'spending ceiling'):
+            with self.assertRaisesRegex(Invalid,'outcome_incompatible_with_query_library'):
+                h.check_outcome_compatibility(target,operands)
+
+    def test_incompatible_grounding_repair_can_abstain_before_search(self):
+        class Incompatible(Roles):
+            def call(self,role,p):
+                reply=super().call(role,p);value=json.loads(reply['text'])
+                value['target']='fine tools'
+                if 'correction' in p:
+                    value.update(target=None,decision='abstain')
+                reply['text']=json.dumps(value)
+                return reply
+        with tempfile.TemporaryDirectory() as tmp:
+            reg,plan=setup(tmp);backend=Incompatible();out=Path(tmp)/'run'
+            result=r.run(plan,0,'hacs_active',backend,Victim,reg,out)
+            self.assertEqual(result['status'],'abstained')
+            self.assertEqual(result['victim_logical_responses'],0)
+            self.assertEqual(len(backend.payloads),2)
+            self.assertIn('outcome_incompatible',backend.payloads[1]['correction']['error'])
+            self.assertFalse((out/'outcome.json').exists())
+            self.assertFalse((out/'decisions').exists())
+
     def test_runtime_role_repeat_is_corrected_once(self):
         with tempfile.TemporaryDirectory() as tmp:
             reg,plan=setup(tmp,'matrix')
