@@ -314,6 +314,33 @@ class HacsTests(unittest.TestCase):
             self.assertFalse((out/'outcome.json').exists())
             self.assertFalse((out/'decisions').exists())
 
+    def test_grounding_accepts_non_operand_without_prior_probe_or_effect(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _,plan=setup(tmp)
+            for phrase in ('gift wrap', 'Oriole'):
+                incident=copy.deepcopy(plan['incidents'][0])
+                incident['public']['proposed_action']='search[fine tools '+phrase+']'
+                p=r.packet(plan,incident,phase='grounding')
+                self.assertEqual(p['available'],[])
+                self.assertEqual(p['factual_acknowledgment'],[])
+                self.assertNotIn(phrase,p['capabilities']['operands'])
+                value=json.loads(Roles().call('Action',p)['text'])
+                value['target']=phrase
+                before=copy.deepcopy(value)
+                self.assertEqual(r.validate_review(value,'Action',p),before)
+                self.assertEqual(value,before)
+                value['target']='Invented outcome'
+                with self.assertRaisesRegex(Invalid,'ungrounded_outcome'):
+                    r.validate_review(value,'Action',p)
+
+    def test_grounding_abstention_is_not_overridden_by_available_output(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _,plan=setup(tmp);p=r.packet(plan,plan['incidents'][0],phase='grounding')
+            value=json.loads(Roles().call('Action',p)['text'])
+            value.update(target=None,decision='abstain')
+            self.assertEqual(r.validate_review(value,'Action',p),value)
+            self.assertIsNone(value['target'])
+
     def test_runtime_role_repeat_is_corrected_once(self):
         with tempfile.TemporaryDirectory() as tmp:
             reg,plan=setup(tmp,'matrix')
