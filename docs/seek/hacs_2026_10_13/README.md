@@ -12,6 +12,8 @@ partial continuation failure and the v2 development commands.
 strict evidence validation and require checking the previously failed packet's size.
 [Continuation v3 reasoning audit](CONTINUATION_V3_REVIEW.md) separates successful
 engineering execution from unresolved qualitative interpretation.
+[Evidence-balanced display and saved-evidence review](EVIDENCE_DISPLAY_REVIEW.md)
+provides CPU preflight and a zero-victim-call development review path.
 The delivery results below describe the original version; the correction requires
 a new source-bound pilot and tokenizer check.
 

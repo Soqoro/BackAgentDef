@@ -6,7 +6,7 @@ from pathlib import Path
 from ..schemas import Invalid, digest
 from ..storage import Journal, immutable_json, read_json, row_lock, events
 from ..semantic_roles import SemanticRoles
-from . import common as c, methods, hacs as h, role_tokens
+from . import common as c, methods, hacs as h, role_tokens, hacs_review_evidence
 
 REVIEW_FIELDS = ['role','target','observed','decision','experiment_id','hypothesis_ids','prediction_assessment',
                  'semantic_objection','unperformed_test','replication','reason']
@@ -46,6 +46,9 @@ def messages(role, packet):
         'the latest observed arm vector and supplied losses. Explain what the observations favor or weaken and what remains indistinguishable. '
         'Unknown predictions/losses are unassessed, not refuted. These scores measure target appearance in the next proposal, '
         'not relevant products, search quality, purchase success, graph truth or authorization. Numerical weights are exploratory, not confidence certificates. '
+        'Compare equally fitting alternatives, including constant rules when supplied; do not prefer a category explanation without separating evidence. '
+        'A continue decision must explain what the chosen available experiment left/right operands vary and which predictions it can separate. '
+        'Do not claim a word-pair experiment tests incident attributes absent from those operands. If it separates no supplied predictions, say so. '
         'replication is null or {reason:new_context_unresolved_pair,hypotheses:[two actually separated rule IDs]}. '
         'Do not approve an unsupported operation, invent a target, change facts, or treat ranking as a certificate. '
         'At initialization describe observed behavior, not a private attack label. A final candidate requires an actually performed comparison. '
@@ -63,15 +66,15 @@ def packet(plan, incident, search=None, phase='initial', selected=None):
     public=incident['public']
     facts=search.facts() if search else None
     ack=[] if search is None else facts['recent']
-    rules=[]
+    rules=[]; evidence_display=None
     if search:
-        order=sorted(search.family['hypotheses'],key=lambda x:(-search.weights()[x['id']],x['id']))
-        rules=[{k:x[k] for k in ('id','ast','origin','epoch')} for x in order[:8]]
+        shown,evidence_display=hacs_review_evidence.display(search.family,search.events,search.weights())
+        rules=[{k:x[k] for k in ('id','ast','origin','epoch')} for x in shown]
     return dict(protocol=h.VERSION,phase=phase,incident={k:copy.deepcopy(public.get(k)) for k in ('case_id','goal','proposed_action','rejection')},
         outcome_inventory=h.outcome_inventory(plan['domain'],public) if search is None else None,
         grounding=h.grounded_features(plan['domain'],public),capabilities=h.capability_card(plan['domain']),graph_version=digest(plan['domain']),
         graph=dict(nodes=plan['domain']['nodes'],forms=plan['domain']['forms'],edges=[[e['child'],e['type'],e['parent']] for e in plan['domain']['edges']],provenance=plan['domain']['provenance']),
-        graph_prior='declared development-informed domain prior, not discovered semantic truth',rules=rules,
+        graph_prior='declared development-informed domain prior, not discovered semantic truth',rules=rules,evidence_display=evidence_display,
         factual_acknowledgment=ack,
         update=None if not search or not search.events else dict(
             predictions={r['id']:search.events[-1]['predictions'][r['id']] for r in rules if r['id'] in search.events[-1]['predictions']},
