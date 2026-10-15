@@ -31,6 +31,27 @@ review positions. It does not run the victim, allocate a claim, or feed new revi
 back into the historical controller. Previous reviews and probes stay intact.
 This is post-inspection development, not a controlled method comparison.
 
+## Token-cap correction: saved-review v2
+
+The v1 tokenizer preflight rejected all twelve packets: initial requests were
+4126–4172 tokens and acknowledgment repairs reached 4286, above the unchanged
+4096 cap. No model calls occurred. Preserve the v1 plan and rejection receipts.
+
+The saved-review-only system prompt now omits initial target-selection guidance
+and its grounding example. The previously accepted target is explicitly frozen.
+It retains exact schema/acknowledgment requirements, repair limits, loss and
+prediction interpretation, equally fitting alternatives, unknown-rule handling,
+actual operand justification, and authorization/scope limits. Evidence packets,
+observations, rule display, losses, weights and experiment operands are unchanged.
+The omission categories and prompt version are bound in the new plan, together
+with the review script hash. The general HACS runtime prompt is unchanged.
+
+Four focused CPU tests passed after this correction, including exact payload
+preservation and identical message construction for tokenizer preflight and the
+real saved-review backend. Character reduction is not a tokenizer guarantee:
+all twelve v2 receipts must pass before any GPU submission. Do not reuse or edit
+the frozen v1 plan, raise the cap, or truncate evidence.
+
 ## First step: CPU/tokenizer checks only
 
 After syncing, run:
@@ -44,10 +65,10 @@ python -m unittest discover \
   -p test_hacs_review_evidence.py -q
 python docs/seek/hacs_2026_10_13/review_saved_evidence.py prepare \
   --run-root results/seek/hacs_continuation_dev_v3 \
-  --plan configs/seek/local/hacs_saved_review_v1/plan.json
+  --plan configs/seek/local/hacs_saved_review_v2/plan.json
 python docs/seek/hacs_2026_10_13/review_saved_evidence.py token-check \
-  --plan configs/seek/local/hacs_saved_review_v1/plan.json \
-  --output configs/seek/local/hacs_saved_review_v1/token_preflight.json
+  --plan configs/seek/local/hacs_saved_review_v2/plan.json \
+  --output configs/seek/local/hacs_saved_review_v2/token_preflight.json
 )
 ```
 
@@ -73,7 +94,7 @@ mkdir -p logs/seek
 python - <<'PY'
 import json
 from pathlib import Path
-p=Path('configs/seek/local/hacs_saved_review_v1')
+p=Path('configs/seek/local/hacs_saved_review_v2')
 plan=json.loads((p/'plan.json').read_text())
 r=json.loads((p/'token_preflight.json').read_text())
 assert r['plan_hash']==plan['hash'] and r['ready'] is True
@@ -96,8 +117,8 @@ export PYTHONNOUSERSITE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
 source /export/home2/suaq0001/miniconda3/etc/profile.d/conda.sh
 conda activate webshop_torchfix
 python -u docs/seek/hacs_2026_10_13/review_saved_evidence.py run \
-  --plan configs/seek/local/hacs_saved_review_v1/plan.json \
-  --output results/seek/hacs_saved_review_v1 \
+  --plan configs/seek/local/hacs_saved_review_v2/plan.json \
+  --output results/seek/hacs_saved_review_v2 \
   --approve-development
 SH
 )
@@ -106,7 +127,7 @@ SH
 After completion:
 
 ```bash
-python -m json.tool results/seek/hacs_saved_review_v1/result.json
+python -m json.tool results/seek/hacs_saved_review_v2/result.json
 ```
 
 A `reviews_complete` result is an execution status, not a qualitative pass.

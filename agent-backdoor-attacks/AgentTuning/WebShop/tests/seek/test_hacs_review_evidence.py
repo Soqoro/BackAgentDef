@@ -67,6 +67,15 @@ class SavedReviewTests(unittest.TestCase):
             self.assertEqual(prepared['victim_calls'],0)
             self.assertEqual(prepared['maximum_defender_attempts'],8)
             self.assertEqual(len(prepared['packets']),4)
+            for item in prepared['packets']:
+                import json
+                msgs=module.messages(item['role'],item['packet'])
+                self.assertEqual(json.loads(msgs[1]['content']),item['packet'])
+                self.assertEqual(module.SavedRoles.messages(item['role'],item['packet']),msgs)
+                self.assertLess(len(msgs[0]['content']),len(r.messages(item['role'],item['packet'])[0]['content']))
+                self.assertIn('target must equal packet.outcome.target',msgs[0]['content'])
+                self.assertIn('Null predictions/losses are unassessed',msgs[0]['content'])
+                self.assertIn('left/right operands',msgs[0]['content'])
             self.assertEqual(before,{f:f.read_bytes() for f in out.rglob('*') if f.is_file()})
             with patch.object(r.role_tokens,'measure',return_value={'input_tokens':4097}):
                 receipts=module.token_check(prepared)
@@ -78,7 +87,7 @@ class SavedReviewTests(unittest.TestCase):
             # tokenizer or transport runs despite the mocked allocation marker.
             import os
             real_shape=module.c.seal(dict(prepared,simulated=False))
-            with patch.dict(os.environ,{'SLURM_JOB_ID':'fake-test'}), patch.object(module,'token_check',return_value={'ready':True}), patch.object(r,'Roles',return_value=Roles()):
+            with patch.dict(os.environ,{'SLURM_JOB_ID':'fake-test'}), patch.object(module,'token_check',return_value={'ready':True}), patch.object(module,'SavedRoles',return_value=Roles()):
                 result=module.run(real_shape,root/'review-test')
             self.assertEqual(result['status'],'reviews_complete')
             self.assertEqual(len(result['reviews']),4)
