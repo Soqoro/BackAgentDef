@@ -23,6 +23,7 @@ def prepare(result_path, parent_plan_path):
         outcome=spec,simulated=grounding['simulated'],development_reuse=True,
         input_cap=4096,defender_budget=4,maximum_defender_attempts=8,victim_budget=4,anchors=2,
         context_start=5000,registry_mutations=0,method_matrix_unlocked=False,scientific_confirmation=False,
+        real_victim_execution='exit_scoped_subprocess_v1',
         scope='post-inspection two-pair controller development; no fresh discovery or effect certificate'))
 
 
@@ -32,6 +33,7 @@ def validate(plan):
     if (plan['input_cap'],plan['defender_budget'],plan['maximum_defender_attempts'],plan['victim_budget'],plan['anchors'],plan['context_start'])!=(4096,4,8,4,2,5000):
         raise Invalid('continuation_caps')
     if not plan['development_reuse'] or plan['method_matrix_unlocked']:raise Invalid('continuation_scope')
+    if plan.get('real_victim_execution')!='exit_scoped_subprocess_v1':raise Invalid('continuation_worker_contract')
     if h.outcome(plan['incident']['public'],plan['outcome']['target'])!=plan['outcome']:raise Invalid('outcome_binding')
 
 
@@ -63,20 +65,26 @@ def run(plan,backend,loader,out):
         return result
     if (out/'started.json').exists():raise Invalid('interrupted_continuation_requires_review')
     immutable_json(out/'plan.json',plan);immutable_json(out/'started.json',dict(plan_hash=plan['hash']))
-    search=search_for(plan);journal=Journal(out/'defender');victim=None;rows=[];reviews=[];anchors=None
+    search=search_for(plan);journal=Journal(out/'defender');rows=[];reviews=[];anchors=None
     failure=None;stable=None;status='development_complete';logical=0
     def review(role):
-        nonlocal logical,victim
-        if victim is not None:c.release(victim);victim=None
+        nonlocal logical
         logical+=1
         p=packet(plan,search);immutable_json(out/'packets'/f'{logical:02d}.json',p)
         value=r.review_call(plan,backend,role,p,out,journal,logical,plan['outcome']['target'])
         reviews.append(value);immutable_json(out/'reviews'/f'{logical:02d}.json',value)
         return value
-    def load():
-        value=loader(plan['profile']['models']['query'],plan['profile']['generation'])
-        if value.simulated!=plan['simulated']:c.release(value);raise Invalid('victim_population_mismatch')
-        return value
+    def batch(cells,stage):
+        backend.close()
+        if not plan['simulated']:
+            from .hacs_victim_worker import run_batch
+            return run_batch(plan,cells,out,stage)
+        # Existing CPU fake backends need no CUDA process isolation.
+        victim=loader(plan['profile']['models']['query'],plan['profile']['generation'])
+        try:
+            if victim.simulated!=plan['simulated']:raise Invalid('victim_population_mismatch')
+            return c.responses(victim,cells,plan['profile']['generation'],out/'victim',plan['hash'],h.score)
+        finally:c.release(victim)
     try:
         for i in range(2):
             decision=search.choose('hacs_active',4-2*i)
@@ -85,21 +93,17 @@ def run(plan,backend,loader,out):
             experiment=next(e for e in search.experiments if e['id']==decision['experiment'])
             cells=h.render(experiment,plan['outcome']['target'],5000+i)
             if anchors is None:anchors=copy.deepcopy(cells);immutable_json(out/'anchor_plan.json',anchors)
-            backend.close();victim=load()
-            batch=c.responses(victim,cells,plan['profile']['generation'],out/'victim',plan['hash'],h.score)
-            rows.extend(batch)
+            responses=batch(cells,f'pair-{i:03d}')
+            rows.extend(responses)
             observations=[dict(value=x['score']['value'],raw_response=x['reply']['raw_response'],action=x['score']['action'],
                 prompt=x['reply']['serialized_prompt'],tokens=x['reply']['encoded_ids'],runtime=x['runtime'],
-                physical_key=x['key'],source_group=plan['incident']['group'],cell=x['cell']) for x in batch]
+                physical_key=x['key'],source_group=plan['incident']['group'],cell=x['cell']) for x in responses]
             event=search.update(decision,observations);immutable_json(out/'evidence'/f'{i:03d}.json',event)
-            if any(x['score']['value'] is None for x in batch):status='unscorable_probe';break
+            if any(x['score']['value'] is None for x in responses):status='unscorable_probe';break
             value=review('Action')
             if value['decision'] in ('abstain','stop','finalize'):status='review_stopped';break
         if rows:
-            backend.close()
-            if victim is None:victim=load()
-            repeats=c.responses(victim,[dict(x,id='anchor-'+x['id'],anchor=True) for x in anchors],
-                plan['profile']['generation'],out/'victim',plan['hash'],h.score)
+            repeats=batch([dict(x,id='anchor-'+x['id'],anchor=True) for x in anchors],'anchors')
             stable=all(a['reply']['raw_response']==b['reply']['raw_response'] for a,b in zip(rows[:2],repeats))
             if not stable:status='determinism_unresolved'
         if status=='development_complete' and len(rows)==4:
@@ -108,7 +112,6 @@ def run(plan,backend,loader,out):
     except Exception as exc:failure=dict(type=type(exc).__name__,reason=str(exc));status='backend_failure'
     finally:
         backend.close()
-        if victim is not None:c.release(victim)
     result=c.seal(dict(schema='seek-hacs-continuation-development-result-v1',plan_hash=plan['hash'],parent_j=plan['parent_j'],
         status=status,failure=failure,simulated=plan['simulated'],development_reuse=True,outcome=plan['outcome'],
         completed_pairs=len(rows)//2,search_facts=search.facts(),reviews=reviews,anchors_stable=stable,

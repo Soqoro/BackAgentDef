@@ -8,11 +8,13 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 WEB=Path(__file__).resolve().parents[2];sys.path.insert(0,str(WEB))
 from seek.discovery_phase import hacs as h, hacs_runtime as r, hacs_sim as sim, common as c
 from seek.discovery_phase import hacs_grounding as grounding
 from seek.discovery_phase import hacs_continuation as continuation
+from seek.discovery_phase import hacs_victim_worker as worker
 from seek.schemas import Invalid,digest
 from seek.storage import read_json,immutable_json
 from seek.semantic_registry import Registry
@@ -68,6 +70,76 @@ def setup(tmp,mode='pilot'):
 
 
 class HacsTests(unittest.TestCase):
+    def worker_fixture(self,tmp):
+        reg,plan=setup(tmp);parent=Path(tmp)/'parent'
+        r.run(plan,0,'hacs_active',Roles(),Victim,reg,parent)
+        dev=grounding.prepare(parent/'result.json');ground=Path(tmp)/'ground'
+        grounding.run(dev,Roles(),ground)
+        p=continuation.prepare(ground/'result.json',parent/'plan.json')
+        search=continuation.search_for(p)
+        choice=search.choose('hacs_active',4)
+        e=next(x for x in search.experiments if x['id']==choice['experiment'])
+        return p,h.render(e,p['outcome']['target'],5000)
+
+    def worker_command(self,path,extra='execute(sys.argv[1],Victim)'):
+        code=('import sys;sys.path.insert(0,'+repr(str(Path(__file__).parent))+');'
+              'from test_hacs import Victim;from seek.discovery_phase.hacs_victim_worker import execute;'+extra)
+        return [sys.executable,'-c',code,str(path)]
+
+    def test_cpu_child_worker_exits_before_batch_returns(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p,cells=self.worker_fixture(tmp);out=Path(tmp)/'worker'
+            with patch.object(worker,'worker_command',self.worker_command):
+                rows=worker.run_batch(p,cells,out,'pair-000')
+            self.assertEqual(len(rows),2)
+            receipt=read_json(out/'processes/pair-000/receipt.json')
+            self.assertNotEqual(receipt['worker_pid'],os.getpid())
+            self.assertTrue(read_json(out/'processes/pair-000/exit.json')['child_reaped'])
+            with self.assertRaises(ProcessLookupError):os.kill(receipt['worker_pid'],0)
+            self.assertEqual(c.costs(out/'victim')['physical_calls'],2)
+            with self.assertRaisesRegex(Invalid,'already_started'):
+                worker.run_batch(p,cells,out,'pair-000')
+
+    def test_worker_failure_keeps_partial_physical_accounting(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p,cells=self.worker_fixture(tmp);out=Path(tmp)/'worker'
+            # First response succeeds; the second attempt fails in the child.
+            code=('\nclass Broken(Victim):\n'
+                  ' def propose(self,snap,text,g):\n'
+                  '  if getattr(self,"called",False): raise RuntimeError("injected second-arm failure")\n'
+                  '  self.called=True\n'
+                  '  return super().propose(snap,text,g)\n'
+                  'execute(sys.argv[1],Broken)\n')
+            with patch.object(worker,'worker_command',lambda path:self.worker_command(path,code)):
+                with self.assertRaisesRegex(Invalid,'worker_failed'):
+                    worker.run_batch(p,cells,out,'pair-000')
+            self.assertEqual(c.costs(out/'victim')['physical_calls'],2)
+            self.assertEqual(len(list((out/'victim/rows').glob('*.json'))),1)
+            self.assertFalse((out/'processes/pair-000/receipt.json').exists())
+            self.assertTrue(read_json(out/'processes/pair-000/exit.json')['child_reaped'])
+
+    def test_worker_timeout_is_reaped_and_not_retried(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p,cells=self.worker_fixture(tmp);out=Path(tmp)/'worker'
+            with patch.object(worker,'worker_command',lambda path:[sys.executable,'-c','import time;time.sleep(30)']):
+                with self.assertRaisesRegex(Invalid,'worker_timeout'):
+                    worker.run_batch(p,cells,out,'pair-000',timeout=.1)
+            self.assertEqual(read_json(out/'processes/pair-000/exit.json'),{'status':'timeout','child_reaped':True})
+
+    def test_real_continuation_never_loads_victim_in_controller(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p,_=self.worker_fixture(tmp);p=c.seal(dict(p,simulated=False))
+            backend=Roles();backend.simulated=False
+            def forbidden_loader(*args):
+                self.fail('victim loaded in controller')
+            with patch.object(worker,'run_batch',side_effect=Invalid('injected_child_failure')) as child:
+                result=continuation.run(p,backend,forbidden_loader,Path(tmp)/'real-path')
+            self.assertEqual(child.call_count,1)
+            self.assertEqual(result['failure']['reason'],'injected_child_failure')
+            self.assertEqual(result['completed_pairs'],0)
+            self.assertEqual(backend.payloads,[])
+            self.assertEqual(result['defender_costs']['physical_calls'],0)
+
     def test_lexical_output_does_not_infer_authorization(self):
         for instruction,prohibitions in [('Find tools',[]),('Find Zora tools',[]),('Avoid Zora tools',['Zora'])]:
             public=dict(goal=dict(instruction=instruction,explicit_prohibitions=prohibitions),proposed_action='search[Zora fine tools]')

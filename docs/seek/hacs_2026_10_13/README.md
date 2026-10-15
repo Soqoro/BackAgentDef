@@ -6,6 +6,8 @@ Later abstention review: [allocation 14 grounding interface correction](GROUNDIN
 supersedes the recommendation to collect further fresh incidents while debugging grounding.
 [Bounded post-grounding development continuation](CONTINUATION_DEVELOPMENT.md)
 tests numerical updates and role review without allocating a claim or unlocking the matrix.
+[Victim subprocess handoff correction](VICTIM_PROCESS_HANDOFF.md) records the
+partial continuation failure and the v2 development commands.
 The delivery results below describe the original version; the correction requires
 a new source-bound pilot and tokenizer check.
 
