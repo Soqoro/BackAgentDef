@@ -40,3 +40,23 @@ def display(family, events, weights, limit=8):
         interpretation='Equal predictions/losses on performed probes do not distinguish mechanisms. Null losses are unassessed. Display omissions are not refutations.',
         search_unchanged=True)
     return [by_id[k] for k in chosen], summary
+
+
+def outcome_table(experiment, rule_ids, latest_losses):
+    """Hypothetical mean Brier losses; never observed evidence or a ranking."""
+    from ..schemas import Invalid
+    outcomes = [[0, 0], [0, 1], [1, 0], [1, 1]]
+    rows = []
+    for rule in rule_ids:
+        if rule not in experiment['predictions'] or rule not in latest_losses:
+            raise Invalid('comparison_rule_missing')
+        ps = experiment['predictions'][rule]
+        if len(ps) != 2 or any(p is not None and (type(p) not in (int,float) or not 0 <= p <= 1) for p in ps):
+            raise Invalid('comparison_predictions_invalid')
+        # A partially unknown vector cannot assess the full pair.
+        losses = [None]*4 if any(p is None for p in ps) else [
+            round(sum((p-y)**2 for p,y in zip(ps,ys))/2,12) for ys in outcomes]
+        rows.append([rule,latest_losses[rule],ps,losses])
+    return dict(experiment_id=experiment['id'],left=experiment['left'],right=experiment['right'],
+        outcomes=outcomes,columns=['rule','observed_latest_loss','next_predictions','hypothetical_losses'],rows=rows,
+        scope='Unperformed outcomes; mean squared error, not posterior probabilities or certificates. Null is unassessed; ties do not select a winner.')

@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 import unittest
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
-from seek.discovery_phase.hacs_review_evidence import display
+from seek.discovery_phase.hacs_review_evidence import display, outcome_table
 
 
 class DisplayTests(unittest.TestCase):
@@ -63,7 +63,25 @@ class SavedReviewTests(unittest.TestCase):
             for stage in ('pair-000','pair-001','anchors'):
                 immutable_json(out/'processes'/stage/'exit.json',dict(returncode=0,child_reaped=True))
             before={f:f.read_bytes() for f in out.rglob('*') if f.is_file()}
-            prepared=module.prepare(out);module.validate(prepared)
+            import json
+            parent_result=json.loads((out/'result.json').read_text())
+            prior_reviews=copy.deepcopy(parent_result['reviews'])
+            for i,review in enumerate(prior_reviews,1):
+                saved=json.loads((out/'packets'/f'{i:02d}.json').read_text())
+                review['experiment_id']=saved['unperformed'][0]
+            prior=module.c.seal(dict(schema='seek-saved-evidence-review-result-v1',status='reviews_complete',
+                parent_result_hash=parent_result['hash'],reviews=prior_reviews))
+            immutable_json(root/'prior.json',prior)
+            prepared=module.prepare(out,root/'prior.json');module.validate(prepared)
+            self.assertEqual(prepared['prior_review_hash'],prior['hash'])
+            self.assertNotIn('graph',prepared['packets'][0]['packet'])
+            for item,previous in zip(prepared['packets'],prior_reviews):
+                self.assertEqual(item['packet']['next_pair_comparison']['experiment_id'],previous['experiment_id'])
+                self.assertEqual(item['packet']['next_pair_comparison']['outcomes'],[[0,0],[0,1],[1,0],[1,1]])
+            bad=copy.deepcopy(prior);bad['reviews'][0]['experiment_id']='unsupported'
+            immutable_json(root/'bad-prior.json',module.c.seal(bad))
+            with self.assertRaisesRegex(Invalid,'no substitution'):
+                module.prepare(out,root/'bad-prior.json')
             self.assertEqual(prepared['victim_calls'],0)
             self.assertEqual(prepared['agents']['max_output_tokens'],1024)
             for wrong_limit in (768,2048):
@@ -110,3 +128,17 @@ class SavedReviewTests(unittest.TestCase):
             self.assertEqual(truncated['reviews'],[])
             self.assertEqual(truncated['defender_costs']['physical_calls'],1)
             self.assertEqual(truncated['victim_calls'],0)
+
+
+class OutcomeTableTests(unittest.TestCase):
+    def test_all_four_outcomes_ties_and_observed_losses_separate(self):
+        e=dict(id='test',left='a',right='b',predictions={'a':[.9,.1],'b':[.1,.9],'c':[.9,.9],'u':[None,.9]})
+        before=copy.deepcopy(e)
+        table=outcome_table(e,['a','b','c','u'],{'a':.81,'b':.01,'c':.01,'u':None})
+        rows={x[0]:x for x in table['rows']}
+        self.assertEqual(rows['a'][3],[.41,.81,.01,.41])
+        self.assertEqual(rows['b'][3],[.41,.01,.81,.41])
+        self.assertEqual(rows['c'][3],[.81,.41,.41,.01])
+        self.assertEqual(rows['u'][3],[None]*4)
+        self.assertEqual(rows['a'][1],.81)
+        self.assertEqual(e,before)

@@ -78,6 +78,40 @@ failure after one truncated reply with zero accepted reviews or victim calls.
 No local model generation was performed. V3 tokenizer counts and complete
 real-model reviews remain unresolved; run the twelve checks below before submission.
 
+## Four-outcome comparison: saved-review v4
+
+The real v3 saved review completed four defender calls (17,581 reported tokens),
+zero victim calls and no registry mutations. Preserve result
+`f35d0b26ae36f30e3b70c6be45b13ce8faa66d8af83a60e21887e4817576ee0d`.
+Schema completion did not establish reasoning correctness. The second Action
+review incorrectly equated boot/sneaker-like losses (.81 versus .01), while the
+first treated any outcome other than boots-only as support for sneaker-like.
+Both-arm and neither-arm outcomes were not accounted for.
+
+V4 requires the completed prior review explicitly. It binds that result's hash,
+checks its parent-result linkage, role positions, frozen target and observations,
+and uses each review's selected unperformed experiment. Unsupported or missing
+choices stop preparation; no evaluator contrast is substituted. These are prior
+agent suggestions used for a development display, not new controller decisions
+or executed probes.
+
+For every displayed rule, a compact table shows its latest observed loss, its
+predictions for the selected experiment, and hypothetical mean Brier losses for
+[0,0], [0,1], [1,0], [1,1]. Calculated hypothetical losses are rounded to 12 decimal
+places for display. Partially unknown predictions give null full-pair losses.
+The table does not select winners, infer posterior probabilities, or update
+weights. It can show that asymmetric rules tie on both/neither outcomes and that
+a broader or constant rule can fit both-arm occurrence better.
+
+To bound context, v4 omits the full declared graph, graph digest, initial grounding
+features and unused inventory from this saved-review-only packet. An explicit
+field list and digest bind the omitted context. Full parent artifacts remain
+untouched. Rule ASTs, numeric predictions/losses/weights, factual acknowledgment,
+actual probe inputs and available operands remain in the packet. Graph validity
+is not evaluated in this review. The target, budgets, 4096 input cap and 1024
+output allowance remain unchanged. New tokenizer receipts are required; no local
+token count or real-model reasoning success is claimed.
+
 ## First step: CPU/tokenizer checks only
 
 After syncing, run:
@@ -91,10 +125,11 @@ python -m unittest discover \
   -p test_hacs_review_evidence.py -q
 python docs/seek/hacs_2026_10_13/review_saved_evidence.py prepare \
   --run-root results/seek/hacs_continuation_dev_v3 \
-  --plan configs/seek/local/hacs_saved_review_v3/plan.json
+  --prior-review results/seek/hacs_saved_review_v3/result.json \
+  --plan configs/seek/local/hacs_saved_review_v4/plan.json
 python docs/seek/hacs_2026_10_13/review_saved_evidence.py token-check \
-  --plan configs/seek/local/hacs_saved_review_v3/plan.json \
-  --output configs/seek/local/hacs_saved_review_v3/token_preflight.json
+  --plan configs/seek/local/hacs_saved_review_v4/plan.json \
+  --output configs/seek/local/hacs_saved_review_v4/token_preflight.json
 )
 ```
 
@@ -121,7 +156,7 @@ mkdir -p logs/seek
 python - <<'PY'
 import json
 from pathlib import Path
-p=Path('configs/seek/local/hacs_saved_review_v3')
+p=Path('configs/seek/local/hacs_saved_review_v4')
 plan=json.loads((p/'plan.json').read_text())
 r=json.loads((p/'token_preflight.json').read_text())
 assert r['plan_hash']==plan['hash'] and r['ready'] is True
@@ -143,8 +178,8 @@ export PYTHONNOUSERSITE=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
 source /export/home2/suaq0001/miniconda3/etc/profile.d/conda.sh
 conda activate webshop_torchfix
 python -u docs/seek/hacs_2026_10_13/review_saved_evidence.py run \
-  --plan configs/seek/local/hacs_saved_review_v3/plan.json \
-  --output results/seek/hacs_saved_review_v3 \
+  --plan configs/seek/local/hacs_saved_review_v4/plan.json \
+  --output results/seek/hacs_saved_review_v4 \
   --approve-development
 SH
 )
@@ -153,7 +188,7 @@ SH
 After completion:
 
 ```bash
-python -m json.tool results/seek/hacs_saved_review_v3/result.json
+python -m json.tool results/seek/hacs_saved_review_v4/result.json
 ```
 
 A `reviews_complete` result is an execution status, not a qualitative pass.
