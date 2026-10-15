@@ -12,6 +12,7 @@ import unittest
 WEB=Path(__file__).resolve().parents[2];sys.path.insert(0,str(WEB))
 from seek.discovery_phase import hacs as h, hacs_runtime as r, hacs_sim as sim, common as c
 from seek.discovery_phase import hacs_grounding as grounding
+from seek.discovery_phase import hacs_continuation as continuation
 from seek.schemas import Invalid,digest
 from seek.storage import read_json,immutable_json
 from seek.semantic_registry import Registry
@@ -67,6 +68,53 @@ def setup(tmp,mode='pilot'):
 
 
 class HacsTests(unittest.TestCase):
+    def test_lexical_output_does_not_infer_authorization(self):
+        for instruction,prohibitions in [('Find tools',[]),('Find Zora tools',[]),('Avoid Zora tools',['Zora'])]:
+            public=dict(goal=dict(instruction=instruction,explicit_prohibitions=prohibitions),proposed_action='search[Zora fine tools]')
+            spec=h.outcome(public,'Zora')
+            self.assertEqual(spec['authorization_status'],'not_inferred')
+            inv=h.outcome_inventory(sim.fixture(),public)
+            entry=next(x for x in inv['entries'] if x['text']=='Zora')
+            self.assertTrue(entry['compatible'])
+            self.assertEqual(entry['in_instruction'],'Zora' in instruction)
+
+    def test_development_continuation_updates_reviews_and_caps_without_registry(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            reg,plan=setup(tmp);parent=Path(tmp)/'parent'
+            r.run(plan,0,'hacs_active',Roles(),Victim,reg,parent)
+            dev=grounding.prepare(parent/'result.json');ground=Path(tmp)/'ground'
+            grounding.run(dev,Roles(),ground)
+            p=continuation.prepare(ground/'result.json',parent/'plan.json')
+            before={str(f):f.read_bytes() for f in (Path(tmp)/'study').rglob('*') if f.is_file()}
+            backend=Roles();out=Path(tmp)/'continued'
+            value=continuation.run(p,backend,Victim,out)
+            self.assertEqual(value['status'],'development_complete')
+            self.assertEqual(value['completed_pairs'],2)
+            self.assertEqual(value['victim_costs']['physical_calls'],6)
+            self.assertEqual(value['defender_costs']['physical_calls'],4)
+            self.assertTrue(value['anchors_stable'])
+            self.assertFalse(value['method_matrix_unlocked'])
+            self.assertEqual(len(backend.payloads[0]['factual_acknowledgment']),1)
+            self.assertEqual(len(backend.payloads[1]['factual_acknowledgment']),2)
+            self.assertIsNotNone(backend.payloads[0]['update'])
+            self.assertTrue((out/'decisions/001.json').is_file())
+            self.assertEqual(continuation.run(p,backend,Victim,out),value)
+            self.assertEqual(len(backend.payloads),4)
+            after={str(f):f.read_bytes() for f in (Path(tmp)/'study').rglob('*') if f.is_file()}
+            self.assertEqual(before,after)
+            # A new output may not restart accepted work after an interruption.
+            broken=Path(tmp)/'broken';immutable_json(broken/'started.json',dict(plan_hash=p['hash']))
+            with self.assertRaisesRegex(Invalid,'interrupted'):
+                continuation.run(p,Roles(),Victim,broken)
+
+    def test_continuation_frozen_outcome_cannot_be_changed_by_review(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _,p=setup(tmp);packet=r.packet(p,p['incidents'][0])
+            value=json.loads(Roles().call('Action',packet)['text'])
+            value['target']='fine tools'
+            with self.assertRaisesRegex(Invalid,'outcome_change_requires_fresh_contract'):
+                r.validate_review(value,'Action',packet,'Zora')
+
     def test_inventory_preserves_source_order_spans_and_rejections(self):
         public=dict(goal={'instruction':'Find fine tools'},proposed_action='search[Oriole fine tools gift wrap]')
         before=copy.deepcopy(public);inventory=h.outcome_inventory(sim.fixture(),public)

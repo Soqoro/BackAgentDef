@@ -9,6 +9,10 @@ from . import common as c, hacs as h, hacs_runtime as r, hacs_sim
 
 
 def add_parser(sub):
+    a=sub.add_parser('hacs-continuation-prepare')
+    for k in ('result','parent-plan','output'):a.add_argument('--'+k,required=True)
+    a=sub.add_parser('hacs-continuation-run');a.add_argument('--plan',required=True);a.add_argument('--output',required=True)
+    a.add_argument('--token-check',action='store_true');a.add_argument('--approve-development',action='store_true')
     a=sub.add_parser('hacs-grounding-prepare');a.add_argument('--result',required=True);a.add_argument('--output',required=True)
     a=sub.add_parser('hacs-grounding-run');a.add_argument('--plan',required=True);a.add_argument('--output',required=True)
     a.add_argument('--token-check',action='store_true');a.add_argument('--approve-development',action='store_true')
@@ -45,7 +49,26 @@ def approval(prompt):
 
 
 def _main(a,loader,gpu):
-    if a.cmd in ('hacs-grounding-prepare','hacs-grounding-run'):
+    if a.cmd in ('hacs-continuation-prepare','hacs-continuation-run'):
+        from . import hacs_continuation as cont
+        if a.cmd=='hacs-continuation-prepare':
+            result=cont.prepare(a.result,a.parent_plan);immutable_json(a.output,result)
+            result=dict(status='prepared',plan_hash=result['hash'],development_reuse=True,outcome=result['outcome'],
+                        victim_budget=4,anchors=2,defender_budget=4,maximum_defender_attempts=8,registry_mutations=0)
+        else:
+            plan=read_json(a.plan);cont.validate(plan)
+            if a.token_check:
+                counts=r.role_tokens.measure(plan['agents'],r.messages('Action',cont.packet(plan,cont.search_for(plan))))
+                result=dict(plan_hash=plan['hash'],**counts,within_cap=counts['input_tokens']<=plan['input_cap'],
+                            model_calls=0,scope='baseline review only; every evidence/correction packet separately checked')
+                immutable_json(a.output,result)
+                if not result['within_cap']:raise Invalid('context_capacity_insufficient')
+            else:
+                if not a.approve_development:raise Invalid('explicit_development_resource_approval_required')
+                if plan['simulated']:raise Invalid('real_cli_requires_real_population')
+                gpu()
+                with row_lock(a.output):result=cont.run(plan,r.Roles(plan['agents']),loader,a.output)
+    elif a.cmd in ('hacs-grounding-prepare','hacs-grounding-run'):
         from . import hacs_grounding as g
         if a.cmd=='hacs-grounding-prepare':
             result=g.prepare(a.result);immutable_json(a.output,result)
