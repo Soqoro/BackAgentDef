@@ -76,8 +76,8 @@ class SavedReviewTests(unittest.TestCase):
             self.assertEqual(prepared['prior_review_hash'],prior['hash'])
             self.assertNotIn('graph',prepared['packets'][0]['packet'])
             for item,previous in zip(prepared['packets'],prior_reviews):
-                self.assertEqual(item['packet']['next_pair_comparison']['experiment_id'],previous['experiment_id'])
-                self.assertEqual(item['packet']['next_pair_comparison']['outcomes'],[[0,0],[0,1],[1,0],[1,1]])
+                self.assertEqual(item['packet']['proposed_test']['experiment_id'],previous['experiment_id'])
+                self.assertEqual(item['packet']['proposed_test']['outcomes'],[[0,0],[0,1],[1,0],[1,1]])
             bad=copy.deepcopy(prior);bad['reviews'][0]['experiment_id']='unsupported'
             immutable_json(root/'bad-prior.json',module.c.seal(bad))
             with self.assertRaisesRegex(Invalid,'no substitution'):
@@ -103,21 +103,54 @@ class SavedReviewTests(unittest.TestCase):
             with patch.object(r.role_tokens,'measure',return_value={'input_tokens':4097}):
                 receipts=module.token_check(prepared)
                 self.assertFalse(receipts['ready'])
-                self.assertEqual(len(receipts['receipts']),12)
+                self.assertEqual(len(receipts['receipts']),16)
             with self.assertRaises(Invalid): module.run(prepared,root/'not-real')
 
             # Exercise the orchestration with injected fake roles only. No GPU,
             # tokenizer or transport runs despite the mocked allocation marker.
             import os
+            class NumericRoles(Roles):
+                def call(self,role,payload):
+                    reply=super().call(role,payload); value=json.loads(reply['text'])
+                    value['hypothesis_ids']=[x['id'] for x in payload['rules'][:2]]
+                    value['experiment_id']=payload['proposed_test']['experiment_id']
+                    value['numeric_evidence']=module.numeric.references(payload,value['hypothesis_ids'])
+                    reply['text']=json.dumps(value);return reply
             real_shape=module.c.seal(dict(prepared,simulated=False))
-            with patch.dict(os.environ,{'SLURM_JOB_ID':'fake-test'}), patch.object(module,'token_check',return_value={'ready':True}), patch.object(module,'SavedRoles',return_value=Roles()):
+            with patch.dict(os.environ,{'SLURM_JOB_ID':'fake-test'}), patch.object(module,'token_check',return_value={'ready':True}), patch.object(module,'SavedRoles',return_value=NumericRoles()):
                 result=module.run(real_shape,root/'review-test')
             self.assertEqual(result['status'],'reviews_complete')
             self.assertEqual(len(result['reviews']),4)
             self.assertEqual(result['victim_calls'],0)
+            value=result['reviews'][0];packet=prepared['packets'][0]['packet']
+            for mutation in ('swapped_phase','wrong_loss','string_array','boolean'):
+                bad=copy.deepcopy(value)
+                if mutation=='swapped_phase':
+                    bad['numeric_evidence']['proposed_predictions']=[[.123,.456],[.123,.456]]
+                elif mutation=='wrong_loss': bad['numeric_evidence']['observed_losses'][0]=.123
+                elif mutation=='string_array': bad['numeric_evidence']=json.dumps(bad['numeric_evidence'])
+                else: bad['numeric_evidence']['hypothetical_losses'][0][0]=True
+                with self.assertRaisesRegex(Invalid,'numeric_evidence_mismatch'):
+                    module.numeric.validate(bad,value['role'],packet,prepared['outcome']['target'])
+            # Prose is intentionally not rubber-stamped by a successful numeric check.
+            prose=copy.deepcopy(value);prose['reason']='An unsupported interpretation requiring human review'
+            self.assertEqual(module.numeric.validate(prose,value['role'],packet,prepared['outcome']['target']),prose)
             self.assertEqual(result['defender_costs']['physical_calls'],4)
 
-            class TruncatedRoles(Roles):
+            class RepairRoles(NumericRoles):
+                def call(self,role,payload):
+                    reply=super().call(role,payload)
+                    if 'correction' not in payload:
+                        value=json.loads(reply['text']);value['numeric_evidence']['observed_losses'][0]=.123
+                        reply['text']=json.dumps(value)
+                    return reply
+            with patch.dict(os.environ,{'SLURM_JOB_ID':'fake-test'}), patch.object(module,'token_check',return_value={'ready':True}), patch.object(module,'SavedRoles',return_value=RepairRoles()):
+                repaired=module.run(real_shape,root/'repair-test')
+            self.assertEqual(repaired['status'],'reviews_complete')
+            self.assertEqual(repaired['defender_costs']['physical_calls'],8)
+            self.assertEqual(repaired['qualitative_assessment'],'unresolved')
+
+            class TruncatedRoles(NumericRoles):
                 def call(self,role,payload):
                     reply=super().call(role,payload)
                     reply['finish_reason']='length'

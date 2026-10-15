@@ -192,7 +192,7 @@ def review_repair_packet(p, error, target=None):
     return p
 
 
-def review_call(plan, backend, role, p, out, journal, logical, target=None):
+def review_call(plan, backend, role, p, out, journal, logical, target=None, validator=None):
     for retry in range(2):
         key=dict(protocol=h.VERSION,plan=plan['hash'],logical=logical,role=role,retry=retry,packet=copy.deepcopy(p))
         msgs=backend.messages(role,p)
@@ -205,7 +205,7 @@ def review_call(plan, backend, role, p, out, journal, logical, target=None):
         reply=journal.call(key,'defender','hacs_review',plan['defender_budget']*2,lambda:backend.call(role,p))
         # Transport, refusal and truncation are not scientific/schema retries.
         if reply.get('finish_reason')!='stop' or reply.get('refusal'):raise Invalid('incomplete_review')
-        try:return validate_review(json.loads(reply['text']),role,p,target)
+        try:return (validator or validate_review)(json.loads(reply['text']),role,p,target)
         except (Invalid,ValueError,TypeError,KeyError) as exc:
             journal.emit('hacs_review_invalid',dict(logical=logical,retry=retry,error=str(exc)))
             if retry:raise Invalid('bounded_review_repair_exhausted') from exc

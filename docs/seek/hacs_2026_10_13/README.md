@@ -14,6 +14,9 @@ strict evidence validation and require checking the previously failed packet's s
 engineering execution from unresolved qualitative interpretation.
 [Evidence-balanced display and saved-evidence review](EVIDENCE_DISPLAY_REVIEW.md)
 provides CPU preflight and a zero-victim-call development review path.
+[Structured phase-separated numerical review](STRUCTURED_NUMERIC_REVIEW.md)
+supersedes the saved-review run commands; GPU iterations remain paused pending
+CPU/schema and tokenizer review.
 The delivery results below describe the original version; the correction requires
 a new source-bound pilot and tokenizer check.
 
