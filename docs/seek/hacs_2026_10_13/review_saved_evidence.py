@@ -31,6 +31,8 @@ def messages(role, packet):
         'unperformed_test is an unperformed ID or null. replication is null or '
         '{reason:new_context_unresolved_pair,hypotheses:[two actually separated rule IDs]}. '
         'prediction_assessment, semantic_objection and reason are nonempty strings. '
+        'Use compact JSON. Keep prediction_assessment within 120 words, semantic_objection within 35 words, '
+        'and reason within 70 words; avoid repeating assessments across fields. Preserve the exact observed array. '
         'Explain observed arm vectors, supplied predictions and losses by rule ID. Compare high-loss '
         'counterexamples and equally fitting alternatives, including constant rules when supplied. '
         'Equal predictions/losses on performed probes cannot identify a category mechanism. '
@@ -74,11 +76,15 @@ def prepare(run):
         packet['update']={field:{x['id']:events[count-1][field][x['id']] for x in selected} for field in ('predictions','losses')}
         packet['update']['weights']={x['id']:events[count-1]['after'][x['id']] for x in selected}
         packets.append(dict(role=review['role'],packet=packet))
+    agents=copy.deepcopy(old['agents'])
+    agents['max_output_tokens']=1024
     return c.seal(dict(schema='seek-saved-evidence-review-v1',source=c.source(),
-        review_prompt_version='frozen-outcome-evidence-only-v2',
+        review_prompt_version='frozen-outcome-evidence-only-v3',
         instruction_omissions=['initial target selection guidance', 'grounding inventory example'],
         script_sha256=__import__('hashlib').sha256(Path(__file__).read_bytes()).hexdigest(),
-        audit_hash=audit['hash'],parent_result_hash=result['hash'],agents=old['agents'],
+        audit_hash=audit['hash'],parent_result_hash=result['hash'],agents=agents,
+        output_budget=dict(previous=old['agents'].get('max_output_tokens'),current=1024,
+            reason='bounded saved-review development after observed output truncation'),
         outcome=old['outcome'],packets=packets,input_cap=4096,simulated=old['simulated'],
         development_reuse=True,victim_calls=0,registry_mutations=0,method_matrix_unlocked=False,
         defender_budget=len(packets),maximum_defender_attempts=2*len(packets)))
@@ -89,7 +95,8 @@ def validate(plan):
     if plan['script_sha256']!=__import__('hashlib').sha256(Path(__file__).read_bytes()).hexdigest(): raise Invalid('review script changed')
     if plan['schema']!='seek-saved-evidence-review-v1' or plan['input_cap']!=4096 or len(plan['packets'])!=4:
         raise Invalid('review contract mismatch')
-    if plan.get('review_prompt_version')!='frozen-outcome-evidence-only-v2': raise Invalid('review prompt version mismatch')
+    if plan.get('review_prompt_version')!='frozen-outcome-evidence-only-v3': raise Invalid('review prompt version mismatch')
+    if plan['agents'].get('max_output_tokens')!=1024: raise Invalid('output budget mismatch')
     if plan['victim_calls']!=0 or plan['maximum_defender_attempts']!=8 or plan['defender_budget']!=4: raise Invalid('budget mismatch')
 
 
@@ -102,7 +109,7 @@ def token_check(plan):
         for label,p in payloads:
             receipt=r.role_tokens.measure(plan['agents'],messages(item['role'],p))
             receipts.append(dict(review=i,packet=label,**receipt,within_cap=receipt['input_tokens']<=plan['input_cap']))
-    return dict(plan_hash=plan['hash'],receipts=receipts,model_calls=0,ready=all(x['within_cap'] for x in receipts))
+    return dict(plan_hash=plan['hash'],receipts=receipts,max_output_tokens=plan['agents']['max_output_tokens'],model_calls=0,ready=all(x['within_cap'] for x in receipts))
 
 
 def run(plan,out):
@@ -141,7 +148,7 @@ if __name__=='__main__':
     if args.command=='prepare':
         if not args.run_root: parser.error('--run-root required')
         plan=prepare(args.run_root);immutable_json(args.plan,plan)
-        print(json.dumps(dict(status='prepared',plan_hash=plan['hash'],victim_calls=0,maximum_defender_attempts=8)))
+        print(json.dumps(dict(status='prepared',plan_hash=plan['hash'],victim_calls=0,maximum_defender_attempts=8,max_output_tokens=plan['agents']['max_output_tokens'])))
     else:
         plan=c.checked(read_json(args.plan));validate(plan)
         if not args.output: parser.error('--output required')

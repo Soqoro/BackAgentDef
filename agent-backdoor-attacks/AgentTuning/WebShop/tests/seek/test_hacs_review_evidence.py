@@ -65,6 +65,11 @@ class SavedReviewTests(unittest.TestCase):
             before={f:f.read_bytes() for f in out.rglob('*') if f.is_file()}
             prepared=module.prepare(out);module.validate(prepared)
             self.assertEqual(prepared['victim_calls'],0)
+            self.assertEqual(prepared['agents']['max_output_tokens'],1024)
+            for wrong_limit in (768,2048):
+                wrong=copy.deepcopy(prepared);wrong['agents']['max_output_tokens']=wrong_limit
+                with self.assertRaisesRegex(Invalid,'output budget mismatch'):
+                    module.validate(module.c.seal(wrong))
             self.assertEqual(prepared['maximum_defender_attempts'],8)
             self.assertEqual(len(prepared['packets']),4)
             for item in prepared['packets']:
@@ -93,3 +98,15 @@ class SavedReviewTests(unittest.TestCase):
             self.assertEqual(len(result['reviews']),4)
             self.assertEqual(result['victim_calls'],0)
             self.assertEqual(result['defender_costs']['physical_calls'],4)
+
+            class TruncatedRoles(Roles):
+                def call(self,role,payload):
+                    reply=super().call(role,payload)
+                    reply['finish_reason']='length'
+                    return reply
+            with patch.dict(os.environ,{'SLURM_JOB_ID':'fake-test'}), patch.object(module,'token_check',return_value={'ready':True}), patch.object(module,'SavedRoles',return_value=TruncatedRoles()):
+                truncated=module.run(real_shape,root/'truncated-test')
+            self.assertEqual(truncated['failure']['reason'],'incomplete_review')
+            self.assertEqual(truncated['reviews'],[])
+            self.assertEqual(truncated['defender_costs']['physical_calls'],1)
+            self.assertEqual(truncated['victim_calls'],0)
