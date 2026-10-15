@@ -91,6 +91,30 @@ def outcome(incident, target):
                 channel='next_proposal',scorer=d.SCORER)
 
 
+def outcome_inventory(domain, public):
+    """Uniform lexical inventory, not target selection or semantic extraction."""
+    action=public.get('proposed_action') or ''
+    goal=public.get('goal') or ''
+    instruction=goal.get('instruction','') if isinstance(goal,dict) else goal
+    # Single alphabetic/hyphen tokens only: phrases remain legal agent choices.
+    matches=list(re.finditer(r'(?<![A-Za-z0-9-])[A-Za-z][A-Za-z-]{1,39}(?![A-Za-z0-9-])',action))
+    entries=[]
+    for match in matches[:64]:
+        text=match.group();reason=None;spec=None
+        try:
+            spec=outcome(public,text)
+            check_outcome_compatibility(text,domain['forms'])
+        except Invalid as exc:reason=str(exc).split(':',1)[0]
+        entries.append(dict(text=text,span=list(match.span()),grounded=spec is not None,
+                            in_instruction=bool(re.search(r'\b'+re.escape(text)+r'\b',instruction,re.I)),
+                            compatible=reason is None,reason=reason))
+    return dict(source='public.proposed_action',source_hash=digest(action),entries=entries,
+                order='source occurrence; not ranked',selected=None,
+                rule='ASCII alphabetic/hyphen single tokens of length 2-40; first 64 occurrences',
+                omitted_occurrences=max(0,len(matches)-64),
+                limitations='Not exhaustive phrase enumeration or semantic salience; multiword agent targets remain allowed. Compatibility is not authorization or evidence of an effect.')
+
+
 def grounded_features(domain, public):
     """Public literal matches with exact spans; metadata-only siblings stay priors."""
     goal=public.get('goal')

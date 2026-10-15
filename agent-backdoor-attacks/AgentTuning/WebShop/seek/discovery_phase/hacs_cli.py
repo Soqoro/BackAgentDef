@@ -9,6 +9,9 @@ from . import common as c, hacs as h, hacs_runtime as r, hacs_sim
 
 
 def add_parser(sub):
+    a=sub.add_parser('hacs-grounding-prepare');a.add_argument('--result',required=True);a.add_argument('--output',required=True)
+    a=sub.add_parser('hacs-grounding-run');a.add_argument('--plan',required=True);a.add_argument('--output',required=True)
+    a.add_argument('--token-check',action='store_true');a.add_argument('--approve-development',action='store_true')
     a=sub.add_parser('hacs-library');a.add_argument('--domain',required=True);a.add_argument('--output',required=True)
     a=sub.add_parser('hacs-prepare')
     for k in ('row','study','profile','qwen-config','library','output'):a.add_argument('--'+k,required=True)
@@ -42,7 +45,26 @@ def approval(prompt):
 
 
 def _main(a,loader,gpu):
-    if a.cmd=='hacs-library':
+    if a.cmd in ('hacs-grounding-prepare','hacs-grounding-run'):
+        from . import hacs_grounding as g
+        if a.cmd=='hacs-grounding-prepare':
+            result=g.prepare(a.result);immutable_json(a.output,result)
+            result=dict(status='prepared',plan_hash=result['hash'],development_reuse=True,
+                        maximum_physical_calls=2,victim_calls=0,registry_mutations=0,output=a.output)
+        else:
+            plan=read_json(a.plan);g.validate(plan)
+            if a.token_check:
+                counts=r.role_tokens.measure(plan['agents'],r.messages('Action',g.packet(plan)))
+                result=dict(plan_hash=plan['hash'],**counts,within_cap=counts['input_tokens']<=plan['input_cap'],
+                            model_calls=0,development_reuse=True,scope='initial packet only; correction is separately checked')
+                immutable_json(a.output,result)
+                if not result['within_cap']:raise Invalid('context_capacity_insufficient')
+            else:
+                if not a.approve_development:raise Invalid('explicit_development_resource_approval_required')
+                if plan['simulated']:raise Invalid('real_cli_requires_real_population')
+                gpu()
+                with row_lock(a.output):result=g.run(plan,r.Roles(plan['agents']),a.output)
+    elif a.cmd=='hacs-library':
         domain=read_json(a.domain);family=h.hypotheses(domain,'pending_action_grounding');bank=h.bank(domain,family)
         result=c.seal(dict(schema='seek-hacs-library-freeze-v1',source=c.source(),domain=domain,capabilities=h.capability_card(domain),
                           family=family,bank=bank,coverage=h.coverage(bank,family),simulated=False,model_calls=0))

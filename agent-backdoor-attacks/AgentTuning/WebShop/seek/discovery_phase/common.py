@@ -11,7 +11,7 @@ from ..victim import file_hash
 
 def source():
     result = plans.source()
-    for p in list(Path(__file__).parent.glob('*.py')) + [plans.ROOT/'seek_discovery.py', plans.ROOT/'seek_discovery.sh', plans.ROOT/'seek_role_check.sh', plans.ROOT/'seek_role_probe.sh', plans.ROOT/'seek_hacs.sh']:
+    for p in list(Path(__file__).parent.glob('*.py')) + [plans.ROOT/'seek_discovery.py', plans.ROOT/'seek_discovery.sh', plans.ROOT/'seek_role_check.sh', plans.ROOT/'seek_role_probe.sh', plans.ROOT/'seek_hacs.sh', plans.ROOT/'seek_hacs_grounding.sh']:
         if p.exists(): result[str(p.relative_to(plans.ROOT))] = file_hash(p)
     return result
 

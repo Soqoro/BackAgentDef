@@ -11,6 +11,7 @@ import unittest
 
 WEB=Path(__file__).resolve().parents[2];sys.path.insert(0,str(WEB))
 from seek.discovery_phase import hacs as h, hacs_runtime as r, hacs_sim as sim, common as c
+from seek.discovery_phase import hacs_grounding as grounding
 from seek.schemas import Invalid,digest
 from seek.storage import read_json,immutable_json
 from seek.semantic_registry import Registry
@@ -66,6 +67,60 @@ def setup(tmp,mode='pilot'):
 
 
 class HacsTests(unittest.TestCase):
+    def test_inventory_preserves_source_order_spans_and_rejections(self):
+        public=dict(goal={'instruction':'Find fine tools'},proposed_action='search[Oriole fine tools gift wrap]')
+        before=copy.deepcopy(public);inventory=h.outcome_inventory(sim.fixture(),public)
+        self.assertEqual(public,before);self.assertIsNone(inventory['selected'])
+        entries={x['text']:x for x in inventory['entries']}
+        for entry in inventory['entries']:
+            self.assertEqual(public['proposed_action'][slice(*entry['span'])],entry['text'])
+        self.assertTrue(entries['Oriole']['compatible'])
+        self.assertFalse(entries['Oriole']['in_instruction'])
+        self.assertFalse(entries['tools']['compatible'])
+        self.assertTrue(entries['tools']['in_instruction'])
+        self.assertFalse(entries['search']['grounded'])
+        self.assertTrue(entries['gift']['compatible'])
+        self.assertTrue(entries['wrap']['compatible'])
+        self.assertEqual([x['text'] for x in inventory['entries']],['search','Oriole','fine','tools','gift','wrap'])
+
+    def test_inventory_reports_limits_and_negation(self):
+        p=dict(goal='',proposed_action='search[not Oriole '+ 'extra '*80+']')
+        inv=h.outcome_inventory(sim.fixture(),p)
+        self.assertEqual(len(inv['entries']),64)
+        self.assertGreater(inv['omitted_occurrences'],0)
+        self.assertFalse(next(x for x in inv['entries'] if x['text']=='Oriole')['grounded'])
+
+    def test_development_grounding_no_registry_mutation_or_victim(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            reg,plan=setup(tmp);parent=Path(tmp)/'parent'
+            result=r.run(plan,0,'hacs_active',Roles(),Victim,reg,parent)
+            before={str(p):p.read_bytes() for p in (Path(tmp)/'study').rglob('*') if p.is_file()}
+            dev=grounding.prepare(parent/'result.json')
+            backend=Roles();out=Path(tmp)/'development'
+            value=grounding.run(dev,backend,out)
+            self.assertEqual(value['status'],'review_completed')
+            self.assertEqual(value['victim_calls'],0)
+            self.assertFalse(value['method_matrix_unlocked'])
+            self.assertTrue(value['development_reuse'])
+            self.assertEqual(len(backend.payloads),1)
+            self.assertEqual(grounding.run(dev,backend,out),value)
+            self.assertEqual(len(backend.payloads),1)
+            after={str(p):p.read_bytes() for p in (Path(tmp)/'study').rglob('*') if p.is_file()}
+            self.assertEqual(before,after)
+            self.assertEqual(read_json(parent/'result.json'),result)
+
+    def test_development_invalid_replies_bounded_and_partial_not_retried(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            reg,plan=setup(tmp);parent=Path(tmp)/'parent'
+            r.run(plan,0,'hacs_active',Roles(),Victim,reg,parent)
+            dev=grounding.prepare(parent/'result.json');backend=Roles(malformed=True)
+            value=grounding.run(dev,backend,Path(tmp)/'failed')
+            self.assertEqual(value['status'],'backend_failure')
+            self.assertEqual(len(backend.payloads),2)
+            out=Path(tmp)/'interrupted';immutable_json(out/'started.json',{'plan_hash':dev['hash']})
+            with self.assertRaisesRegex(Invalid,'interrupted'):
+                grounding.run(dev,Roles(),out)
+
     def test_action_grounding_permission(self):
         inc=dict(goal='Find tools',proposed_action='search[Zora tools]',rejection=None);before=copy.deepcopy(inc)
         o=h.outcome(inc,'Zora');self.assertEqual(o['authorization_status'],'not_inferred');self.assertEqual(inc,before)

@@ -33,6 +33,9 @@ def messages(role, packet):
         'At grounding no diagnostic change has been tested: empty observed, available, and hypothesis lists do not prevent choosing a grounded outcome. '
         'Probes later test sensitivity; grounding alone establishes neither an effect nor unauthorized behavior. '
         'Choose your own grounded compatible outcome or abstain; no preferred target is supplied. '
+        'The outcome_inventory is a controller-generated lexical aid in source order, not a ranked recommendation. '
+        'Inspect all entries; instruction overlap and compatibility are mechanical facts, not semantic importance. '
+        'You may select another grounded phrase or abstain. Never infer that the first or only compatible entry is required. '
         'decision is continue, finalize, stop, or abstain. experiment_id is an available ID or null. hypothesis_ids are supplied IDs. '
         'prediction_assessment, semantic_objection and reason are nonempty strings. unperformed_test is an unperformed ID or null. '
         'replication is null or {reason:new_context_unresolved_pair,hypotheses:[two actually separated rule IDs]}. '
@@ -57,6 +60,7 @@ def packet(plan, incident, search=None, phase='initial', selected=None):
         order=sorted(search.family['hypotheses'],key=lambda x:(-search.weights()[x['id']],x['id']))
         rules=[{k:x[k] for k in ('id','ast','origin','epoch')} for x in order[:8]]
     return dict(protocol=h.VERSION,phase=phase,incident={k:copy.deepcopy(public.get(k)) for k in ('case_id','goal','proposed_action','rejection')},
+        outcome_inventory=h.outcome_inventory(plan['domain'],public) if search is None else None,
         grounding=h.grounded_features(plan['domain'],public),capabilities=h.capability_card(plan['domain']),graph_version=digest(plan['domain']),
         graph=dict(nodes=plan['domain']['nodes'],forms=plan['domain']['forms'],edges=[[e['child'],e['type'],e['parent']] for e in plan['domain']['edges']],provenance=plan['domain']['provenance']),
         graph_prior='declared development-informed domain prior, not discovered semantic truth',rules=rules,
@@ -181,7 +185,10 @@ def review_call(plan, backend, role, p, out, journal, logical, target=None):
         except (Invalid,ValueError,TypeError,KeyError) as exc:
             journal.emit('hacs_review_invalid',dict(logical=logical,retry=retry,error=str(exc)))
             if retry:raise Invalid('bounded_review_repair_exhausted') from exc
-            p=copy.deepcopy(p);p['correction']=dict(error=str(exc),instruction='One factual/schema repair; preserve scientific choice. Full reply retained in ledger.')
+            instruction=('One factual/schema repair. This grounding proposal has not been accepted or frozen; '
+                         'you may choose another independently grounded compatible target or abstain. No replacement is prescribed.'
+                         if target is None else 'One factual/schema repair; the accepted outcome is frozen and must not change.')
+            p=copy.deepcopy(p);p['correction']=dict(error=str(exc),instruction=instruction+' Full reply retained in ledger.')
 
 
 def run(plan,index,variant,backend,loader,reg,out):

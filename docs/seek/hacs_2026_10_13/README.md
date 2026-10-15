@@ -2,6 +2,8 @@
 
 Subsequent cluster failure and correction: [14 October outcome compatibility fix](OUTCOME_COMPATIBILITY_FIX.md).
 Later abstention review: [allocation 14 grounding interface correction](GROUNDING_TYPES_FIX.md).
+[Allocation 15 grounding inventory and bounded development diagnostic](GROUNDING_DEVELOPMENT.md)
+supersedes the recommendation to collect further fresh incidents while debugging grounding.
 The delivery results below describe the original version; the correction requires
 a new source-bound pilot and tokenizer check.
 
