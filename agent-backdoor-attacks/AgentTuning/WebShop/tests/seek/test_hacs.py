@@ -16,7 +16,7 @@ from seek.discovery_phase import hacs_grounding as grounding
 from seek.discovery_phase import hacs_continuation as continuation
 from seek.discovery_phase import hacs_victim_worker as worker
 from seek.schemas import Invalid,digest
-from seek.storage import read_json,immutable_json
+from seek.storage import read_json,immutable_json,Journal
 from seek.semantic_registry import Registry
 from seek.next_phase import design as d
 from test_discovery_phase import f
@@ -70,6 +70,60 @@ def setup(tmp,mode='pilot'):
 
 
 class HacsTests(unittest.TestCase):
+    def evidence_review_fixture(self,tmp):
+        _,plan=setup(tmp)
+        s=search();s.outcome_spec=h.outcome(plan['incidents'][0]['public'],'Zora')
+        s.update(s.choose('hacs_active',4),obs((1,1)))
+        s.update(s.choose('hacs_active',2),obs((1,0),'second'))
+        return plan,r.packet(plan,plan['incidents'][0],s,phase='development_evidence_review')
+
+    def test_acknowledgment_rejects_string_and_bool_without_coercion(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _,p=self.evidence_review_fixture(tmp)
+            v=json.loads(Roles().call('Action',p)['text'])
+            v['observed']=json.dumps(p['factual_acknowledgment'])
+            before=copy.deepcopy(v)
+            with self.assertRaisesRegex(Invalid,'observed_json_array_required'):
+                r.validate_review(v,'Action',p,'Zora')
+            self.assertEqual(v,before)
+            v['observed']=copy.deepcopy(p['factual_acknowledgment'])
+            v['observed'][0]['values'][0]=True
+            with self.assertRaisesRegex(Invalid,'observed_facts_mismatch'):
+                r.validate_review(v,'Action',p,'Zora')
+
+    def test_acknowledgment_repair_supplies_exact_array_and_accepts_real_repair(self):
+        class Repair(Roles):
+            def call(self,role,p):
+                reply=super().call(role,p);v=json.loads(reply['text'])
+                if 'correction' not in p:v['observed']=json.dumps(v['observed'])
+                else:v['observed']=copy.deepcopy(p['correction']['expected_value'])
+                reply['text']=json.dumps(v);return reply
+        with tempfile.TemporaryDirectory() as tmp:
+            plan,p=self.evidence_review_fixture(tmp);before=copy.deepcopy(p)
+            backend=Repair();out=Path(tmp)/'repair'
+            reply=r.review_call(plan,backend,'Action',p,out,Journal(out/'defender'),1,'Zora')
+            self.assertEqual(p,before)
+            self.assertIsInstance(reply['observed'],list)
+            self.assertEqual(reply['observed'],p['factual_acknowledgment'])
+            correction=backend.payloads[1]['correction']
+            self.assertEqual(correction['expected_type'],'array')
+            self.assertEqual(correction['expected_value'],p['factual_acknowledgment'])
+            self.assertIn('frozen',correction['instruction'])
+            self.assertEqual(reply['target'],'Zora')
+            self.assertEqual(len(backend.payloads),2)
+
+    def test_repeated_string_acknowledgment_exhausts_one_repair(self):
+        class StringReply(Roles):
+            def call(self,role,p):
+                reply=super().call(role,p);v=json.loads(reply['text'])
+                v['observed']=json.dumps(v['observed']);reply['text']=json.dumps(v);return reply
+        with tempfile.TemporaryDirectory() as tmp:
+            plan,p=self.evidence_review_fixture(tmp);backend=StringReply();out=Path(tmp)/'rejected'
+            with self.assertRaisesRegex(Invalid,'bounded_review_repair_exhausted'):
+                r.review_call(plan,backend,'Action',p,out,Journal(out/'defender'),1,'Zora')
+            self.assertEqual(len(backend.payloads),2)
+            self.assertEqual(c.costs(out,'defender')['physical_calls'],2)
+
     def worker_fixture(self,tmp):
         reg,plan=setup(tmp);parent=Path(tmp)/'parent'
         r.run(plan,0,'hacs_active',Roles(),Victim,reg,parent)

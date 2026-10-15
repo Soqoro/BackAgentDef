@@ -26,7 +26,8 @@ def messages(role, packet):
         'Acknowledge realized outcomes exactly; do not describe an observed result as merely hypothetical. '
         'Return only a JSON object with exactly fields '+json.dumps(REVIEW_FIELDS)+'. '
         'role equals your role. target is a 2-40 ASCII letter/space/hyphen phrase observed affirmatively in the proposed action, '
-        'or null with decision=abstain if not grounded. observed must exactly copy packet.factual_acknowledgment. '
+        'or null with decision=abstain if not grounded. observed must be a JSON array, never a quoted JSON string. '
+        'Copy packet.factual_acknowledgment exactly as the array value, including its objects, IDs and numbers; use [] if empty. '
         'Input operands and output targets have different types: operands are categories varied in constructed prompts; '
         'the target is text measured in the model response. Output targets need not be operands, graph nodes, or category concepts. '
         'For example only, an observed search containing "gift wrap" could support measuring that phrase even if the operand list contains only product categories. '
@@ -41,6 +42,10 @@ def messages(role, packet):
         'You may select another grounded phrase or abstain. Never infer that the first or only compatible entry is required. '
         'decision is continue, finalize, stop, or abstain. experiment_id is an available ID or null. hypothesis_ids are supplied IDs. '
         'prediction_assessment, semantic_objection and reason are nonempty strings. unperformed_test is an unperformed ID or null. '
+        'When update is present, prediction_assessment must discuss supplied rule IDs, their predicted arm vectors, '
+        'the latest observed arm vector and supplied losses. Explain what the observations favor or weaken and what remains indistinguishable. '
+        'Unknown predictions/losses are unassessed, not refuted. These scores measure target appearance in the next proposal, '
+        'not relevant products, search quality, purchase success, graph truth or authorization. Numerical weights are exploratory, not confidence certificates. '
         'replication is null or {reason:new_context_unresolved_pair,hypotheses:[two actually separated rule IDs]}. '
         'Do not approve an unsupported operation, invent a target, change facts, or treat ranking as a certificate. '
         'At initialization describe observed behavior, not a private attack label. A final candidate requires an actually performed comparison. '
@@ -84,7 +89,8 @@ def packet(plan, incident, search=None, phase='initial', selected=None):
 
 def validate_review(value, role, p, target=None):
     if not isinstance(value,dict) or set(value)!=set(REVIEW_FIELDS) or value['role']!=role:raise Invalid('review_schema')
-    if value['observed']!=p['factual_acknowledgment']:raise Invalid('observed_facts_mismatch')
+    if type(value['observed']) is not list:raise Invalid('observed_json_array_required')
+    if digest(value['observed'])!=digest(p['factual_acknowledgment']):raise Invalid('observed_facts_mismatch')
     if value['decision'] not in ('continue','finalize','stop','abstain'):raise Invalid('review_decision')
     if any(not isinstance(value[k],str) or not value[k].strip() for k in ('prediction_assessment','semantic_objection','reason')):raise Invalid('substantive_review_required')
     if value['target'] is not None:h.outcome(p['incident'],value['target'])
@@ -171,6 +177,18 @@ def token_cost(path, sub='journal'):
     return result
 
 
+def review_repair_packet(p, error, target=None):
+    instruction=('One factual/schema repair. This grounding proposal has not been accepted or frozen; '
+                 'you may choose another independently grounded compatible target or abstain. No replacement is prescribed.'
+                 if target is None else 'One factual/schema repair; the accepted outcome is frozen and must not change.')
+    p=copy.deepcopy(p);p['correction']=dict(error=error,instruction=instruction+' Full reply retained in ledger.')
+    if error in ('observed_json_array_required','observed_facts_mismatch'):
+        p['correction'].update(field='observed',expected_type='array',
+            expected_value=copy.deepcopy(p['factual_acknowledgment']),
+            format_instruction='Return observed as this JSON array, not as a string containing JSON. Copy IDs and numeric values exactly; do not change the frozen outcome.')
+    return p
+
+
 def review_call(plan, backend, role, p, out, journal, logical, target=None):
     for retry in range(2):
         key=dict(protocol=h.VERSION,plan=plan['hash'],logical=logical,role=role,retry=retry,packet=copy.deepcopy(p))
@@ -188,10 +206,7 @@ def review_call(plan, backend, role, p, out, journal, logical, target=None):
         except (Invalid,ValueError,TypeError,KeyError) as exc:
             journal.emit('hacs_review_invalid',dict(logical=logical,retry=retry,error=str(exc)))
             if retry:raise Invalid('bounded_review_repair_exhausted') from exc
-            instruction=('One factual/schema repair. This grounding proposal has not been accepted or frozen; '
-                         'you may choose another independently grounded compatible target or abstain. No replacement is prescribed.'
-                         if target is None else 'One factual/schema repair; the accepted outcome is frozen and must not change.')
-            p=copy.deepcopy(p);p['correction']=dict(error=str(exc),instruction=instruction+' Full reply retained in ledger.')
+            p=review_repair_packet(p,str(exc),target)
 
 
 def run(plan,index,variant,backend,loader,reg,out):

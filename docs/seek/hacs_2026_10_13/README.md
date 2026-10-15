@@ -8,6 +8,8 @@ supersedes the recommendation to collect further fresh incidents while debugging
 tests numerical updates and role review without allocating a claim or unlocking the matrix.
 [Victim subprocess handoff correction](VICTIM_PROCESS_HANDOFF.md) records the
 partial continuation failure and the v2 development commands.
+[Review array correction and v3 development checks](REVIEW_ARRAY_FIX.md) preserve
+strict evidence validation and require checking the previously failed packet's size.
 The delivery results below describe the original version; the correction requires
 a new source-bound pilot and tokenizer check.
 
