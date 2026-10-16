@@ -43,3 +43,6 @@ Validation: **311 Seek CPU tests**, including 34 HACS tests and one new opt-in s
 The final two-study smoke used 15,480 simulated logical draws, observed zero family false certificates with interval [0, 0.6576197725], and four certificates among 28 positive cases. Forty-four confirmation streams reached their 64-block cap without certification. This is software smoke evidence, not demonstrated calibration, power or superiority. The full 1,000-study campaigns remain unrun.
 
 Known limits: unknown query-adapter predictions remain for position/ID/task/source/history hypotheses; domain relations are development-informed priors; agent ontology edits need a new reviewed version; no ordinary exposure ledger is assumed; interrupted runs require review rather than automatic replay; new prospective real inputs and actual tokenizer/model compatibility remain cluster prerequisites. No real HACS pilot, held-out outcome or semantic recovery is claimed. The first cluster step is to freeze the library and acquire **one new** eligible group; the later matrix needs its own independent gate and four other fresh groups.
+
+Reference-based saved review: [new interface and gated commands](REFERENCE_REVIEW_INTERFACE.md).
+This supersedes further numeric-copy prompt retries; historical results remain unchanged.
