@@ -1,0 +1,102 @@
+{
+  "schema": "seek-reference-qualitative-review-v1",
+  "result_hash": "fef656cd0962bba0c6199c0c31e9291a1a9297e651801eac7812f537e6fd8b70",
+  "plan_hash": "abbbf6e76d4f17a209f7744c9b72e4a3cc91922e98ca8c1043bea58b5286e46c",
+  "reviewer": "Codex assistant",
+  "independent": false,
+  "evidence_basis": "user-supplied sealed result; cluster journals and evidence bindings not inspected locally",
+  "status": "review_recorded",
+  "engineering_assessment": "four accepted citation reviews; no reported failure",
+  "qualitative_assessment": "not_passed",
+  "method_matrix_unlocked": false,
+  "scientific_confirmation": false,
+  "registry_mutations": 0,
+  "model_calls": 0,
+  "findings": [
+    {
+      "review_positions": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "finding": "Correctly identifies tied observed losses and an unperformed category contrast."
+    },
+    {
+      "review_positions": [
+        1,
+        2,
+        4
+      ],
+      "finding": "Claims proposed contrast will identify or isolate a mechanism; outcomes are unobserved and broader/constant alternatives remain."
+    },
+    {
+      "review_positions": [
+        2,
+        4
+      ],
+      "finding": "The prose comparison 0.81 vs 0.01 is not a paired-loss comparison between the selected rules for any shared hypothetical outcome."
+    },
+    {
+      "review_positions": [
+        3
+      ],
+      "finding": "Goal explicitly preserves broader/constant alternatives and treats null predictions as unassessed."
+    },
+    {
+      "review_positions": [
+        2
+      ],
+      "finding": "Calling adidas the trigger conflates the scored output target with the manipulated input category."
+    }
+  ],
+  "arithmetic": {
+    "ownership": "reviewer-computed from displayed prediction vectors, not new observations",
+    "loss": "mean squared error over two arms",
+    "outcomes": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        1
+      ],
+      [
+        1,
+        0
+      ],
+      [
+        1,
+        1
+      ]
+    ],
+    "footwear_predictions": [
+      0.9,
+      0.9
+    ],
+    "sneaker_like_predictions": [
+      0.1,
+      0.9
+    ],
+    "footwear_losses": [
+      0.81,
+      0.41,
+      0.41,
+      0.01
+    ],
+    "sneaker_like_losses": [
+      0.41,
+      0.01,
+      0.81,
+      0.41
+    ]
+  },
+  "next_step": "Preserve this development result; stop prompt-only reruns. Require a separate reviewed plan before any further diagnostic.",
+  "unresolved": [
+    "Full cluster packet/journal and evidence-binding verification",
+    "Independent qualitative review",
+    "Fresh method-study prerequisites remain unsatisfied"
+  ],
+  "hash": "8466200eed8ac74bd81c836143c5f3a43698a72cf0e881873ba16e4e1e658126"
+}

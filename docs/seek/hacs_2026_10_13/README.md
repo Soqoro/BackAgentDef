@@ -46,3 +46,5 @@ Known limits: unknown query-adapter predictions remain for position/ID/task/sour
 
 Reference-based saved review: [new interface and gated commands](REFERENCE_REVIEW_INTERFACE.md).
 This supersedes further numeric-copy prompt retries; historical results remain unchanged.
+
+Completed reference v1: [non-independent qualitative assessment and attachment command](REFERENCE_V1_QUALITATIVE_REVIEW.md).
