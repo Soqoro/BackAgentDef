@@ -99,6 +99,16 @@ class ReferenceTests(unittest.TestCase):
                 with patch.object(module,'SavedRoles',return_value=ReferenceRoles()):
                     result=module.run(prepared,root/'reference')
                 self.assertEqual(result['status'],'reviews_complete')
+                import prepare_scoped_continuation as scoped
+                immutable_json(root/'comparison.json',analyze_selection.analyze(out,root/'reference/plan.json'))
+                draft=scoped.prepare(out,root/'reference',root/'comparison.json')
+                self.assertFalse(draft['execution_authorized'])
+                self.assertFalse(draft['held_out'])
+                self.assertEqual(draft['maximum_victim_responses'],6)
+                self.assertEqual(sum(map(len,draft['cells'])),4)
+                self.assertEqual(draft['experiment']['id'],result['reviews'][0]['experiment_id'])
+                self.assertEqual(draft,scoped.prepare(out,root/'reference',root/'comparison.json'))
+
                 self.assertEqual(len(result['reviews']),4)
                 self.assertEqual(result['victim_calls'],0)
                 self.assertFalse(result['method_matrix_unlocked'])

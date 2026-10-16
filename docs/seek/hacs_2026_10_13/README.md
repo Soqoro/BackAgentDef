@@ -50,3 +50,5 @@ This supersedes further numeric-copy prompt retries; historical results remain u
 Completed reference v1: [non-independent qualitative assessment and attachment command](REFERENCE_V1_QUALITATIVE_REVIEW.md).
 
 After the negative qualitative review: [CPU-only selection comparison](SELECTION_COMPARISON.md).
+
+Ranking qualification and next review gate: [scoped continuation draft](SCOPED_CONTINUATION_DRAFT.md).
