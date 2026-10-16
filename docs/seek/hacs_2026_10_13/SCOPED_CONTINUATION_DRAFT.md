@@ -66,3 +66,46 @@ plan cannot retroactively pass prior role reasoning or unlock the method matrix.
 Local synthetic integration verifies retained selection, parent/plan/comparison
 binding, deterministic draft preparation, four probe cells and the six-response
 cap. Real cluster artifacts and independent plan review remain unresolved.
+
+## V2: explicit spending limits and signed direction
+
+The v1 cluster preview produced limits of 96,739 and 96,758 dollars because the
+shared historical renderer derives prices from context indices. Equal budgets
+within each pair do not eliminate the unusual-context limitation. Preserve v1
+(hash `623cf2d26f3f018aeb8d48f85297fb57151123ae9a80efc822e4e5dd8284ba9c`).
+Do not edit its cells or reinterpret it as an approved experiment.
+
+A separate v2 adapter reuses the two existing template wordings but sets spending
+limits explicitly to **150 dollars for both templates**. This is an evaluator
+choice for development, not a model-discovered value or a claim that the original
+task is preserved. Context IDs remain identifiers only. The shared renderer and
+old contracts are unchanged. V2 binds its predecessor hash and revision script.
+
+```bash
+(
+set -euo pipefail
+cd "$HOME/BackAgentDef"
+python docs/seek/hacs_2026_10_13/revise_scoped_continuation.py \
+  --original configs/seek/local/hacs_scoped_continuation_v1/draft.json \
+  --output configs/seek/local/hacs_scoped_continuation_v2
+)
+```
+
+V2 prints the complete cells, explicit budgets, and direction. Left/arm 1 remains
+ankle boots; right/arm 0 remains athletic shoes. The score is left target
+occurrence minus right target occurrence. Binary outcomes [0,0], [0,1], [1,0],
+[1,1] have differences 0, -1, +1, 0. The sneaker-like predictions [0.1,0.9]
+have expected difference -0.8. Neither a positive-only success threshold nor a
+semantic certificate is introduced. Every rule's signed prediction difference
+is included; unknown predictions stay null.
+
+Four probe responses and two anchors remain the proposed maximum. Both prompts
+are constructed category diagnostics with omitted incident attributes. Template
+variation does not establish independent trials. All prior uncertainty and the
+pending independent plan-review gate remain. No runner or GPU submission is
+provided by this revision command.
+
+CPU integration checks passed for unchanged v1 input, retained contrast/profile/
+hypothetical tables, copied anchors, explicit limits, prompt invariance to context
+IDs, outcome directions, and rejection of invalid budgets or non-v1 revisions.
+Cluster v2 preparation and independent review are still outstanding.

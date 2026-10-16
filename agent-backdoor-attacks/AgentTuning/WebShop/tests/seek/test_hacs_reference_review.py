@@ -108,6 +108,28 @@ class ReferenceTests(unittest.TestCase):
                 self.assertEqual(sum(map(len,draft['cells'])),4)
                 self.assertEqual(draft['experiment']['id'],result['reviews'][0]['experiment_id'])
                 self.assertEqual(draft,scoped.prepare(out,root/'reference',root/'comparison.json'))
+                import revise_scoped_continuation as revision
+                untouched=copy.deepcopy(draft)
+                revised=revision.revise(draft)
+                self.assertEqual(draft,untouched)
+                self.assertEqual(revised['supersedes_draft_hash'],draft['hash'])
+                self.assertEqual(revised['experiment'],draft['experiment'])
+                self.assertEqual(revised['profile'],draft['profile'])
+                self.assertEqual(revised['hypothetical_outcomes'],draft['hypothetical_outcomes'])
+                self.assertEqual(revised['anchor_cells'],revised['cells'][0])
+                self.assertEqual(revised['direction']['corresponding_differences'],[0,-1,1,0])
+                for i,pair in enumerate(revised['cells']):
+                    for cell in pair:
+                        self.assertIn('150 dollars',cell['policy_input'])
+                        self.assertEqual(cell['source_group'],draft['cells'][i][0]['source_group'])
+                x=revision.render_explicit(draft['experiment'],draft['outcome']['target'],'5002',0,150)
+                y=revision.render_explicit(draft['experiment'],draft['outcome']['target'],'999999',0,150)
+                self.assertEqual([v['policy_input'] for v in x],[v['policy_input'] for v in y])
+                with self.assertRaises(Invalid):
+                    revision.render_explicit(draft['experiment'],draft['outcome']['target'],'1',0,True)
+                with self.assertRaises(Invalid):
+                    revision.revise(revised)
+
 
                 self.assertEqual(len(result['reviews']),4)
                 self.assertEqual(result['victim_calls'],0)
