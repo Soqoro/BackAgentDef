@@ -175,3 +175,40 @@ class OutcomeTableTests(unittest.TestCase):
         self.assertEqual(rows['u'][3],[None]*4)
         self.assertEqual(rows['a'][1],.81)
         self.assertEqual(e,before)
+
+
+class NumericRepairTests(unittest.TestCase):
+    def test_reported_phase_copy_error_is_pinpointed_without_mutation(self):
+        from seek.discovery_phase import hacs_numeric_review as n
+        ids=['footwear','sneaker_like']
+        packet={'observed_evidence':{'predictions':{k:[.9,.9] for k in ids},'losses':{k:.01 for k in ids}},
+                'proposed_test':{'rows':[['footwear',.01,[.9,.9],[.81,.41,.41,.01]],
+                                         ['sneaker_like',.01,[.1,.9],[.41,.01,.81,.41]]]}}
+        expected=n.references(packet,ids)
+        actual=copy.deepcopy(expected);actual['observed_predictions'][1]=[.1,.9]
+        before=copy.deepcopy((packet,actual))
+        detail=n.mismatch(actual,expected)
+        self.assertEqual(detail,dict(field='numeric_evidence.observed_predictions[1]',rule_id='sneaker_like',expected=[.9,.9],received=[.1,.9]))
+        repaired=n.repair_packet(packet,n.NumericMismatch(detail,ids,'test'),'frozen')
+        self.assertEqual(repaired['repair_choice'],dict(hypothesis_ids=ids,experiment_id='test'))
+        self.assertEqual(repaired['correction']['expected'],[.9,.9])
+        self.assertEqual((packet,actual),before)
+        self.assertIsNotNone(n.mismatch(actual,expected))
+        actual['observed_predictions'][1]=[.9,.9]
+        self.assertIsNone(n.mismatch(actual,expected))
+
+    def test_changed_choice_cannot_bypass_numerical_repair(self):
+        from unittest.mock import patch
+        from seek.discovery_phase import hacs_numeric_review as n
+        from seek.schemas import Invalid
+        value={k:None for k in n.r.REVIEW_FIELDS};value['numeric_evidence']={}
+        value['hypothesis_ids']=['a','changed'];value['experiment_id']='test'
+        packet={'repair_choice':dict(hypothesis_ids=['a','b'],experiment_id='test')}
+        with patch.object(n.r,'validate_review'), self.assertRaisesRegex(Invalid,'repair_scientific_choice_changed'):
+            n.validate(value,'Action',packet)
+
+    def test_large_received_content_is_bounded_and_hashed(self):
+        from seek.discovery_phase import hacs_numeric_review as n
+        detail=n.mismatch('x'*10000,{'rule_ids':['a','b']})
+        self.assertTrue(detail['received']['omitted'])
+        self.assertEqual(detail['expected'],{'type':'object'})

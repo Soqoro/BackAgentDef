@@ -1,6 +1,6 @@
 # Evidence-balanced review packets and saved-evidence development
 
-Superseded for execution by [structured numerical review v6](STRUCTURED_NUMERIC_REVIEW.md).
+Superseded for execution by [structured numerical review v7](STRUCTURED_NUMERIC_REVIEW.md).
 The commands below describe historical v5; do not submit them with the new script.
 
 The supplied v3 audit (`ab9c030d738ce445e6e2a42062cdb837265758e481536929a4fc29dc6a405334`)

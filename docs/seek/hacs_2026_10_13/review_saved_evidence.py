@@ -101,7 +101,7 @@ def prepare(run, prior_review):
     agents=copy.deepcopy(old['agents'])
     agents['max_output_tokens']=1024
     return c.seal(dict(schema='seek-saved-evidence-review-v1',source=c.source(),
-        review_prompt_version='structured-numeric-review-v6',prior_review_hash=prior['hash'],
+        review_prompt_version='structured-numeric-review-v7',prior_review_hash=prior['hash'],
         instruction_omissions=['initial target selection guidance', 'grounding inventory example'],
         script_sha256=__import__('hashlib').sha256(Path(__file__).read_bytes()).hexdigest(),
         audit_hash=audit['hash'],parent_result_hash=result['hash'],agents=agents,
@@ -117,7 +117,7 @@ def validate(plan):
     if plan['script_sha256']!=__import__('hashlib').sha256(Path(__file__).read_bytes()).hexdigest(): raise Invalid('review script changed')
     if plan['schema']!='seek-saved-evidence-review-v1' or plan['input_cap']!=4096 or len(plan['packets'])!=4:
         raise Invalid('review contract mismatch')
-    if plan.get('review_prompt_version')!='structured-numeric-review-v6': raise Invalid('review prompt version mismatch')
+    if plan.get('review_prompt_version')!='structured-numeric-review-v7': raise Invalid('review prompt version mismatch')
     if plan['agents'].get('max_output_tokens')!=1024: raise Invalid('output budget mismatch')
     if plan['victim_calls']!=0 or plan['maximum_defender_attempts']!=8 or plan['defender_budget']!=4: raise Invalid('budget mismatch')
 
@@ -127,7 +127,13 @@ def token_check(plan):
     for i,item in enumerate(plan['packets'],1):
         # Measure both supported repair forms as well as each actual saved packet.
         payloads=[('initial',item['packet'])]+[(code,r.review_repair_packet(item['packet'],code,plan['outcome']['target']))
-            for code in ('observed_json_array_required','observed_facts_mismatch','numeric_evidence_mismatch: copy observed_evidence and proposed_test separately; preserve chosen rule IDs')]
+            for code in ('observed_json_array_required','observed_facts_mismatch')]
+        # Representative detailed repair, not a bound on every possible reply.
+        ids=[x['id'] for x in item['packet']['rules'][:2]]
+        expected=numeric.references(item['packet'],ids)
+        wrong=copy.deepcopy(expected);wrong['observed_predictions'][1]=[0.123,0.456]
+        error=numeric.NumericMismatch(numeric.mismatch(wrong,expected),ids,item['packet']['proposed_test']['experiment_id'])
+        payloads.append(('representative_numeric_repair',numeric.repair_packet(item['packet'],error,plan['outcome']['target'])))
         for label,p in payloads:
             receipt=r.role_tokens.measure(plan['agents'],messages(item['role'],p))
             receipts.append(dict(review=i,packet=label,**receipt,within_cap=receipt['input_tokens']<=plan['input_cap']))
@@ -148,7 +154,7 @@ def run(plan,out):
         reviews=[];failure=None
         try:
             for i,item in enumerate(plan['packets'],1):
-                value=r.review_call(plan,backend,item['role'],item['packet'],out,journal,i,plan['outcome']['target'],validator=numeric.validate)
+                value=r.review_call(plan,backend,item['role'],item['packet'],out,journal,i,plan['outcome']['target'],validator=numeric.validate,repair_builder=numeric.repair_packet)
                 reviews.append(value);immutable_json(out/'reviews'/f'{i:02d}.json',value)
         except Exception as exc: failure=dict(type=type(exc).__name__,reason=str(exc))
         finally: backend.close()

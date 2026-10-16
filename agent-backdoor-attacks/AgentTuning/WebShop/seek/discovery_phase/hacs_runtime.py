@@ -192,7 +192,7 @@ def review_repair_packet(p, error, target=None):
     return p
 
 
-def review_call(plan, backend, role, p, out, journal, logical, target=None, validator=None):
+def review_call(plan, backend, role, p, out, journal, logical, target=None, validator=None, repair_builder=None):
     for retry in range(2):
         key=dict(protocol=h.VERSION,plan=plan['hash'],logical=logical,role=role,retry=retry,packet=copy.deepcopy(p))
         msgs=backend.messages(role,p)
@@ -209,7 +209,7 @@ def review_call(plan, backend, role, p, out, journal, logical, target=None, vali
         except (Invalid,ValueError,TypeError,KeyError) as exc:
             journal.emit('hacs_review_invalid',dict(logical=logical,retry=retry,error=str(exc)))
             if retry:raise Invalid('bounded_review_repair_exhausted') from exc
-            p=review_repair_packet(p,str(exc),target)
+            p=repair_builder(p,exc,target) if repair_builder else review_repair_packet(p,str(exc),target)
 
 
 def run(plan,index,variant,backend,loader,reg,out):

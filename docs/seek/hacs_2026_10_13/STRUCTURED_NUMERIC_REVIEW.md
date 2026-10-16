@@ -1,4 +1,4 @@
-# Structured phase-separated review: v6 engineering check
+# Structured phase-separated review: v7 engineering check
 
 This supersedes the prior saved-review submission instructions. Pause GPU review
 iterations while reviewing the schema and tokenizer checks below.
@@ -53,6 +53,39 @@ The numerical validator is opt-in through the existing review-call function.
 General HACS, Shield and Stage I retain their prior review schema and behavior.
 No framework is rebuilt and no victim calls are added.
 
+## Exact mismatch repair: v7
+
+V6 failed after two complete, non-refusal replies: the initial reply and its one
+allowed repair both copied proposed prediction [0.1,0.9] into the observed
+prediction for the sneaker-like rule, whose observed vector was [0.9,0.9].
+The actual observed losses and hypothetical loss arrays matched. Preserve result
+`ea1ceb065820f095ba7f5d93080a32d6faa70e1a530aae74defb51940d1a0fc7`;
+no reviews were accepted, no victim calls or registry mutations occurred.
+
+V7 reports the first mismatched numeric field with its array index, rule ID,
+expected value, and received value. It does not edit or accept the original reply.
+Correction packets freeze the agent's chosen rule IDs and experiment ID as well
+as the outcome. Changing those choices during numerical repair is rejected.
+Only one repair is still allowed. Remaining errors after that repair fail closed;
+truncation still fails without a repair. The full original reply stays journaled.
+Oversized received fields are explicitly omitted from the correction display
+with a digest, preventing arbitrary reply size from inflating the repair packet.
+
+The shared review loop accepts an optional repair builder; the default schema
+and repair behavior remain unchanged for other callers. Saved-review v7 alone
+uses this numerical repair builder. The specific expectation derives from the
+selected rules and frozen evidence, not a preferred hypothesis or conclusion.
+This does not resolve the first reply's wrong left/right prose or certify the
+repaired prose. Qualitative assessment remains unresolved.
+
+The fourth tokenizer receipt for each review is now a representative detailed
+numerical repair. It is not a guarantee for all possible malformed replies:
+every actual correction is independently checked against the 4096 input cap.
+Continue to preserve the 1024 output allowance, four logical reviews, at most
+eight attempts and zero victim calls. Do not submit a GPU job until the new
+sixteen receipts have been inspected. V7 continues to bind the completed v5
+agent choices; the failed v6 reply is a regression fixture, not accepted evidence.
+
 ## CPU and tokenizer commands after syncing
 
 Create a new v6 plan; preserve every earlier version:
@@ -67,10 +100,10 @@ python -m unittest discover \
 python docs/seek/hacs_2026_10_13/review_saved_evidence.py prepare \
   --run-root results/seek/hacs_continuation_dev_v3 \
   --prior-review results/seek/hacs_saved_review_v5/result.json \
-  --plan configs/seek/local/hacs_saved_review_v6/plan.json
+  --plan configs/seek/local/hacs_saved_review_v7/plan.json
 python docs/seek/hacs_2026_10_13/review_saved_evidence.py token-check \
-  --plan configs/seek/local/hacs_saved_review_v6/plan.json \
-  --output configs/seek/local/hacs_saved_review_v6/token_preflight.json
+  --plan configs/seek/local/hacs_saved_review_v7/plan.json \
+  --output configs/seek/local/hacs_saved_review_v7/token_preflight.json
 )
 ```
 
@@ -92,3 +125,10 @@ and immediate truncation failure. A test deliberately leaves unsupported prose
 accepted by the numeric validator, demonstrating why qualitative review remains
 separate. These tests use fake backends; no real Qwen result is inferred.
 `git diff --check` and CLI help checks passed.
+
+V7 validation: all 341 Seek CPU tests passed; eight focused saved-review tests
+passed separately. New regressions reproduce the observed/proposed vector swap,
+check precise expected/received feedback without mutation, reject changed
+scientific choices during repair, and bound oversized received-value displays.
+These remain synthetic checks. V7 real-model repair success and tokenizer
+receipts are unresolved. `git diff --check` passed.
