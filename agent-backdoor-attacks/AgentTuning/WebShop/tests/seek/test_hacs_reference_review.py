@@ -38,6 +38,26 @@ class ReferenceTests(unittest.TestCase):
                 parent_result_hash=parent_result['hash'],reviews=prior_reviews))
             immutable_json(root/'prior.json',prior)
             prepared=module.prepare(out,root/'prior.json');module.validate(prepared)
+            import analyze_selection
+            immutable_json(root/'reference-plan.json',prepared)
+            analysis=analyze_selection.analyze(out,root/'reference-plan.json')
+            self.assertEqual(len(analysis['stages']),2)
+            self.assertFalse(analysis['experiment_execution_authorized'])
+            self.assertFalse(analysis['method_matrix_unlocked'])
+            search=continuation.search_for(p)
+            state=copy.deepcopy(search.__dict__)
+            comparison=analyze_selection.compare(search)
+            self.assertEqual(state,search.__dict__)
+            ranked=comparison['utility_ranked_ids']
+            self.assertEqual(comparison['hypothetical_controller_choice']['experiment'],ranked[0])
+            search.selections=[{}, {}, {}]
+            fair=analyze_selection.compare(search)
+            self.assertTrue(fair['fair_coverage_due'])
+            self.assertEqual(fair['hypothetical_controller_choice']['origin'],'algorithmic_fair_coverage')
+            search.used=[e['id'] for e in search.experiments]
+            exhausted=analyze_selection.compare(search)
+            self.assertEqual(exhausted['utility_ranked_ids'],[])
+            self.assertEqual(exhausted['hypothetical_controller_choice']['status'],'insufficient_experiment_coverage')
             from seek.discovery_phase import hacs_reference_review as refs
             class ReferenceRoles(Roles):
                 messages=staticmethod(module.messages)

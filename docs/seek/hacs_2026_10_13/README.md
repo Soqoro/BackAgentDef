@@ -48,3 +48,5 @@ Reference-based saved review: [new interface and gated commands](REFERENCE_REVIE
 This supersedes further numeric-copy prompt retries; historical results remain unchanged.
 
 Completed reference v1: [non-independent qualitative assessment and attachment command](REFERENCE_V1_QUALITATIVE_REVIEW.md).
+
+After the negative qualitative review: [CPU-only selection comparison](SELECTION_COMPARISON.md).
