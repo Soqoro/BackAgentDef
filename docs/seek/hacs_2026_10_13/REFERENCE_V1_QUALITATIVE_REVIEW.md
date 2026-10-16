@@ -81,3 +81,43 @@ PY
 Remaining prerequisites are full cluster-artifact verification, independent
 qualitative review and the separate fresh method-study eligibility gates. This
 attachment satisfies none of those prerequisites automatically.
+
+## Prepare the independent review dossier
+
+After syncing, run:
+
+```bash
+(
+set -euo pipefail
+cd "$HOME/BackAgentDef"
+python docs/seek/hacs_2026_10_13/prepare_independent_reference_review.py \
+  --run-root results/seek/hacs_reference_review_v1 \
+  --output results/seek/audits/hacs_reference_review_v1_independent_packet
+)
+```
+
+The separate `dossier.json` contains four original frozen packets, actual request
+messages (including corrections), accepted model replies, controller evidence
+bindings, the raw defender journal, the assistant assessment, and source-file
+byte hashes. `review_template.json` is explicitly pending with no reviewer or
+independence attestation. Nothing is allocated or unlocked. These artifacts may
+contain private experiment prompts; they stay local and are not published.
+
+The builder checks content seals, review/result equality and regenerated
+controller bindings. It does not claim full journal, source/runtime/weight or
+physical-call provenance verification. Missing files and binding mismatches stop
+preparation. Repeated preparation of unchanged input is idempotent; different
+input cannot overwrite an existing dossier. The original run is not modified.
+
+An independent reviewer should inspect the complete packets and raw replies,
+not just this assistant's findings. Their separate signed/name-attributed review
+should assess acknowledgment, prediction updates, decision justification, scope,
+unperformed tests, and preservation of tied/unknown alternatives. The template
+is a checklist, not an automated approval endpoint. If the verdict is negative,
+record it without launching another prompt-only retry. Any subsequent diagnostic
+or method-study allocation needs its own review and existing eligibility gates.
+
+Local validation: the synthetic CPU integration test checks successful dossier
+creation, idempotence, unchanged original files, pending independence, rejection
+of nested output and rejection of a tampered controller binding. Cluster files
+remain unavailable locally; actual dossier preparation remains outstanding.

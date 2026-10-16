@@ -83,6 +83,25 @@ class ReferenceTests(unittest.TestCase):
                 self.assertEqual(result['victim_calls'],0)
                 self.assertFalse(result['method_matrix_unlocked'])
                 self.assertEqual(len(list((root/'reference/evidence_bindings').glob('*.json'))),4)
+                import prepare_independent_reference_review as dossier
+                assessment=module.c.seal(dict(result_hash=result['hash'],plan_hash=prepared['hash']))
+                immutable_json(root/'reference/assistant_qualitative_review_v1.json',assessment)
+                frozen={f:f.read_bytes() for f in (root/'reference').rglob('*') if f.is_file()}
+                packet=dossier.prepare(root/'reference',root/'dossier')
+                self.assertEqual(packet['independent_review_status'],'pending')
+                self.assertFalse(packet['method_matrix_unlocked'])
+                self.assertEqual(frozen,{f:f.read_bytes() for f in (root/'reference').rglob('*') if f.is_file()})
+                self.assertEqual(packet,dossier.prepare(root/'reference',root/'dossier'))
+                with self.assertRaisesRegex(Invalid,'separate'):
+                    dossier.prepare(root/'reference',root/'reference/nested')
+                bindpath=root/'reference/evidence_bindings/01.json'
+                original=bindpath.read_bytes()
+                wrong=json.loads(original);wrong['review_hash']='wrong'
+                bindpath.write_text(json.dumps(module.c.seal(wrong)))
+                with self.assertRaisesRegex(Invalid,'binding mismatch'):
+                    dossier.prepare(root/'reference',root/'bad-dossier')
+                bindpath.write_bytes(original)
+
                 class Wrong(ReferenceRoles):
                     def call(self,role,packet):
                         response=super().call(role,packet);v=json.loads(response['text'])
