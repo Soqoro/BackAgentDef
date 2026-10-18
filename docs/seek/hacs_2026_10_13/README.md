@@ -52,3 +52,5 @@ Completed reference v1: [non-independent qualitative assessment and attachment c
 After the negative qualitative review: [CPU-only selection comparison](SELECTION_COMPARISON.md).
 
 Ranking qualification and next review gate: [scoped continuation draft](SCOPED_CONTINUATION_DRAFT.md).
+
+Conditional v3 approval: [production runner and zero-inference preflight](QUERY_PRODUCTION_PREFLIGHT.md).

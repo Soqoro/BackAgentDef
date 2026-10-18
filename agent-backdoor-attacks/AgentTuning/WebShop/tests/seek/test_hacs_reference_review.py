@@ -142,6 +142,72 @@ class ReferenceTests(unittest.TestCase):
                 for pair in bound['cells']+[bound['anchor_cells']]:
                     for cell in pair:guard.propose(snapshot,cell['policy_input'],generation)
                 self.assertEqual(loads,[bound['profile']['models']['query']])
+                import run_scoped_query as production
+                execution=copy.deepcopy(bound)
+                entry=execution['profile']['models']['query']
+                entry['weights']={'config.json':'fake-config','model.safetensors':'fake-weight'}
+                entry['identity']=module.r.digest(entry['weights'])
+                execution['execution_target_entry_hash']=module.r.digest(entry)
+                execution=module.c.seal(execution)
+                inventory={'identity':entry['identity'],'weights':entry['weights']}
+                def metadata(entry,g):return Victim(entry,g)
+                def attester(d):return production.attest(d,metadata,lambda path:inventory)
+                att=attester(execution)
+                approval=module.c.seal(dict(schema='seek-query-execution-review-v1',decision='approve',
+                    independent=True,reviewer='CPU fixture only',execution_authorized=True,resource_approved=True,
+                    draft_hash=execution['hash'],attestation_hash=att['hash'],
+                    checks={k:True for k in ('production_guard_and_limits','serialization_tokens_and_weights','resources')}))
+                real=production.run(execution,att,approval,root/'production-fake',loader=Victim,attester=attester)
+                self.assertEqual(real['status'],'development_complete')
+                self.assertEqual(real['costs']['physical_calls'],6)
+                self.assertEqual(real['guard_counts']['observation_attempts'],0)
+                self.assertEqual(len(real['paired_results']),2)
+                class Malformed(Victim):
+                    def propose(self,*args):
+                        reply=super().propose(*args);reply['raw_response']='no valid action';return reply
+                failedrun=production.run(execution,att,approval,root/'production-bad',loader=Malformed,attester=attester)
+                self.assertEqual(failedrun['status'],'backend_failure')
+                self.assertEqual(failedrun['costs']['physical_calls'],1)
+                self.assertEqual(failedrun['paired_results'],[])
+                class Throwing(Victim):
+                    def propose(self,*args):raise RuntimeError('synthetic inference failure')
+                thrown=production.run(execution,att,approval,root/'production-throw',loader=Throwing,attester=attester)
+                self.assertEqual(thrown['guard_counts']['total_attempts'],1)
+                self.assertEqual(thrown['costs']['physical_calls'],1)
+                class Unstable(Victim):
+                    def propose(self,*args):
+                        reply=super().propose(*args)
+                        self.attempt=getattr(self,'attempt',0)+1
+                        if self.attempt>=5:reply['raw_response']='Action: search[other goods]'
+                        return reply
+                unstable=production.run(execution,att,approval,root/'production-unstable',loader=Unstable,attester=attester)
+                self.assertEqual(unstable['costs']['physical_calls'],6)
+                self.assertFalse(unstable['anchors_stable'])
+                self.assertEqual(unstable['paired_results'],[])
+                class WrongPrompt(Victim):
+                    def propose(self,*args):
+                        reply=super().propose(*args);reply['serialized_prompt']='wrong';return reply
+                wrongprompt=production.run(execution,att,approval,root/'production-wrongprompt',loader=WrongPrompt,attester=attester)
+                self.assertEqual(wrongprompt['guard_counts']['total_attempts'],1)
+                self.assertEqual(wrongprompt['status'],'backend_failure')
+
+                class Leak(Victim):
+                    def render(self,history,text):return super().render(history,text)+' '+execution['outcome']['target']
+                with self.assertRaisesRegex(Invalid,'leaked'):
+                    production.attest(execution,lambda e,g:Leak(e,g),lambda path:inventory)
+                class Truncated(Victim):
+                    def encode(self,prompt,g):return [1],[1,2]
+                with self.assertRaisesRegex(Invalid,'truncated'):
+                    production.attest(execution,lambda e,g:Truncated(e,g),lambda path:inventory)
+                changed=copy.deepcopy(inventory);changed['identity']='wrong'
+                with self.assertRaisesRegex(Invalid,'inventory mismatch'):
+                    production.attest(execution,metadata,lambda path:changed)
+
+                bad=copy.deepcopy(approval);bad['execution_authorized']=False
+                with self.assertRaises(Invalid):production.approved(execution,att,module.c.seal(bad))
+                with self.assertRaises(Invalid):
+                    production.run(execution,att,approval,root/'production-fake',loader=Victim,attester=attester)
+
                 self.assertEqual(guard.call_receipt(),dict(query_probe_attempts=4,query_anchor_attempts=2,
                     observation_attempts=0,reference_attempts=0,total_attempts=6))
                 with self.assertRaises(Invalid):guard.propose(snapshot,bound['cells'][0][0]['policy_input'],generation)
