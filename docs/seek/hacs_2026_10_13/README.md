@@ -54,3 +54,5 @@ After the negative qualitative review: [CPU-only selection comparison](SELECTION
 Ranking qualification and next review gate: [scoped continuation draft](SCOPED_CONTINUATION_DRAFT.md).
 
 Conditional v3 approval: [production runner and zero-inference preflight](QUERY_PRODUCTION_PREFLIGHT.md).
+
+Completed scoped diagnostic: [reported results and CPU-only audit](SCOPED_QUERY_RESULT_AUDIT.md).
