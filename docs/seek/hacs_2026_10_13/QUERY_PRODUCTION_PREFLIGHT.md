@@ -84,3 +84,67 @@ target leakage, truncation and checkpoint inventory mismatch. The production
 adapter still requires real cluster preflight; tests do not authenticate cluster
 files or model behavior. No local inference, weights download, training, paid API,
 Slurm submission or git push is part of this implementation.
+
+## Execution review requested changes: repaired guard and v4
+
+The supplied review `c0980a4a2994177c4b43e4e776bd9a9a4c999e6fec45723ce04c814d07c3943e`
+approved the resource ceiling only and withheld execution. Both blocking defects
+were reproduced in code review: runtime extras were not rejected, and the CLI
+failure branch referenced sys without importing it. Prior artifacts remain failed
+or conditional as originally recorded.
+
+The guard now requires exactly the common.responses runtime fields, with hardware
+only for real victims: checkpoint_identity, template_hash, tokenizer, dtype,
+backend, generation, system and prefix_messages. Extra runtime-level query_target,
+request or brand keys are rejected before the backend is called. This complements
+the existing full serialization and target-leakage checks. The runner imports sys
+and exposes a tested main(argv) returning 2 for saved failure results; the module
+entry point uses sys.exit(main()).
+
+The synthetic integration goes through actual common.responses and the production
+runner, capturing backend inputs and asserting no metadata forwarding, six-call
+ceiling, zero fallback, failure termination, stable/unstable anchors, and unchanged
+failure artifacts on forbidden resume. The malformed-output and unstable-anchor
+CLI paths both return 2. The integration test's source hash is now in attestation
+sources. These are fake-backend software checks, not real inference results.
+
+Run after syncing, in webshop_torchfix:
+
+```bash
+(
+set -euo pipefail
+cd "$HOME/BackAgentDef"
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 PYTHONNOUSERSITE=1
+export CUDA_VISIBLE_DEVICES=""
+mkdir -p results/seek/audits/hacs_scoped_query_preflight_v2
+python -m unittest discover \
+  -s agent-backdoor-attacks/AgentTuning/WebShop/tests/seek \
+  -p test_hacs_reference_review.py -v 2>&1 | tee \
+  results/seek/audits/hacs_scoped_query_preflight_v2/cpu_integration_tests.txt
+python docs/seek/hacs_2026_10_13/rebind_query_guard.py \
+  --original configs/seek/local/hacs_scoped_continuation_v3/draft.json \
+  --output configs/seek/local/hacs_scoped_continuation_v4
+python -u docs/seek/hacs_2026_10_13/run_scoped_query.py attest \
+  --draft configs/seek/local/hacs_scoped_continuation_v4/draft.json \
+  --output results/seek/audits/hacs_scoped_query_preflight_v2
+)
+```
+
+The new v4 freezes the repaired guard, keeps the query checkpoint, all cells,
+anchors, direction and six-response cap unchanged, and binds the original v3
+hash. It remains unapproved. Re-attestation is mandatory because source bytes
+changed; the old approved-in-principle resource review cannot authorize this run.
+Send the reviewer v4, the new attestation and execution-review template, CPU test
+output and these source files (all execution files below are in the attestation):
+
+- docs/seek/hacs_2026_10_13/run_scoped_query.py
+- docs/seek/hacs_2026_10_13/query_only_guard.py
+- docs/seek/hacs_2026_10_13/bind_query_continuation.py
+- agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/common.py
+- agent-backdoor-attacks/AgentTuning/WebShop/seek/victim.py
+- agent-backdoor-attacks/AgentTuning/WebShop/seek/storage.py
+- agent-backdoor-attacks/AgentTuning/WebShop/tests/seek/test_hacs_reference_review.py
+
+The template references the full new hashes, so do not copy the old review or
+mark pending checks true automatically. No GPU submission is authorized by these
+commands. Real cluster re-attestation and renewed execution approval are pending.

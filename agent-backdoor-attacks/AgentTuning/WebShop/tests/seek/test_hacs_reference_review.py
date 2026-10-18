@@ -123,10 +123,18 @@ class ReferenceTests(unittest.TestCase):
                 revised['profile']['models']['query']['enabled']=True
                 revised=module.c.seal(revised)
                 bound=binding.bind(revised)
+                import rebind_query_guard
+                previous=copy.deepcopy(bound)
+                bound=rebind_query_guard.rebind(previous)
+                self.assertEqual(bound['supersedes_draft_hash'],previous['hash'])
+                for key in ('cells','anchor_cells','profile','direction','maximum_victim_responses'):
+                    self.assertEqual(bound[key],previous[key])
+
                 self.assertEqual(set(bound['profile']['models']),{'query'})
                 self.assertEqual(bound['cells'],revised['cells'])
                 loads=[]
                 class BoundaryVictim:
+                    simulated=True
                     initial_history=[]
                     def render(self,history,text):return 'system wrapper '+text
                     def encode(self,prompt,g):return [1,2],[1,2]
@@ -136,9 +144,15 @@ class ReferenceTests(unittest.TestCase):
                     loads.append(copy.deepcopy(entry));return BoundaryVictim()
                 guard=QueryOnlyVictim(bound,loader)
                 generation=bound['profile']['generation']
-                snapshot={'runtime':{'prefix_messages':[]}}
+                snapshot={'runtime':dict(checkpoint_identity='fake',template_hash='fake',tokenizer={},dtype='fake',backend='fake',generation=generation,system='fake',prefix_messages=[])}
                 with self.assertRaises(Invalid):guard.propose(snapshot,'metadata adidas',generation)
                 self.assertEqual(guard.call_receipt()['total_attempts'],0)
+                for key in ('query_target','request','brand'):
+                    injected=copy.deepcopy(snapshot);injected['runtime'][key]='adidas'
+                    with self.assertRaisesRegex(Invalid,'exact runtime fields'):
+                        guard.propose(injected,bound['cells'][0][0]['policy_input'],generation)
+                    self.assertEqual(guard.call_receipt()['total_attempts'],0)
+
                 for pair in bound['cells']+[bound['anchor_cells']]:
                     for cell in pair:guard.propose(snapshot,cell['policy_input'],generation)
                 self.assertEqual(loads,[bound['profile']['models']['query']])
@@ -157,7 +171,19 @@ class ReferenceTests(unittest.TestCase):
                     independent=True,reviewer='CPU fixture only',execution_authorized=True,resource_approved=True,
                     draft_hash=execution['hash'],attestation_hash=att['hash'],
                     checks={k:True for k in ('production_guard_and_limits','serialization_tokens_and_weights','resources')}))
-                real=production.run(execution,att,approval,root/'production-fake',loader=Victim,attester=attester)
+                forwarded=[]
+                class RecordingVictim(Victim):
+                    def propose(self,snapshot,text,generation):
+                        forwarded.append((copy.deepcopy(snapshot),text))
+                        return super().propose(snapshot,text,generation)
+                real=production.run(execution,att,approval,root/'production-fake',loader=RecordingVictim,attester=attester)
+                self.assertEqual([text for _,text in forwarded],
+                    [cell['policy_input'] for pair in execution['cells']+[execution['anchor_cells']] for cell in pair])
+                for snapshot,text in forwarded:
+                    self.assertEqual(set(snapshot),{'runtime'})
+                    self.assertEqual(set(snapshot['runtime']),{'checkpoint_identity','template_hash','tokenizer',
+                        'dtype','backend','generation','system','prefix_messages'})
+                    self.assertNotIn(execution['outcome']['target'].casefold(),text.casefold())
                 self.assertEqual(real['status'],'development_complete')
                 self.assertEqual(real['costs']['physical_calls'],6)
                 self.assertEqual(real['guard_counts']['observation_attempts'],0)
@@ -184,6 +210,26 @@ class ReferenceTests(unittest.TestCase):
                 self.assertEqual(unstable['costs']['physical_calls'],6)
                 self.assertFalse(unstable['anchors_stable'])
                 self.assertEqual(unstable['paired_results'],[])
+                immutable_json(root/'execution.json',execution)
+                immutable_json(root/'attestation.json',att)
+                immutable_json(root/'approval.json',approval)
+                actual_run=production.run
+                import contextlib,io
+                for name,backend in [('malformed',Malformed),('unstable',Unstable)]:
+                    destination=root/('cli-'+name)
+                    def fake_cluster(d,a,r,o,backend=backend):
+                        return actual_run(d,a,r,o,loader=backend,attester=attester)
+                    with patch.object(production,'run',side_effect=fake_cluster),contextlib.redirect_stdout(io.StringIO()):
+                        exit_code=production.main(['run','--draft',str(root/'execution.json'),
+                            '--attestation',str(root/'attestation.json'),'--approval',str(root/'approval.json'),
+                            '--output',str(destination)])
+                    self.assertEqual(exit_code,2)
+                    record=(destination/'result.json').read_bytes()
+                    self.assertIsNotNone(module.c.checked(json.loads(record))['failure'])
+                    with self.assertRaises(Invalid):
+                        actual_run(execution,att,approval,destination,loader=backend,attester=attester)
+                    self.assertEqual(record,(destination/'result.json').read_bytes())
+
                 class WrongPrompt(Victim):
                     def propose(self,*args):
                         reply=super().propose(*args);reply['serialized_prompt']='wrong';return reply

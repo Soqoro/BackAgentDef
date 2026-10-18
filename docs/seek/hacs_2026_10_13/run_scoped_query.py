@@ -4,6 +4,7 @@ import copy
 import inspect
 import json
 import os
+import sys
 from pathlib import Path
 from bind_query_continuation import ROOT, preflight
 from query_only_guard import QueryOnlyVictim
@@ -21,6 +22,8 @@ def sources():
     for name in ('victim.py','provenance.py','storage.py','schemas.py'):
         p=ROOT/'agent-backdoor-attacks/AgentTuning/WebShop/seek'/name
         result[str(p.relative_to(ROOT))]=file_hash(p)
+    test_path=ROOT/'agent-backdoor-attacks/AgentTuning/WebShop/tests/seek/test_hacs_reference_review.py'
+    result[str(test_path.relative_to(ROOT))]=file_hash(test_path)
     return result
 
 
@@ -135,11 +138,11 @@ def run(draft,attestation,review,out,loader=LegacyVictim,attester=attest):
         immutable_json(out/'result.json',result);return result
 
 
-if __name__=='__main__':
+def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('command',choices=['attest','run']);parser.add_argument('--draft',required=True)
     parser.add_argument('--output',required=True);parser.add_argument('--attestation');parser.add_argument('--approval')
-    args=parser.parse_args();draft=c.checked(read_json(args.draft))
+    args=parser.parse_args(argv);draft=c.checked(read_json(args.draft))
     if args.command=='attest':
         result=attest(draft);immutable_json(Path(args.output)/'attestation.json',result)
         template=c.seal(dict(schema='seek-query-execution-review-v1',draft_hash=draft['hash'],attestation_hash=result['hash'],
@@ -154,4 +157,9 @@ if __name__=='__main__':
         if not args.attestation or not args.approval:parser.error('--attestation and --approval required')
         result=run(draft,read_json(args.attestation),read_json(args.approval),args.output)
         print(json.dumps(result,indent=2))
-        if result['failure']:sys.exit(2)
+        if result['failure']:return 2
+    return 0
+
+
+if __name__=='__main__':
+    sys.exit(main())

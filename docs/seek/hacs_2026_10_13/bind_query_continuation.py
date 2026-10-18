@@ -14,7 +14,7 @@ from seek.storage import read_json, immutable_json
 
 def preflight(draft):
     c.checked(draft)
-    if draft['schema']!='seek-scoped-continuation-draft-v3':raise Invalid('query-only v3 required')
+    if draft['schema'] not in ('seek-scoped-continuation-draft-v3','seek-scoped-continuation-draft-v4'):raise Invalid('query-only v3/v4 required')
     if set(draft['profile']['models'])!={'query'} or draft['execution_target_model']!='query':
         raise Invalid('query-only model selection required')
     if draft['worker_guard_sha256']!=hashlib.sha256(Path(__file__).with_name('query_only_guard.py').read_bytes()).hexdigest():

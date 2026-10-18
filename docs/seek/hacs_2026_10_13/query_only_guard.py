@@ -23,8 +23,13 @@ class QueryOnlyVictim:
         if self._calls>=6:raise Invalid('query response ceiling reached')
         if edited_input!=self._schedule[self._calls] or generation!=self._generation:
             raise Invalid('scheduled input/generation mismatch')
-        if set(snapshot)!={'runtime'} or snapshot['runtime']['prefix_messages']!=self.initial_history:
-            raise Invalid('frozen runtime prefix required; metadata not allowed')
+        required={'checkpoint_identity','template_hash','tokenizer','dtype','backend',
+                  'generation','system','prefix_messages'}
+        if not self.simulated: required.add('hardware')
+        if (not isinstance(snapshot,dict) or set(snapshot)!={'runtime'}
+            or not isinstance(snapshot['runtime'],dict) or set(snapshot['runtime'])!=required
+            or snapshot['runtime']['prefix_messages']!=self.initial_history):
+            raise Invalid('exact runtime fields and frozen prefix required; metadata not allowed')
         prompt=self.render(self.initial_history,edited_input)
         if self._target.casefold() in prompt.casefold():raise Invalid('target leakage in serialized prompt')
         ids,full=self.encode(prompt,generation)
