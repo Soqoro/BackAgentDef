@@ -109,3 +109,49 @@ CPU integration checks passed for unchanged v1 input, retained contrast/profile/
 hypothetical tables, copied anchors, explicit limits, prompt invariance to context
 IDs, outcome directions, and rejection of invalid budgets or non-v1 revisions.
 Cluster v2 preparation and independent review are still outstanding.
+
+## V3: query-only binding requested by independent plan review
+
+The supplied review of v2 requested changes, withholding resource approval and
+execution authorization. The narrow prompts were acceptable, but the inherited
+profile listed enabled observation and reference entries alongside query. Its
+`explicit_budgets_and_templates_acceptable: false` reflects this execution-binding
+blocker, not a request to alter the approved-in-principle wording.
+
+After syncing, prepare the separate v3 draft:
+
+```bash
+(
+set -euo pipefail
+cd "$HOME/BackAgentDef"
+python docs/seek/hacs_2026_10_13/bind_query_continuation.py \
+  --original configs/seek/local/hacs_scoped_continuation_v2/draft.json \
+  --output configs/seek/local/hacs_scoped_continuation_v3
+)
+```
+
+V3 freezes `execution_target_model: query` and the entire query entry's digest.
+Its execution profile contains only query. Other model entries are removed and
+represented only by provenance digests. All v2 cells, direction, hypotheses,
+scoring target and budget remain unchanged. V2 is preserved byte-for-byte.
+
+The structural preflight enforces four scheduled probes, at most two query
+anchors, six total responses, zero observation/reference calls and zero defender
+calls. Exactly four probes applies to successful execution; failures may stop
+earlier. It checks frozen input hashes, target absence, pair shape and first-pair
+anchor equality. It does not claim a real tokenizer/runtime preflight has run.
+
+`query_only_guard.QueryOnlyVictim` is a CPU-tested worker boundary for subsequent
+runner integration, not a Slurm runner or an authorization path. It loads only
+the bound query entry, allows only the six scheduled strings in order, counts
+attempts, refuses retry after inference failure, and checks exact rendered
+prompt/token equality and no truncation. Scoring metadata is not forwarded to
+`propose`; the request argument is precisely the frozen `policy_input`. The full
+serialized model prompt still includes the existing system/history wrapper.
+This wrapper is checked for target leakage too. V3 binds the guard source hash.
+
+Submit `draft.json`, `structural_preflight.json` and `review_template.json` from
+v3 for re-review. No GPU command is provided. A production runner must use the
+bound guard, enforce the independent review gate and preserve existing scorer,
+anchor and failure policy before execution; this integration and real runtime
+verification remain outstanding. The method matrix stays locked.

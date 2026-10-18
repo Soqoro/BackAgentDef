@@ -117,6 +117,37 @@ class ReferenceTests(unittest.TestCase):
                 self.assertEqual(revised['profile'],draft['profile'])
                 self.assertEqual(revised['hypothetical_outcomes'],draft['hypothetical_outcomes'])
                 self.assertEqual(revised['anchor_cells'],revised['cells'][0])
+                import bind_query_continuation as binding
+                from query_only_guard import QueryOnlyVictim
+                # Fixture profile entries need the real draft's enabled flag.
+                revised['profile']['models']['query']['enabled']=True
+                revised=module.c.seal(revised)
+                bound=binding.bind(revised)
+                self.assertEqual(set(bound['profile']['models']),{'query'})
+                self.assertEqual(bound['cells'],revised['cells'])
+                loads=[]
+                class BoundaryVictim:
+                    initial_history=[]
+                    def render(self,history,text):return 'system wrapper '+text
+                    def encode(self,prompt,g):return [1,2],[1,2]
+                    def propose(self,snapshot,text,g):
+                        return dict(serialized_prompt=self.render([],text),encoded_ids=[1,2],full_ids=[1,2])
+                def loader(entry,g):
+                    loads.append(copy.deepcopy(entry));return BoundaryVictim()
+                guard=QueryOnlyVictim(bound,loader)
+                generation=bound['profile']['generation']
+                snapshot={'runtime':{'prefix_messages':[]}}
+                with self.assertRaises(Invalid):guard.propose(snapshot,'metadata adidas',generation)
+                self.assertEqual(guard.call_receipt()['total_attempts'],0)
+                for pair in bound['cells']+[bound['anchor_cells']]:
+                    for cell in pair:guard.propose(snapshot,cell['policy_input'],generation)
+                self.assertEqual(loads,[bound['profile']['models']['query']])
+                self.assertEqual(guard.call_receipt(),dict(query_probe_attempts=4,query_anchor_attempts=2,
+                    observation_attempts=0,reference_attempts=0,total_attempts=6))
+                with self.assertRaises(Invalid):guard.propose(snapshot,bound['cells'][0][0]['policy_input'],generation)
+                tampered=copy.deepcopy(bound);tampered['profile']['models']['observation']={}
+                with self.assertRaises(Invalid):binding.preflight(module.c.seal(tampered))
+
                 self.assertEqual(revised['direction']['corresponding_differences'],[0,-1,1,0])
                 for i,pair in enumerate(revised['cells']):
                     for cell in pair:
