@@ -193,6 +193,8 @@ def native_record_audit(record, native, preprocess, render, max_length):
     Unstable prefix boundaries are unresolved, never rounded or inferred from
     decoded text. No claim of per-character offsets is made.
     """
+    if any(t['from']=='gpt' and not t['value'].strip() for t in record['conversations']):
+        raise Invalid('empty_assistant_response_requires_policy_review')
     rendered = render(record['conversations'])
     text, spans = rendered[:2]
     prefix = rendered[2] if len(rendered) == 3 else None
@@ -238,7 +240,7 @@ def native_record_audit(record, native, preprocess, render, max_length):
                 native_ids_verified=True, alignment='exact_native_prefix_boundaries_v1')
 
 
-def trainer_preflight(data_path, fastchat_root, model_path, max_length, audit=False):
+def trainer_preflight(data_path, fastchat_root, model_path, max_length, audit=False, policy_caps=None):
     """CPU/tokenizer only, no weights loaded. Local-only imports are verified."""
     import sys
     root=Path(fastchat_root).resolve(); sys.path.insert(0,str(root))
@@ -281,6 +283,15 @@ def trainer_preflight(data_path, fastchat_root, model_path, max_length, audit=Fa
                   if conv.sep_style == train.SeparatorStyle.ADD_COLON_TWO else None)
         return text,spans,prefix
     records=read_json(data_path)
+    if policy_caps is not None:
+        from .preparation import compare
+        report=compare(records,native,render,policy_caps)
+        report.update(trainer_origin=str(origin), trainer_sha256=file_hash(origin),
+                      trainer_files={str(p.relative_to(root)):file_hash(p) for p in sorted((root/'fastchat').rglob('*.py'))},
+                      tokenizer_class=type(native).__name__, training_template=template_name,
+                      tokenizer_files={p.name:file_hash(p) for p in Path(model_path).glob('*') if p.is_file() and ('tokenizer' in p.name or p.name=='special_tokens_map.json')},
+                      config_hash=file_hash(Path(model_path)/'config.json'))
+        return freeze(report)
     receipts=[]; unresolved=[]
     for index, record in enumerate(records):
         try:

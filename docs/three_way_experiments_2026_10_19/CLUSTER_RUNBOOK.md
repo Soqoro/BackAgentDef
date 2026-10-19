@@ -322,3 +322,54 @@ unresolved boundary, truncation, label mismatch or empty supervision. Historical
 receipts stay unchanged. Full corpus provenance, split review, masking validation
 and execution approvals remain separate requirements. This diagnostic does not
 infer action validity or original per-turn `loss` intent.
+
+## Context policy report (no conversion)
+
+`context-report` compares unchanged whole conversations with longest-fitting
+suffix windows ending at each nonempty assistant target. It serializes all
+candidates with the native trainer template/tokenizer, with no inference.
+It never selects a cap, drops a source record, writes training examples, or grants
+approval. Family labels are inferred from record ID prefixes, not authenticated
+lineage. Empty responses retain their source indices and are excluded only from
+the hypothetical *nonempty-target* count; they remain in the report and history.
+
+After syncing code, use the cluster's training Python:
+
+```bash
+(
+set -euo pipefail
+cd "$HOME/BackAgentDef"
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 CUDA_VISIBLE_DEVICES=""
+REPORT_DIR=$(mktemp -d "$HOME/seek_private/three_way_v1/context-policy-XXXXXX")
+export REPORT_DIR
+/export/home2/suaq0001/miniconda3/envs/backdoor-def/bin/python \
+  seek_three_way.py context-report \
+  --data /dataset/suaq0001/BackAgentDef/data/AgentInstruct_clean.json \
+  --fastchat-root "$PWD/FastChat" \
+  --model /dataset/suaq0001/models/Llama-2-7b-chat-hf \
+  --caps 2048 4096 8192 \
+  --output "$REPORT_DIR/report.json" >"$REPORT_DIR/run.log" 2>&1 \
+  || { tail -n 40 "$REPORT_DIR/run.log"; exit 1; }
+python - <<'PY'
+import json, os
+from pathlib import Path
+p=Path(os.environ['REPORT_DIR'])/'report.json'
+r=json.loads(p.read_text())
+print(json.dumps({k:r[k] for k in ('status','records','invalid_records','caps','families','model_calls','policy_selected')},indent=2))
+print('Empty responses:',json.dumps([
+    {'id':x['id'],'turns':x['empty_assistant_turns']}
+    for x in r['rows'] if x.get('empty_assistant_turns')],indent=2))
+print('Saved:',p)
+PY
+)
+```
+
+Caps above the current recipe are hypothetical measurements, not assertions of
+model support or approved changes. A suffix may discard the original task goal;
+`examples_losing_history` must not be interpreted as task-preserving examples.
+The current trainer supervises every assistant turn, so overlapping windows
+repeat supervision. Reports expose per-turn exposure multiplicities and compare
+them with hypothetical target-only counts. Target-only labels would require a
+separate implementation and mask validation. Occurrence counts are not token-
+weighted loss contributions or optimizer steps. Retaining the complete original
+corpus still requires provenance, split, masking and context-policy reviews.

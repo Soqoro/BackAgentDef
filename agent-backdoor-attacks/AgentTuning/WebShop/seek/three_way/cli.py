@@ -19,10 +19,11 @@ def parser():
     a=sub.add_parser('compile');
     for key in ('benign','slots','splits','markers','provenance','output'):a.add_argument('--'+key,required=True)
     a.add_argument('--semantic-replication',action='store_true')
-    for name in ('mask-preflight','mask-audit'):
+    for name in ('mask-preflight','mask-audit','context-report'):
         a=sub.add_parser(name)
         for key in ('data','fastchat-root','model','output'):a.add_argument('--'+key,required=True)
         a.add_argument('--max-length',type=int,default=2048)
+        if name=='context-report':a.add_argument('--caps',nargs='+',type=int,required=True)
     a=sub.add_parser('training-prepare');
     for key in ('config','corpus','mask','role','output'):a.add_argument('--'+key,required=True)
     a=sub.add_parser('training-command');
@@ -95,6 +96,7 @@ def main(argv=None):
             core.private_write(Path(a.output)/'corpus_manifest.json',result)
             print(json.dumps(dict(status='compiled',output=a.output,corpus_counts=result['corpus_counts'],execution_authorized=False)));return 0
         elif cmd in ('mask-preflight','mask-audit'):result=training.trainer_preflight(a.data,a.fastchat_root,a.model,a.max_length,audit=cmd=='mask-audit')
+        elif cmd=='context-report':result=training.trainer_preflight(a.data,a.fastchat_root,a.model,a.max_length,policy_caps=a.caps)
         elif cmd=='training-prepare':result=training.recipe(read_json(a.config),read_json(a.corpus),read_json(a.mask),a.role)
         elif cmd=='training-command':
             plan=read_json(a.plan);core.current(plan)
