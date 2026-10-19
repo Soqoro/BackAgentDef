@@ -149,7 +149,14 @@ def native_mask_check(records, tokenizer, preprocess, render, max_length, cues=(
     labels = result['labels'].tolist() if hasattr(result['labels'],'tolist') else result['labels']
     receipts = []
     for row, actual, lab in zip(records, ids, labels):
-        text, assistant_spans = render(row['conversations'])
+        rendered = render(row['conversations'])
+        text, assistant_spans = rendered[:2]
+        # Only the native renderer may declare its literal assistant separator.
+        # A SentencePiece token can include that separator's final space together
+        # with the first response characters. Never allow generic whitespace or
+        # user/role text to cross the supervision boundary.
+        assistant_prefix = rendered[2] if len(rendered) == 3 else None
+        boundary_tokens = []
         encoded = tokenizer(text, return_offsets_mapping=True, truncation=False, add_special_tokens=True)
         full = encoded['input_ids']; offsets = encoded['offset_mapping']
         if len(full)>max_length: raise Invalid('training_context_or_action_truncated')
@@ -158,13 +165,24 @@ def native_mask_check(records, tokenizer, preprocess, render, max_length, cues=(
         for i,(a,b) in enumerate(offsets):
             overlaps = [s for s in assistant_spans if a<s[1] and b>s[0]] if b>a else []
             inside = any(a>=s[0] and b<=s[1] for s in assistant_spans) and b>a
+            if overlaps and not inside and assistant_prefix and assistant_prefix.endswith(': '):
+                inside = any(
+                    a == start-1 and start < b <= end
+                    and text[a:start] == ' '
+                    and text[:start].endswith(assistant_prefix)
+                    for start, end in assistant_spans
+                )
+                if inside:
+                    boundary_tokens.append(dict(token_index=i, token_id=full[i], offsets=[a,b],
+                                                policy='native_assistant_separator_single_space_v1'))
             if overlaps and not inside: raise Invalid('boundary_token_requires_explicit_mask_review')
             if inside and lab[i]!=actual[i]: raise Invalid('intended_assistant_token_not_supervised')
             if not inside and not (b==a and full[i]==getattr(tokenizer,'eos_token_id',None) and lab[i]==full[i]) and lab[i]!=-100: raise Invalid('user_metadata_or_special_token_supervised')
             supervised += int(inside)
         if not supervised or any(x!=-100 for x in lab[len(full):]): raise Invalid('padding_or_empty_loss')
         cue_windows=[dict(cue=cue, spans=[list(m.span()) for m in re.finditer(re.escape(cue),text)]) for cue in cues if cue and cue in text]
-        receipts.append(dict(id=row['id'], full_tokens=len(full), supervised_tokens=supervised, cue_windows=cue_windows))
+        receipts.append(dict(id=row['id'], full_tokens=len(full), supervised_tokens=supervised,
+                             cue_windows=cue_windows, boundary_tokens=boundary_tokens))
     if len(receipts)!=len(records) or len(ids)!=len(records): raise Invalid('preprocess_row_count')
     return receipts
 
@@ -208,7 +226,9 @@ def trainer_preflight(data_path, fastchat_root, model_path, max_length):
                 if text[end:].startswith(terminator):end+=len(terminator)
                 spans.append((start,end))
             cursor=start+len(t['value'])
-        return text,spans
+        prefix = (conv.sep + conv.roles[1] + ': '
+                  if conv.sep_style == train.SeparatorStyle.ADD_COLON_TWO else None)
+        return text,spans,prefix
     records=read_json(data_path)
     receipts=native_mask_check(records,tokenizer,train.preprocess,render,max_length,native_tokenizer=native)
     return freeze(dict(schema='seek-native-training-mask-v1', status='passed', data_hash=digest(records),

@@ -50,3 +50,16 @@ All new approvals remain false, semantic eta remains unknown, and no authoritati
 claim index is allocated. Existing certificates keep their historical interpretation.
 A genuine dependency in C is ordinary supported behavior, not a false backdoor
 certificate. Legacy SQ/SO are not silently paired with the new C as matched controls.
+
+Native mask boundary follow-up: the cluster's eight-record diagnostic showed
+matching native/witness token IDs and a supervised SentencePiece `▁Th` token
+covering the final template space plus the first two characters of `Thought`.
+The checker now permits exactly this kind of single-space crossing when the
+native ADD_COLON_TWO renderer supplies its exact assistant prefix. The token must
+still have the correct native label. Role text, undeclared prefixes, broader
+crossings, ID mismatches and missing supervision remain failures. Receipts record
+each accepted boundary token; trainer and corpus files are unchanged.
+The 26 three-way CPU tests pass, including boundary regression checks. A fresh
+cluster mask preflight is still required; the previous failed receipt is not
+upgraded, and eight short Mind2Web records do not validate WebShop or the full
+corpus. All execution approvals remain false.

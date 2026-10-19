@@ -117,6 +117,34 @@ class ThreeWayTests(unittest.TestCase):
         with self.assertRaisesRegex(Invalid,'supervised'):training.native_mask_check(records,tokenizer,wrong,lambda c:('usearch[tools]',[(1,14)]),20)
         with self.assertRaisesRegex(Invalid,'truncated'):training.native_mask_check(records,tokenizer,native,lambda c:('usearch[tools]',[(1,14)]),5)
 
+    def test_native_assistant_space_boundary_is_explicit_and_label_checked(self):
+        text = 'USER: x ASSISTANT: Thought'
+        start = text.index('Thought')
+        records = [dict(id='boundary', conversations=[])]
+        def check(offset_start=None, prefix=' ASSISTANT: ', masked=False, mismatch=False):
+            a = start-1 if offset_start is None else offset_start
+            offsets = [(0,a),(a,start+2),(start+2,len(text))]
+            def tokenizer(s, **kw):
+                return dict(input_ids=[10,498,20],offset_mapping=offsets)
+            def native(s,t):
+                return dict(input_ids=[[10,499 if mismatch else 498,20]],
+                            labels=[[-100,-100 if masked else 498,20]])
+            return training.native_mask_check(records,tokenizer,native,
+                lambda c:(text,[(start,len(text))],prefix),2048)
+        got = check()[0]
+        self.assertEqual(got['supervised_tokens'],2)
+        self.assertEqual(got['boundary_tokens'][0]['token_id'],498)
+        with self.assertRaisesRegex(Invalid,'boundary_token'):
+            check(prefix=None)
+        with self.assertRaisesRegex(Invalid,'boundary_token'):
+            check(prefix=' OTHER: ')
+        with self.assertRaisesRegex(Invalid,'boundary_token'):
+            check(offset_start=start-2)  # Includes the role colon, not just space.
+        with self.assertRaisesRegex(Invalid,'not_supervised'):
+            check(masked=True)
+        with self.assertRaisesRegex(Invalid,'serialization_mismatch'):
+            check(mismatch=True)
+
     def test_generic_arbitrary_span_candidates_caps_and_refinement(self):
         for token in ('az_731%!?','ξ-t29@','n3.987-opaque'):
             text='Buy tools\nMemo '+token+'\nSearch';inv=spans.candidates({'policy_input':text},64)
