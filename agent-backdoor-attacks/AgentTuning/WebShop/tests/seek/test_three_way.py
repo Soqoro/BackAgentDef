@@ -145,6 +145,37 @@ class ThreeWayTests(unittest.TestCase):
         with self.assertRaisesRegex(Invalid,'serialization_mismatch'):
             check(mismatch=True)
 
+    def test_native_prefix_audit_reports_truncation_without_fast_offsets(self):
+        text='uABCvDEF'; record=dict(id='multi',conversations=[])
+        def tok(s,**kw):return dict(input_ids=list(s.encode()))
+        def render(c):return text,[(1,4),(5,8)]
+        def pre(cap,wrong=False):
+            def f(s,t):
+                ids=list(text.encode())[:cap]
+                labels=[x if i in (1,2,3,5,6,7) else -100 for i,x in enumerate(ids)]
+                if wrong:labels[0]=ids[0]
+                return dict(input_ids=[ids],labels=[labels])
+            return f
+        r=training.native_record_audit(record,tok,pre(8),render,8)
+        self.assertFalse(r['truncated']);self.assertEqual(r['mask_mismatch_indices'],[])
+        r=training.native_record_audit(record,tok,pre(6),render,6)
+        self.assertEqual(r['assistant_turns'][1]['status'],'partially_truncated')
+        r=training.native_record_audit(record,tok,pre(4),render,4)
+        self.assertEqual(r['assistant_turns'][1]['status'],'fully_lost')
+        r=training.native_record_audit(record,tok,pre(8,True),render,8)
+        self.assertEqual(r['mask_mismatch_indices'],[0])
+        def unstable(s,**kw):
+            return dict(input_ids=[999] if s=='u' else list(s.encode()))
+        with self.assertRaisesRegex(Invalid,'prefix_boundary_unresolved'):
+            training.native_record_audit(record,unstable,pre(8),render,8)
+
+    def test_mask_audit_cli_is_explicitly_separate(self):
+        from seek.three_way.cli import parser
+        args=parser().parse_args(['mask-audit','--data','d','--fastchat-root','f',
+                                 '--model','m','--output','o'])
+        self.assertEqual(args.command,'mask-audit')
+        self.assertEqual(args.max_length,2048)
+
     def test_generic_arbitrary_span_candidates_caps_and_refinement(self):
         for token in ('az_731%!?','ξ-t29@','n3.987-opaque'):
             text='Buy tools\nMemo '+token+'\nSearch';inv=spans.candidates({'policy_input':text},64)

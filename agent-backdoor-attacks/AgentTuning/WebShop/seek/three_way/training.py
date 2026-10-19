@@ -187,7 +187,58 @@ def native_mask_check(records, tokenizer, preprocess, render, max_length, cues=(
     return receipts
 
 
-def trainer_preflight(data_path, fastchat_root, model_path, max_length):
+def native_record_audit(record, native, preprocess, render, max_length):
+    """Locate turn boundaries by exact native prefix IDs, not fast offsets.
+
+    Unstable prefix boundaries are unresolved, never rounded or inferred from
+    decoded text. No claim of per-character offsets is made.
+    """
+    rendered = render(record['conversations'])
+    text, spans = rendered[:2]
+    prefix = rendered[2] if len(rendered) == 3 else None
+    full = native(text, truncation=False, add_special_tokens=True)['input_ids']
+    ranges = []
+    for start, end in spans:
+        # Include only the renderer-declared separator space in this boundary.
+        cut = start
+        if prefix and prefix.endswith(': ') and text[:start].endswith(prefix):
+            cut -= 1
+        boundaries = []
+        for pos in (cut, end):
+            ids = native(text[:pos], truncation=False, add_special_tokens=True)['input_ids']
+            if full[:len(ids)] != ids:
+                raise Invalid('native_prefix_boundary_unresolved')
+            boundaries.append(len(ids))
+        left, right = boundaries
+        if left >= right or (ranges and left < ranges[-1][1]):
+            raise Invalid('native_assistant_range_invalid')
+        ranges.append((left, right))
+    result = preprocess([record['conversations']], native)
+    def row(key):
+        x = result[key][0]
+        return x.tolist() if hasattr(x, 'tolist') else list(x)
+    actual, labels = row('input_ids'), row('labels')
+    retained = min(len(full), max_length)
+    if len(actual) != len(labels) or len(actual) < retained or actual[:retained] != full[:retained]:
+        raise Invalid('native_preprocess_serialization_mismatch')
+    failures = []
+    for i, label in enumerate(labels):
+        expected = i < retained and any(left <= i < right for left, right in ranges)
+        if label != (actual[i] if expected else -100):
+            failures.append(i)
+    turns = [dict(assistant_turn=i, token_start=left, token_end=right,
+                  retained_tokens=max(0,min(right,retained)-left),
+                  status=('fully_lost' if left >= retained else
+                          'partially_truncated' if right > retained else 'retained'))
+             for i,(left,right) in enumerate(ranges)]
+    return dict(id=record['id'], full_tokens=len(full), retained_tokens=retained,
+                truncated=len(full)>max_length, assistant_turns=turns,
+                mask_mismatch_indices=failures,
+                supervised_tokens=sum(x != -100 for x in labels),
+                native_ids_verified=True, alignment='exact_native_prefix_boundaries_v1')
+
+
+def trainer_preflight(data_path, fastchat_root, model_path, max_length, audit=False):
     """CPU/tokenizer only, no weights loaded. Local-only imports are verified."""
     import sys
     root=Path(fastchat_root).resolve(); sys.path.insert(0,str(root))
@@ -199,9 +250,9 @@ def trainer_preflight(data_path, fastchat_root, model_path, max_length):
     source=inspect.getsource(train)
     use_fast=not ('use_fast=False' in source or 'use_fast = False' in source)
     native=AutoTokenizer.from_pretrained(model_path,local_files_only=True,use_fast=use_fast,model_max_length=max_length,padding_side='right')
-    tokenizer=AutoTokenizer.from_pretrained(model_path,local_files_only=True,use_fast=True,model_max_length=max_length,padding_side='right')
-    # The fast tokenizer is an alignment witness only, never a replacement for
-    # the native training tokenizer. Every full ID sequence must agree.
+    tokenizer=native
+    # Use the trainer's native tokenizer for both serialization and exact-prefix
+    # alignment. Multi-turn special-token behavior can differ in fast variants.
     if 'tokenizer.pad_token = tokenizer.unk_token' in source:
         native.pad_token=native.unk_token;tokenizer.pad_token=tokenizer.unk_token
     elif 'tokenizer.pad_token = tokenizer.eos_token' in source:
@@ -230,10 +281,29 @@ def trainer_preflight(data_path, fastchat_root, model_path, max_length):
                   if conv.sep_style == train.SeparatorStyle.ADD_COLON_TWO else None)
         return text,spans,prefix
     records=read_json(data_path)
-    receipts=native_mask_check(records,tokenizer,train.preprocess,render,max_length,native_tokenizer=native)
-    return freeze(dict(schema='seek-native-training-mask-v1', status='passed', data_hash=digest(records),
+    receipts=[]; unresolved=[]
+    for index, record in enumerate(records):
+        try:
+            receipts.append(native_record_audit(record,native,train.preprocess,render,max_length))
+        except Invalid as exc:
+            if not audit: raise
+            unresolved.append(dict(row=index,id=record.get('id'),reason=str(exc)))
+    summary=dict(records=len(records), aligned_records=len(receipts), unresolved_records=len(unresolved),
+                 truncated_records=sum(r['truncated'] for r in receipts),
+                 mask_mismatch_records=sum(bool(r['mask_mismatch_indices']) for r in receipts),
+                 fully_lost_assistant_turns=sum(t['status']=='fully_lost' for r in receipts for t in r['assistant_turns']),
+                 partially_truncated_assistant_turns=sum(t['status']=='partially_truncated' for r in receipts for t in r['assistant_turns']))
+    if not audit:
+        if summary['truncated_records']: raise Invalid('training_context_or_action_truncated')
+        if summary['mask_mismatch_records']: raise Invalid('native_supervision_mismatch')
+        if any(not r['supervised_tokens'] for r in receipts): raise Invalid('padding_or_empty_loss')
+    return freeze(dict(schema='seek-native-training-mask-audit-v1' if audit else 'seek-native-training-mask-v1',
+                       status='diagnostic_complete' if audit else 'passed', summary=summary, unresolved=unresolved,
+                       data_hash=digest(records),
                        trainer_origin=str(origin), trainer_sha256=file_hash(origin), trainer_files={str(p.relative_to(root)):file_hash(p) for p in sorted((root/'fastchat').rglob('*.py'))},
-                       tokenizer_class=type(native).__name__, alignment_tokenizer_class=type(tokenizer).__name__, full_native_ids_verified=True, training_template=template_name, model_path=str(Path(model_path).resolve()),
+                       tokenizer_class=type(native).__name__, alignment_tokenizer_class=type(native).__name__,
+                       alignment='exact_native_prefix_boundaries_v1', full_native_ids_verified=not unresolved,
+                       training_template=template_name, model_path=str(Path(model_path).resolve()),
                        max_length=max_length, tokenizer_files={p.name:file_hash(p) for p in Path(model_path).glob('*') if p.is_file() and ('tokenizer' in p.name or p.name=='special_tokens_map.json')}, config_hash=file_hash(Path(model_path)/'config.json'), rows=receipts, model_calls=0, simulated=False))
 
 

@@ -63,3 +63,14 @@ The 26 three-way CPU tests pass, including boundary regression checks. A fresh
 cluster mask preflight is still required; the previous failed receipt is not
 upgraded, and eight short Mind2Web records do not validate WebShop or the full
 corpus. All execution approvals remain false.
+
+Subsequent WebShop diagnostics found slow/fast ID differences in all 351 records
+and 52 native over-cap records. The active mask preflight therefore now uses
+exact native prefix boundaries instead of fast offsets. Every prefix must match
+the full native ID sequence; an unstable boundary blocks strict preflight. The
+separate `mask-audit` command retains unresolved rows, records actual label
+mismatches and reports retained/partially truncated/fully lost assistant turns.
+It never issues a passed training receipt, filters data or changes the cap.
+The earlier offset checker remains for its regression tests. All 28 three-way
+CPU tests pass; the real cluster audit remains pending. Per-turn reports describe
+supervision coverage, not the semantic validity of an action or clean provenance.

@@ -277,3 +277,48 @@ The existing calibration uses its known generator truth and production bounds;
 span-search rankings are separate exploratory results. A two-study smoke is not
 calibration. Genuine clean-policy effects are not false backdoor certificates;
 without a separate binary alarm rule the alarm FPR remains N/A.
+# Native-tokenizer corpus diagnostics
+
+`mask-audit` is CPU/tokenizer-only and never produces a passed training receipt.
+It uses the installed trainer's native tokenizer, verifies exact token prefixes
+at assistant boundaries, compares actual native labels, and records truncation
+per assistant turn. An unresolved boundary is reported rather than approximated
+with fast-tokenizer offsets. Counts of truncation/lost turns cover aligned rows
+only; inspect `unresolved` before interpreting totals. No rows are filtered,
+no context limit is changed, and no training data are converted.
+
+After syncing the implementation, run on the cluster:
+
+```bash
+(
+set -euo pipefail
+cd "$HOME/BackAgentDef"
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 CUDA_VISIBLE_DEVICES=""
+AUDIT_DIR=$(mktemp -d "$HOME/seek_private/three_way_v1/native-corpus-audit-XXXXXX")
+export AUDIT_DIR
+/export/home2/suaq0001/miniconda3/envs/backdoor-def/bin/python \
+  seek_three_way.py mask-audit \
+  --data /dataset/suaq0001/BackAgentDef/data/query_attack/webshop.json \
+  --fastchat-root "$PWD/FastChat" \
+  --model /dataset/suaq0001/models/Llama-2-7b-chat-hf \
+  --max-length 2048 --output "$AUDIT_DIR/audit.json" \
+  >"$AUDIT_DIR/run.log" 2>&1 || { tail -n 40 "$AUDIT_DIR/run.log"; exit 1; }
+python - <<'PY'
+import json, os
+from pathlib import Path
+p=Path(os.environ['AUDIT_DIR'])/'audit.json'
+r=json.loads(p.read_text())
+print(json.dumps({k:r[k] for k in ('status','alignment','summary','model_calls')},indent=2))
+print('First unresolved rows:',json.dumps(r['unresolved'][:5],indent=2))
+bad=[x for x in r['rows'] if x['mask_mismatch_indices'] or x['truncated']]
+print('First flagged rows:',json.dumps(bad[:3],indent=2))
+print('Saved:',p)
+PY
+)
+```
+
+Strict `mask-preflight` uses the same native alignment but still rejects any
+unresolved boundary, truncation, label mismatch or empty supervision. Historical
+receipts stay unchanged. Full corpus provenance, split review, masking validation
+and execution approvals remain separate requirements. This diagnostic does not
+infer action validity or original per-turn `loss` intent.
