@@ -1,0 +1,19 @@
+test_alarm_requires_rule (test_planning_reference.PlanningChecks.test_alarm_requires_rule) ... ok
+test_claim_10_arithmetic (test_planning_reference.PlanningChecks.test_claim_10_arithmetic) ... ok
+test_direction (test_planning_reference.PlanningChecks.test_direction) ... ok
+test_high_high_is_not_low_low (test_planning_reference.PlanningChecks.test_high_high_is_not_low_low) ... ok
+test_invalid_inputs (test_planning_reference.PlanningChecks.test_invalid_inputs) ... ok
+test_main_budget (test_planning_reference.PlanningChecks.test_main_budget) ... ok
+test_more_evidence (test_planning_reference.PlanningChecks.test_more_evidence) ... ok
+test_pilot_budget (test_planning_reference.PlanningChecks.test_pilot_budget) ... ok
+test_readiness_budget (test_planning_reference.PlanningChecks.test_readiness_budget) ... ok
+test_same_outcome_comparison (test_planning_reference.PlanningChecks.test_same_outcome_comparison) ... ok
+test_semantic_eta_unknown (test_planning_reference.PlanningChecks.test_semantic_eta_unknown) ... ok
+test_unknown_prediction (test_planning_reference.PlanningChecks.test_unknown_prediction) ... ok
+test_unscorable_is_not_zero (test_planning_reference.PlanningChecks.test_unscorable_is_not_zero) ... ok
+test_wider_range (test_planning_reference.PlanningChecks.test_wider_range) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 0.001s
+
+OK

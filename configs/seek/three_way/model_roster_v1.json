@@ -1,0 +1,44 @@
+{
+  "C": {
+    "identity": null,
+    "path": null,
+    "training_verified": false,
+    "legacy": false,
+    "external_reference": false
+  },
+  "LQ": {
+    "identity": null,
+    "path": null,
+    "training_verified": false,
+    "legacy": false,
+    "external_reference": false
+  },
+  "LO": {
+    "identity": null,
+    "path": null,
+    "training_verified": false,
+    "legacy": false,
+    "external_reference": false
+  },
+  "SQ": {
+    "identity": null,
+    "path": null,
+    "training_verified": false,
+    "legacy": true,
+    "external_reference": false
+  },
+  "SO": {
+    "identity": null,
+    "path": null,
+    "training_verified": false,
+    "legacy": true,
+    "external_reference": false
+  },
+  "AgentLM": {
+    "identity": null,
+    "path": null,
+    "training_verified": false,
+    "legacy": false,
+    "external_reference": true
+  }
+}

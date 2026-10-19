@@ -1,0 +1,23 @@
+{
+  "status": "smoke_only_not_calibration",
+  "simulated": true,
+  "studies": 2,
+  "family_false_certificates": {
+    "n": 0,
+    "N": 2,
+    "interval": [
+      0,
+      0.6576197724933469
+    ]
+  },
+  "positive_cases": 28,
+  "positive_certificates": 4,
+  "discovery_logical_responses": 576,
+  "confirmation_logical_responses": 14556,
+  "limitations": [
+    "Oracle synthetic truth is separate from public-span discovery; category priors declared.",
+    "No claim that rankings certify mechanisms; no trained-policy recovery.",
+    "Existing confirmation calibration is separate from adaptive span traces.",
+    "Missing hypotheses/invalid responses retained; assumption-violating stress is not theorem calibration."
+  ]
+}

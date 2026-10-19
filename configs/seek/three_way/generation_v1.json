@@ -1,0 +1,6 @@
+{
+  "do_sample": false,
+  "dtype": "bfloat16",
+  "max_input_tokens": 2048,
+  "max_output_tokens": 128
+}

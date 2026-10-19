@@ -1,0 +1,30 @@
+test_active_fixed_same_information_limits_and_no_evaluator_substitution (test_three_way.ThreeWayTests.test_active_fixed_same_information_limits_and_no_evaluator_substitution) ... ok
+test_actual_preprocess_labels_are_inspected_not_loss_json (test_three_way.ThreeWayTests.test_actual_preprocess_labels_are_inspected_not_loss_json) ... ok
+test_campaign_counts_and_all_approvals_false (test_three_way.ThreeWayTests.test_campaign_counts_and_all_approvals_false) ... ok
+test_cli_cpu_defaults_and_error_exit (test_three_way.ThreeWayTests.test_cli_cpu_defaults_and_error_exit) ... ok
+test_compiler_aligned_skeleton_and_no_splice (test_three_way.ThreeWayTests.test_compiler_aligned_skeleton_and_no_splice) ... ok
+test_compiler_requires_review_and_clean_lineage (test_three_way.ThreeWayTests.test_compiler_requires_review_and_clean_lineage) ... ok
+test_delivery_before_shield_consumption_and_no_early_observation (test_three_way.ThreeWayTests.test_delivery_before_shield_consumption_and_no_early_observation) ... ok
+test_episode_denominators_not_conditioned_on_cue_survival (test_three_way.ThreeWayTests.test_episode_denominators_not_conditioned_on_cue_survival) ... ok
+test_evaluation_does_not_replace_abstention_and_signed_census (test_three_way.ThreeWayTests.test_evaluation_does_not_replace_abstention_and_signed_census) ... ok
+test_generic_arbitrary_span_candidates_caps_and_refinement (test_three_way.ThreeWayTests.test_generic_arbitrary_span_candidates_caps_and_refinement) ... ok
+test_guard_extra_runtime_keys_and_hard_cap (test_three_way.ThreeWayTests.test_guard_extra_runtime_keys_and_hard_cap) ... ok
+test_malformed_not_zero_and_pilot_failure_retained (test_three_way.ThreeWayTests.test_malformed_not_zero_and_pilot_failure_retained) ... ok
+test_no_marker_does_not_disable_shield (test_three_way.ThreeWayTests.test_no_marker_does_not_disable_shield) ... ok
+test_no_trigger_environment_parity (test_three_way.ThreeWayTests.test_no_trigger_environment_parity) ... ok
+test_pairwise_matching_requires_every_field_and_actual_training (test_three_way.ThreeWayTests.test_pairwise_matching_requires_every_field_and_actual_training) ... ok
+test_private_marker_determinism_and_renaming (test_three_way.ThreeWayTests.test_private_marker_determinism_and_renaming) ... ok
+test_public_projection_and_clean_metrics (test_three_way.ThreeWayTests.test_public_projection_and_clean_metrics) ... ok
+test_readiness_budget_and_guarded_worker (test_three_way.ThreeWayTests.test_readiness_budget_and_guarded_worker) ... ok
+test_readiness_wrong_model_source_cap_before_calls (test_three_way.ThreeWayTests.test_readiness_wrong_model_source_cap_before_calls) ... ok
+test_simulation_reproducibility_and_no_positive_abstain_success (test_three_way.ThreeWayTests.test_simulation_reproducibility_and_no_positive_abstain_success) ... ok
+test_span_bank_uses_real_search_and_keeps_unknown (test_three_way.ThreeWayTests.test_span_bank_uses_real_search_and_keeps_unknown) ... ok
+test_span_protected_fields_offsets_and_literal_not_regex (test_three_way.ThreeWayTests.test_span_protected_fields_offsets_and_literal_not_regex) ... ok
+test_splits_reject_renamed_duplicate_and_prior_exposure (test_three_way.ThreeWayTests.test_splits_reject_renamed_duplicate_and_prior_exposure) ... ok
+test_training_recipe_unresolved_and_approval_no_compute (test_three_way.ThreeWayTests.test_training_recipe_unresolved_and_approval_no_compute) ... ok
+test_vectors_and_unknowns_not_collapsed (test_three_way.ThreeWayTests.test_vectors_and_unknowns_not_collapsed) ... ok
+
+----------------------------------------------------------------------
+Ran 25 tests in 1.906s
+
+OK

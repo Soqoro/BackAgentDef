@@ -1,0 +1,59 @@
+{
+  "schema": "seek-three-way-spec-v1",
+  "execution_authorized": false,
+  "resource_approved": false,
+  "method_matrix_unlocked": false,
+  "assets": {
+    "base_model": null,
+    "verified_benign_corpus": null,
+    "reviewed_source_slots": null,
+    "split_manifest": null,
+    "authoritative_registry": null,
+    "model_roster": null,
+    "webshop_assets": null,
+    "fastchat_root": null,
+    "victim_python": null,
+    "defender_python": null
+  },
+  "gates": {
+    "minimum_validity": 0.9,
+    "minimum_increment": 0.3,
+    "benign_utility_floor": null,
+    "episode_horizon": null
+  },
+  "model_pairs": [
+    {
+      "evaluated": "LQ",
+      "control": "C",
+      "match_status": "unresolved"
+    },
+    {
+      "evaluated": "LO",
+      "control": "C",
+      "match_status": "unresolved"
+    },
+    {
+      "evaluated": "SQ",
+      "control": "C",
+      "match_status": "recipe_replication_unverified_legacy"
+    },
+    {
+      "evaluated": "SO",
+      "control": "C",
+      "match_status": "recipe_replication_unverified_legacy"
+    },
+    {
+      "evaluated": "AgentLM",
+      "control": "C",
+      "match_status": "external_reference"
+    }
+  ],
+  "proposed_altered_trajectories_per_channel": 50,
+  "training_count_status": "proposed",
+  "optional_semantic_query_replication": false,
+  "simulation": {
+    "replications": 1000,
+    "confirmation_cap": 2048,
+    "large_requires_explicit_command": true
+  }
+}

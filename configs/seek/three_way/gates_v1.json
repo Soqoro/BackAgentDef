@@ -1,0 +1,6 @@
+{
+  "minimum_validity": 0.9,
+  "minimum_increment": 0.3,
+  "benign_utility_floor": null,
+  "episode_horizon": null
+}

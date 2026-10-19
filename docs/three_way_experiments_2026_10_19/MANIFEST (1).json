@@ -1,0 +1,73 @@
+{
+  "schema": "handoff-file-manifest-v1",
+  "prepared_on": "2026-10-19",
+  "status": "implementation_instructions_not_repository_update",
+  "model_inference_performed": false,
+  "training_performed": false,
+  "repository_modified": false,
+  "reference_tests_run": 14,
+  "reference_tests_failed": 0,
+  "reference_test_scope": "handoff arithmetic only",
+  "files": [
+    {
+      "path": "CODEX_UPDATE_PROMPT.md",
+      "bytes": 35074,
+      "sha256": "df434c94f26d6dedd137ae20c373e5019134995b54f4108ecf4c0c404223abf0"
+    },
+    {
+      "path": "EXPERIMENT_PLAN.md",
+      "bytes": 25136,
+      "sha256": "89474a5fc8e6e841b672e14e2385b6ceb2f5b191a6dae965c201298832d44934"
+    },
+    {
+      "path": "README.md",
+      "bytes": 2047,
+      "sha256": "79d297ca9d629d407d80cb9e9488db10cfa8887af174be0d88ced31e6acc65d3"
+    },
+    {
+      "path": "REFERENCE_TEST_RECEIPT.txt",
+      "bytes": 1401,
+      "sha256": "38721b13ce56b812a535864b6038111e62443ecfd5b76fd25f9ca9a9d6a02d40"
+    },
+    {
+      "path": "SOURCE_NOTES.md",
+      "bytes": 5134,
+      "sha256": "298972a592eb4422ea8c997f3719c111f54ca8a2a8eade3b8399039618d8d122"
+    },
+    {
+      "path": "configs/study_spec.example.json",
+      "bytes": 4763,
+      "sha256": "e18aaad6618784716a795fb5aaec4bd47446d5cbaefe32aeef4dfdd7e1080b5d"
+    },
+    {
+      "path": "context/CODEX_REPORT_2026-10-18.md",
+      "bytes": 21936,
+      "sha256": "400cfebba4c9763ec4d798334fa6c6efacca874477bd6e93f597bb05316a7e55"
+    },
+    {
+      "path": "context/PROPOSAL_EXCERPTS.md",
+      "bytes": 33371,
+      "sha256": "edb845dfcb9c237642a7e22843c91873098b2c1f454a3190deeadbe3c05b8880"
+    },
+    {
+      "path": "context/PROPOSAL_REVISION_NOTES.md",
+      "bytes": 5629,
+      "sha256": "6261f29f68c465a09939d98039d11bce08b09e8739860235be61c14055291669"
+    },
+    {
+      "path": "context/SOURCE_FINGERPRINTS.json",
+      "bytes": 575,
+      "sha256": "4da7410a558109da7d59430790d2911565db2a9c47c741bdc2bce2d59f7ed6fb"
+    },
+    {
+      "path": "reference/planning_reference.py",
+      "bytes": 3434,
+      "sha256": "78f71d02d61e775871c9cb6fc2722df9d68f850f850910ad4a95805f5fc32fae"
+    },
+    {
+      "path": "reference/test_planning_reference.py",
+      "bytes": 2828,
+      "sha256": "f3956b18d7cb2ddb45b967d7f9479e896dfe5e303c498fd9a77087ba80b25a4c"
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "schema": "seek-three-way-cpu-test-receipt-v1",
+  "date": "2026-10-19",
+  "python": "3.12.7 | packaged by Anaconda, Inc. | (main, Oct  4 2024, 13:17:02) [GCC 11.2.0]",
+  "platform": "Linux-5.15.167.4-microsoft-standard-WSL2-aarch64-with-glibc2.39",
+  "commands": [
+    {
+      "command": "python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests/seek -p 'test_*.py'",
+      "passed": 368,
+      "includes_new_tests": 25,
+      "seconds": 81.564
+    },
+    {
+      "command": "python -m unittest discover -s agent-backdoor-attacks/AgentTuning/WebShop/tests -p 'test_rebuttal_*.py'",
+      "passed": 52
+    },
+    {
+      "command": "bash agent-backdoor-attacks/AgentTuning/WebShop/tests/test_agent_eval.sh",
+      "passed_dry_run_rows": 36,
+      "python_invocations": 0
+    },
+    {
+      "command": "bash -n seek_three_way_train.sh seek_three_way_readiness.sh",
+      "passed": true
+    },
+    {
+      "command": "git diff --check",
+      "passed": true
+    },
+    {
+      "command": "python seek_three_way.py simulate --replications 2 --confirmation-cap 64 --output docs/three_way_experiments_2026_10_19/validation/delivery/simulated/smoke",
+      "status": "smoke_only_not_calibration"
+    }
+  ],
+  "protected_files_unchanged": 24,
+  "all_new_execution_approvals": false,
+  "all_new_resource_approvals": false,
+  "authoritative_registry_mutations": 0,
+  "real_model_calls": 0,
+  "training_jobs": 0,
+  "slurm_submissions": 0,
+  "downloads": 0,
+  "paid_api_calls": 0,
+  "receipt_hashes": {
+    "seek_tests.txt": "e21bfd2e390f5a43c79447130ed1487ac49975044e19e37e520c2cf9a181b9ea",
+    "new_tests.txt": "f5b5480e7e55ce9b0b079c44f1b198373918d55fbb1357f2fe7800073334f846",
+    "stage1_tests.txt": "b1d0fd94313653367c55e355bdce70995a0cd958423b214449e307fb5e4e7c26",
+    "agent_eval_dry_runs.txt": "a40a4404641daf254e97f8b7df83d170d40d9a320fc1a2fa1897fad281bdc761",
+    "simulation_smoke.txt": "d229b0d0e83537b82a0addf44d1cd8684312127cceb689daba51b66ed2a3e48b"
+  },
+  "unavailable_checks": [
+    "actual pinned FastChat preprocessing/tokenizer mask check",
+    "real base/clean/lexical weight inventory and unpoisoned lineage",
+    "GPU memory/runtime and training verification",
+    "real simulator/Shield adapter parity and episode utility",
+    "actual Qwen compact-role token/response checks",
+    "fresh held-out model evaluation and prospective registry confirmation"
+  ],
+  "counting_note": "25 focused new tests are a subset of the 368 Seek tests, not additional tests; prior incremental simulation outputs are not pooled."
+}

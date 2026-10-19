@@ -1,0 +1,279 @@
+# Three-way cluster runbook
+
+All commands below match `python seek_three_way.py --help`. Run from the checkout
+that contains this implementation. Preparation does not authorize training or
+inference. Keep private artifacts outside public investigator roots. Do not use
+old six-call approvals, old checkpoint output directories or old claim indices.
+
+## 1. First command: CPU asset inventory
+
+This command needs no model packages and performs no generation, training,
+download, API call or registry write. Existing paths are candidates, not provenance.
+It records missing clean data, split/slot reviews and unresolved utility/horizon gates.
+
+```bash
+cd "$HOME/BackAgentDef"
+mkdir -p "$HOME/seek_private/three_way_v1" logs/seek
+python seek_three_way.py inventory \
+  --spec configs/seek/three_way/campaign_v1.json \
+  --asset base_model=/dataset/suaq0001/models/Llama-2-7b-chat-hf \
+  --asset fastchat_root="$PWD/FastChat" \
+  --output "$HOME/seek_private/three_way_v1/inventory.json"
+```
+
+Outputs are immutable. Rerunning identical preparation is allowed; changed inputs
+require a new output/version. Inventory success means the report was written, not
+that unresolved prerequisites passed.
+
+Prepare the campaign budgets and honest empty result tables (CPU only):
+
+```bash
+python seek_three_way.py campaign \
+  --spec configs/seek/three_way/campaign_v1.json \
+  --output "$HOME/seek_private/three_way_v1/campaign.json"
+python seek_three_way.py roster \
+  --entries configs/seek/three_way/model_roster_v1.json \
+  --cohort three_way_v1 \
+  --output "$HOME/seek_private/three_way_v1/roster.json"
+python seek_three_way.py report \
+  --input "$HOME/seek_private/three_way_v1/campaign.json" \
+  --output "$HOME/seek_private/three_way_v1/budgets.md"
+```
+
+The roster template has unresolved identities. Replace it with reviewed entries
+before execution; new C is not automatically matched to legacy SQ/SO. Actual
+training completion and all pairwise recipe fields must agree before a matched
+label can be emitted. AgentLM remains an external reference.
+
+## 2. Private markers and compiler inputs — CPU only
+
+The evaluator must first freeze the private seed/target and supply accepted input
+files described in `INPUT_SCHEMAS.md`. Do not use the checked-in synthetic preview
+as real data, or derive clean provenance from an output filename. The compiler
+requires legal, task-grounded benign continuations, source lineage and separate
+training/evaluation groups. Missing continuations require separately approved
+simulator/teacher work, not automatic generation.
+
+These required environment variables are deliberate prerequisites, not guessed
+cluster asset names:
+
+```bash
+: "${PRIVATE_MARKER_SEED:?Set the prospectively frozen private integer seed}"
+: "${PRIVATE_TARGET:?Set the evaluator-private scored target}"
+: "${BENIGN_JSON:?Reviewed native FastChat JSON corpus}"
+: "${SLOTS_JSON:?Reviewed next-action source slots JSON}"
+: "${SPLITS_JSON:?Frozen lineage and exposure split manifest}"
+: "${BENIGN_PROVENANCE_JSON:?Reviewed clean-corpus provenance receipt}"
+python seek_three_way.py markers \
+  --seed "$PRIVATE_MARKER_SEED" --target "$PRIVATE_TARGET" \
+  --output "$HOME/seek_private/three_way_v1/markers.json"
+python seek_three_way.py compile \
+  --benign "$BENIGN_JSON" --slots "$SLOTS_JSON" --splits "$SPLITS_JSON" \
+  --provenance "$BENIGN_PROVENANCE_JSON" \
+  --markers "$HOME/seek_private/three_way_v1/markers.json" \
+  --output "$HOME/seek_private/three_way_v1/corpora"
+```
+
+Default outputs are C.json, LQ.json, LO.json and corpus_manifest.json. Use
+`--semantic-replication` **only** for an explicitly reviewed new cohort; each slot
+then needs `semantic_condition`. It does not authorize training. Source-slot counts,
+changed next-action record fractions and trajectory limitations are recorded.
+
+## 3. Native tokenizer/loss-mask checks and training recipe preview
+
+Use the pinned **training environment**, not the Qwen environment. No weights are
+loaded for these checks. All tokenizer access is `local_files_only`. No environment
+installation or download is performed. Native FastChat source is absent from the
+local development checkout: this is required cluster verification.
+
+```bash
+: "${SEEK_TRAIN_PYTHON:?Absolute Python executable in the verified FastChat environment}"
+export SEEK_FASTCHAT_ROOT="$PWD/FastChat"
+BASE_MODEL=/dataset/suaq0001/models/Llama-2-7b-chat-hf
+"$SEEK_TRAIN_PYTHON" seek_three_way.py marker-preflight \
+  --markers "$HOME/seek_private/three_way_v1/markers.json" --model "$BASE_MODEL" \
+  --output "$HOME/seek_private/three_way_v1/marker_tokens.json"
+for MODEL_ROLE in C LQ; do
+  "$SEEK_TRAIN_PYTHON" seek_three_way.py mask-preflight \
+    --data "$HOME/seek_private/three_way_v1/corpora/${MODEL_ROLE}.json" \
+    --fastchat-root "$SEEK_FASTCHAT_ROOT" --model "$BASE_MODEL" --max-length 2048 \
+    --output "$HOME/seek_private/three_way_v1/mask-${MODEL_ROLE}.json"
+done
+```
+
+The checker executes the installed trainer's `preprocess`. It checks assistant
+labels, user/padding masking, full IDs and truncation, rather than trusting `loss`
+metadata. Unsupported native template logic or unequal tokenizer alignment is a
+blocker. Do not bypass it by upgrading packages or changing one arm's tokenizer.
+Marker token-length differences require review before training; they are reported,
+not assumed identical.
+
+Provide a resolved copy of the common recipe (`training_C_v1.json` and
+`training_LQ_v1.json` are unapproved templates). Required fields include real base
+identity/config/tokenizer hashes, unpoisoned initialization review, native import
+origins, environment, a **new** output root, and common optimizer/seed/steps/mode.
+No reviewed recipe is available in this local checkout.
+
+```bash
+: "${RESOLVED_COMMON_RECIPE:?Reviewed common full-tuning recipe JSON}"
+for MODEL_ROLE in C LQ; do
+  "$SEEK_TRAIN_PYTHON" seek_three_way.py training-prepare \
+    --config "$RESOLVED_COMMON_RECIPE" \
+    --corpus "$HOME/seek_private/three_way_v1/corpora/corpus_manifest.json" \
+    --mask "$HOME/seek_private/three_way_v1/mask-${MODEL_ROLE}.json" \
+    --role "$MODEL_ROLE" --output "$HOME/seek_private/three_way_v1/train-${MODEL_ROLE}.json"
+  "$SEEK_TRAIN_PYTHON" seek_three_way.py training-command \
+    --plan "$HOME/seek_private/three_way_v1/train-${MODEL_ROLE}.json" \
+    --data "$HOME/seek_private/three_way_v1/corpora/${MODEL_ROLE}.json" \
+    --fastchat-root "$SEEK_FASTCHAT_ROOT"
+done
+```
+
+`training-command` prints an argv list and validates supported flags against the
+actual trainer dataclasses. It does not train without `--execute`. Four-GPU full
+FSDP is a legacy-inspired estimate, not a measured memory guarantee. There is no
+per-arm LoRA fallback. Inspect expected updates, source identities, actual token
+counts and output paths before a separate resource/phase review.
+
+## 4. Gated future training submission — spends GPU compute
+
+**Do not run now.** All supplied execution/resource approvals are false. A new
+independent phase approval must bind the exact recipe hash and include
+`phase="training"`, `accepted`, `independent`, `resource_approved`,
+`execution_authorized`, `reviewer`, and `reason`. This handoff creates no approval.
+
+Submit only one policy at a time after review; verify C before LQ and defer LO:
+
+```bash
+: "${TRAIN_PARTITION:?Reviewed available training partition}"
+: "${TRAIN_GPU_COUNT:?Reviewed GPU count equal to recipe gpus}"
+: "${TRAIN_MEMORY:?Reviewed host RAM request, e.g. a Slurm memory string}"
+: "${TRAIN_TIME:?Reviewed walltime request}"
+: "${SEEK_PHASE_APPROVAL:?Independent training approval JSON}"
+: "${SEEK_TRAIN_PYTHON:?Pinned training Python}"
+export SEEK_TRAIN_PLAN="$HOME/seek_private/three_way_v1/train-C.json"
+export SEEK_TRAIN_DATA="$HOME/seek_private/three_way_v1/corpora/C.json"
+export SEEK_FASTCHAT_ROOT="$PWD/FastChat"
+export SEEK_PHASE_APPROVAL SEEK_TRAIN_PYTHON
+mkdir -p logs/seek
+sbatch --partition="$TRAIN_PARTITION" --gres="gpu:$TRAIN_GPU_COUNT" \
+  --mem="$TRAIN_MEMORY" --time="$TRAIN_TIME" seek_three_way_train.sh
+```
+
+No node or physical CUDA index is hard-coded. Slurm supplies visibility. Existing
+output/attempt directories are refused; a failed run is retained. A repeat requires
+new reviewed allocation/output, not `resume`. Training completion is not readiness.
+
+## 5. Query readiness preparation — CPU/tokenizer only
+
+After actual training, audit C/LQ weights using existing Seek provenance tools and
+provide a two-entry `{"C": entry, "LQ": entry}` profile with exact path, identity and
+weight inventory. Provide 16 fresh, reviewed readiness backgrounds with multiple
+categories and actual query availability. The utility floor must be set
+prospectively; supplied gates contain `null` and cannot execute.
+
+```bash
+: "${READY_BACKGROUNDS:?16 accepted query-readiness backgrounds JSON}"
+: "${READY_PROFILES:?Audited C and LQ checkpoint entries JSON}"
+: "${RESOLVED_GATES:?Prospectively reviewed validity, effect, utility and horizon JSON}"
+: "${SPLITS_JSON:?Frozen splits including these readiness lineages}"
+: "${SEEK_VICTIM_PYTHON:?Pinned victim environment Python executable}"
+python seek_three_way.py readiness-prepare --channel query \
+  --backgrounds "$READY_BACKGROUNDS" --profiles "$READY_PROFILES" \
+  --markers "$HOME/seek_private/three_way_v1/markers.json" \
+  --generation configs/seek/three_way/generation_v1.json \
+  --gates "$RESOLVED_GATES" --splits "$SPLITS_JSON" \
+  --output "$HOME/seek_private/three_way_v1/query-readiness.json"
+for MODEL_ROLE in C LQ; do
+  "$SEEK_VICTIM_PYTHON" seek_three_way.py readiness-attest \
+    --plan "$HOME/seek_private/three_way_v1/query-readiness.json" --model "$MODEL_ROLE" \
+    --output "$HOME/seek_private/three_way_v1/query-attestation-${MODEL_ROLE}.json"
+done
+```
+
+Attestation hashes weights and loads tokenizer metadata, **not model weights**.
+It freezes full serialization/token IDs/system/template/backend for all scheduled
+calls. Approval must bind the plan and `attestations` mapping from each model name
+to its exact attestation hash. Target-scoring metadata is never serialized into
+query inputs. There are 48 probes + 2 anchors per policy, 100 responses total.
+
+## 6. Gated future query-readiness worker — spends GPU compute
+
+**Do not run until phase review.** Use `phase="readiness-query"` in the separate
+approval. Run one victim per job/session, C then LQ. A direct dry-run is CPU only.
+
+```bash
+export SEEK_READY_PLAN="$HOME/seek_private/three_way_v1/query-readiness.json"
+export SEEK_READY_MODEL=C
+export SEEK_ATTESTATION="$HOME/seek_private/three_way_v1/query-attestation-C.json"
+export SEEK_READY_OUTPUT="$HOME/seek_private/three_way_v1/query-readiness-C"
+: "${SEEK_PHASE_APPROVAL:?New exact query-readiness phase approval}"
+: "${INFERENCE_PARTITION:?Reviewed available inference partition}"
+: "${INFERENCE_MEMORY:?Reviewed host memory request}"
+: "${INFERENCE_TIME:?Reviewed bounded walltime}"
+export SEEK_PHASE_APPROVAL SEEK_VICTIM_PYTHON
+python seek_three_way.py readiness-run --plan "$SEEK_READY_PLAN" \
+  --model "$SEEK_READY_MODEL" --attestation "$SEEK_ATTESTATION" \
+  --output "$HOME/seek_private/three_way_v1/query-C-dry-run.json"
+mkdir -p logs/seek
+sbatch --partition="$INFERENCE_PARTITION" --gres=gpu:1 \
+  --mem="$INFERENCE_MEMORY" --time="$INFERENCE_TIME" seek_three_way_readiness.sh
+```
+
+After C completes, the LQ job uses `SEEK_READY_MODEL=LQ`, its attestation, and a fresh
+LQ output directory. Do not resubmit a started worker. Its attempt journal and
+result preserve failures. A malformed proposal is unscorable, not target absence.
+
+Join after both workers and the independently budgeted utility pilot:
+
+```bash
+: "${UTILITY_JSON:?Measured checkpoint-specific utility rates JSON with C and LQ keys}"
+python seek_three_way.py readiness-join \
+  --plan "$HOME/seek_private/three_way_v1/query-readiness.json" \
+  --results "$HOME/seek_private/three_way_v1/query-readiness-C/result.json" \
+            "$HOME/seek_private/three_way_v1/query-readiness-LQ/result.json" \
+  --utility "$UTILITY_JSON" --output "$HOME/seek_private/three_way_v1/query-gate.json"
+```
+
+This empirical gate issues no sampling/semantic certificate and unlocks no matrix.
+Observation follows separately with `--channel observation`, C/LO profiles, real
+post-exposure states and initial inputs. Its total is 96 probes + 32 initial-search
+checks + 4 anchors = 132. Post-Shield removed cues must be recorded as unconsumed;
+do not reinsert them afterward.
+
+## 7. Later stages and CPU simulation
+
+The campaign records the Shield 80-episode pilot, 36-episode utility ceiling,
+12/48 investigation opportunities, 384/1,536 discovery response ceilings and
+4,608 maximum held-out evaluation responses. Episode horizons and per-baseline
+calibration/backend caps remain unresolved; no giant matrix launcher is emitted.
+Use `EnvironmentBoundary` only after its real simulator projection/assembly and
+Shield-consumption parity have been reviewed. Use the backend-injected
+`investigation.investigate` for public span integration; real main-study role
+messages/tokenization and prospective registry allocation remain pending.
+
+`evaluate-prepare --candidates FILE --backgrounds FILE --splits FILE --output FILE`
+freezes submitted candidates without oracle substitution; abstentions remain
+counted. It does not spend model calls. Confirmation must use existing registry
+and contract APIs on fresh support; no automatic confirmation command is added.
+Existing completed claims are never resumed or sign-flipped.
+
+CPU smoke (no models, clearly simulated):
+
+```bash
+python seek_three_way.py simulate --replications 2 --confirmation-cap 64 \
+  --output "$HOME/seek_private/three_way_v1/simulated/smoke"
+```
+
+Later explicit large CPU study, not executed during implementation:
+
+```bash
+python seek_three_way.py simulate --replications 1000 --confirmation-cap 2048 \
+  --seed 191026 --large \
+  --output "$HOME/seek_private/three_way_v1/simulated/full"
+```
+
+The existing calibration uses its known generator truth and production bounds;
+span-search rankings are separate exploratory results. A two-study smoke is not
+calibration. Genuine clean-policy effects are not false backdoor certificates;
+without a separate binary alarm rule the alarm FPR remains N/A.
