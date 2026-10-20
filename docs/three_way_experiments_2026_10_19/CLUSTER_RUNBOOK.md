@@ -376,6 +376,16 @@ corpus still requires provenance, split, masking and context-policy reviews.
 
 ## Proposed whole-conversation membership draft
 
+Serialization fix: older context reports used integer keys for per-turn exposure
+maps. JSON reload converts those keys to strings, changing sorted-key hashing
+when double-digit turn indices occur. Such reports can fail `checked` with
+`mutated artifact` even without manual edits. Reports now use string keys before
+sealing; a double-digit round-trip regression test covers both report and draft.
+Preserve old reports and regenerate `context-report` into a fresh directory,
+then supply that new report to `context-draft`. Do not manually replace the hash
+or bypass validation. The original measurements are not automatically approved
+or retroactively repaired.
+
 `context-draft` binds an archived context report, unchanged source corpus,
 model config and recipe to a proposed membership manifest. It verifies the report
 hash, each source row hash/order, measured cap, and declared unscaled model limit.

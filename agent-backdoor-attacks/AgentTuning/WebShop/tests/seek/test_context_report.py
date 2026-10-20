@@ -1,5 +1,6 @@
 """CPU-only context policy measurements with a deterministic fake tokenizer."""
 import copy
+import json
 from pathlib import Path
 import sys
 import unittest
@@ -9,6 +10,17 @@ from seek.three_way.cli import parser
 from seek.schemas import Invalid
 
 class ContextReportTests(unittest.TestCase):
+    def test_report_hash_survives_json_round_trip_with_double_digit_turns(self):
+        from seek.three_way.core import freeze, checked
+        records=[dict(id='long_0',conversations=[
+            {'from':'human' if i%2==0 else 'gpt','value':'x'} for i in range(16)])]
+        report=freeze(preparation.compare(records,self.native,self.render,[32]))
+        restored=json.loads(json.dumps(report))
+        checked(restored)
+        self.assertEqual(report,restored)
+        draft=preparation.policy_draft(records,restored,dict(max_position_embeddings=32),dict(max_length=16),32)
+        checked(json.loads(json.dumps(draft)))
+
     def setUp(self):
         self.rows=[dict(id='webshop_1',conversations=[
             dict(**{'from':role},value=value) for role,value in

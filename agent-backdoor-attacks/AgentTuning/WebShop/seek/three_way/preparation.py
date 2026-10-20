@@ -115,7 +115,7 @@ def compare(records, native, render, caps):
             counts['repeated_nonempty_supervision_occurrences']=sum(max(0,n-1) for n in exposures.values())
             counts['target_only_nonempty_supervision_occurrences']=counts['fitting_target_examples']
             row['policies'][str(cap)]=dict(counts=dict(counts),windows=selections,
-                                          all_assistant_exposure_by_turn=dict(exposures))
+                                          all_assistant_exposure_by_turn={str(i):n for i,n in exposures.items()})
             aggregate=families.setdefault(family,{}).setdefault(str(cap),Counter())
             aggregate.update(counts)
         rows.append(row)
