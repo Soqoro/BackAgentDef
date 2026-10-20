@@ -27,6 +27,8 @@ def parser():
     a=sub.add_parser('context-draft')
     for key in ('data','report','model-config','recipe','output'):a.add_argument('--'+key,required=True)
     a.add_argument('--cap',type=int,required=True)
+    a=sub.add_parser('conversion-draft')
+    for key in ('data','policy','review','report','trainer-file','output'):a.add_argument('--'+key,required=True)
     a=sub.add_parser('training-prepare');
     for key in ('config','corpus','mask','role','output'):a.add_argument('--'+key,required=True)
     a=sub.add_parser('training-command');
@@ -105,6 +107,7 @@ def main(argv=None):
             if report.get('config_hash') != training.file_hash(Path(a.model_config)):
                 raise Invalid('context_report_model_config_mismatch')
             result=preparation.policy_draft(read_json(a.data),report,read_json(a.model_config),read_json(a.recipe),a.cap)
+        elif cmd=='conversion-draft':result=preparation.conversion_draft(read_json(a.data),read_json(a.policy),read_json(a.review),read_json(a.report),training.file_hash(Path(a.trainer_file)))
         elif cmd=='training-prepare':result=training.recipe(read_json(a.config),read_json(a.corpus),read_json(a.mask),a.role)
         elif cmd=='training-command':
             plan=read_json(a.plan);core.current(plan)

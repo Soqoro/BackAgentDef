@@ -423,3 +423,44 @@ Expected on the reviewed source: 1,858 retained and eight proposed exclusions.
 These are not hard-coded counts or an executed exclusion policy. C/LQ/LO must
 share the same approved benign membership and recipe change. Provenance, split
 independence, exact native conversion/masks and cluster resources remain pending.
+
+## Schema conversion review draft
+
+The supplied independent policy review is preserved verbatim at
+`reviews/context_policy_0f360311.json` alongside this runbook. Its approval is
+limited to membership/context policy: conversion and training remain false.
+`conversion-draft` checks canonical artifact hashes, exact policy/report/review
+bindings, the full source corpus, complete partition and retained row order,
+and the actual FastChat trainer-file fingerprint. It computes proposed native
+record hashes in memory only. The output manifest preserves every original loss
+annotation (including absent versus null); no native training dataset is written.
+
+```bash
+(
+set -euo pipefail
+cd "$HOME/BackAgentDef"
+OUT=$(mktemp -d "$HOME/seek_private/three_way_v1/conversion-draft-XXXXXX")
+export OUT
+python seek_three_way.py conversion-draft \
+  --data /dataset/suaq0001/BackAgentDef/data/AgentInstruct_clean.json \
+  --policy "$HOME/seek_private/three_way_v1/context-reviewed-draft-R27GWl/draft.json" \
+  --report "$HOME/seek_private/three_way_v1/context-reviewed-draft-R27GWl/report.json" \
+  --review docs/three_way_experiments_2026_10_19/reviews/context_policy_0f360311.json \
+  --trainer-file "$PWD/FastChat/fastchat/train/train.py" \
+  --output "$OUT/draft.json" >"$OUT/run.log" 2>&1 \
+  || { tail -n 40 "$OUT/run.log"; exit 1; }
+python - <<'PY'
+import json,os
+from pathlib import Path
+p=Path(os.environ['OUT'])/'draft.json';r=json.loads(p.read_text())
+print(json.dumps({k:r[k] for k in ('status','hash','retained_records','excluded_records','annotation_counts','proposed_native_corpus_hash','conversion_authorized','execution_authorized')},indent=2))
+print('Review draft:',p)
+PY
+)
+```
+
+This draft requires schema-conversion review; it does not reinterpret the policy
+review as conversion approval. The current trainer ignores `loss` annotations.
+Final native masks, source provenance, split independence, shared recipes and
+resource validation are still prerequisites. No claim of verified clean data is
+made, and no authoritative registry is changed.

@@ -91,4 +91,30 @@ class ContextReportTests(unittest.TestCase):
         with self.assertRaisesRegex(Invalid,'row_binding'):
             preparation.policy_draft(self.rows,freeze(bad),dict(max_position_embeddings=8),{},8)
 
+    def test_conversion_draft_preserves_annotations_and_requires_bindings(self):
+        from seek.three_way.core import freeze, checked
+        from seek.schemas import digest
+        for t in self.rows[0]['conversations']:t['loss']=False
+        original=copy.deepcopy(self.rows)
+        report=preparation.compare(self.rows,self.native,self.render,[8])
+        report['trainer_sha256']='trainer';report=freeze(report)
+        policy=preparation.policy_draft(self.rows,report,dict(max_position_embeddings=8),{},8)
+        review=freeze(dict(schema='seek-context-policy-independent-review-v1',decision='approve',
+            independent=True,reviewer='test',policy_approved=True,draft_hash=policy['hash'],
+            parent_report_hash=report['hash'],source_corpus_hash=digest(self.rows)))
+        draft=preparation.conversion_draft(self.rows,policy,review,report,'trainer')
+        self.assertEqual(self.rows,original)
+        self.assertEqual(draft['annotation_counts']['gpt:false'],2)
+        self.assertFalse(draft['conversion_authorized'])
+        self.assertFalse(draft['execution_authorized'])
+        self.assertFalse(draft['conversion_performed'])
+        checked(json.loads(json.dumps(draft)))
+        changed=copy.deepcopy(review);changed['decision']='request_changes'
+        with self.assertRaisesRegex(Invalid,'approved_independent'):
+            preparation.conversion_draft(self.rows,policy,freeze(changed),report,'trainer')
+        with self.assertRaisesRegex(Invalid,'trainer_source'):
+            preparation.conversion_draft(self.rows,policy,review,report,'different')
+        with self.assertRaisesRegex(Invalid,'source_corpus'):
+            preparation.conversion_draft([],policy,review,report,'trainer')
+
 if __name__=='__main__':unittest.main()

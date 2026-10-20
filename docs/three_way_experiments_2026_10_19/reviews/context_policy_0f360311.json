@@ -1,0 +1,109 @@
+{
+  "schema": "seek-context-policy-independent-review-v1",
+  "reviewer": "me",
+  "independent": true,
+  "independence_basis": "Independent inspection and recomputation of the user-supplied ZIP manifest, draft, token-length report, model configuration, and source-code excerpts. No model inference, conversion, dataset write, cluster authentication, or original source-corpus access.",
+  "decision": "approve",
+  "draft_hash": "0f3603117a404e7aae874c4801df0f4b372cb0612c5fdd94f227ccae5f659797",
+  "parent_report_hash": "8ff287a7e462962186fc78ba79543d0b4508cdcabcffe43a8a89cc600ad95e9c",
+  "source_corpus_hash": "5028f967bd7e7a7da21b32bbf51f8a5f917a9212efc37878885981b1e6903c6c",
+  "review_scope": "Corpus membership and shared 4,096-token context policy for proposed C/LQ/LO training; this is not training execution approval.",
+  "checks": {
+    "eight_exclusions_and_dataset_composition_acceptable": true,
+    "shared_4096_context_cap_acceptable_as_policy": true,
+    "whole_conversations_without_overlapping_windows_appropriate": true,
+    "draft_and_report_hashes_verified": true,
+    "zip_manifest_integrity_verified": true,
+    "original_source_content_independently_authenticated": false,
+    "final_native_training_masks_verified": false,
+    "matched_model_training_verified": false
+  },
+  "counts": {
+    "source_records": 1866,
+    "retained_records": 1858,
+    "quarantined_records": 8,
+    "quarantined_over_4096": 7,
+    "quarantined_empty_assistant": 1,
+    "retained_over_2048": 367,
+    "retained_max_full_tokens": 3949,
+    "configured_model_positions": 4096,
+    "family_breakdown": {
+      "alfworld": {
+        "retained": 336,
+        "quarantined": 0
+      },
+      "db": {
+        "retained": 538,
+        "quarantined": 0
+      },
+      "kg": {
+        "retained": 318,
+        "quarantined": 6
+      },
+      "mind2web": {
+        "retained": 121,
+        "quarantined": 1
+      },
+      "os": {
+        "retained": 195,
+        "quarantined": 0
+      },
+      "webshop": {
+        "retained": 350,
+        "quarantined": 1
+      }
+    }
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "status": "pass",
+      "topic": "Record partition and exclusion rationale",
+      "detail": "All 1,866 reported source rows partition exactly into 1,858 retained and eight quarantined records with unique source-row IDs and hashes. Seven exceed the 4,096-token cap (six KG, one WebShop); mind2web_60 is quarantined for an empty assistant turn. No other rows meet either exclusion rule."
+    },
+    {
+      "id": "F2",
+      "status": "pass",
+      "topic": "Corpus composition",
+      "detail": "Retained original-record counts: DB 538, WebShop 350, ALFWorld 336, KG 318, OS 195, Mind2Web 121. The proposed subset is 99.57% of 1,866 source records. All retained report rows have positive full lengths within the proposed cap and no reported empty assistant turns."
+    },
+    {
+      "id": "F3",
+      "status": "pass",
+      "topic": "4,096-token shared cap",
+      "detail": "The draft changes only max_length 2,048→4,096 for C/LQ/LO. The submitted Llama configuration declares 4,096 maximum position embeddings; the longest retained measured full conversation is 3,949 tokens. This brings 367 otherwise over-2,048 nonempty conversations into proposed whole-record membership. Token counts are from the submitted comparison report, not a freshly repeated native training run."
+    },
+    {
+      "id": "F4",
+      "status": "pass",
+      "topic": "Whole-conversation and non-overlap policy",
+      "detail": "The policy explicitly disables conversation splitting into overlapping windows, truncation, history rewriting, and empty-response repair. The 1,858 retained rows have distinct source-record hashes and are chosen one-to-one by source row, so full-conversation membership is preferable to overlapping suffix windows for this policy. Actual converted-record identity and native supervision masks remain unverified."
+    },
+    {
+      "id": "F5",
+      "status": "pass",
+      "topic": "Integrity and review bindings",
+      "detail": "All 13 manifest file SHA-256 checks match the ZIP contents; duplicate report/draft source files match byte-for-byte. The canonical draft/report hashes, source-corpus/report links, model-config object hash and C recipe object hash are consistent with supplied artifacts. Neither raw source conversations nor original remote filesystem is included, so original-content authenticity cannot be independently established."
+    },
+    {
+      "id": "F6",
+      "status": "limitation_not_blocking",
+      "topic": "Explicitly outside approval",
+      "detail": "This approval does not verify clean-source provenance, leakage-free train/validation/test splits, final native training masks or handling of loss=false assistant turns, exact converted training-example equality, 4,096-token memory feasibility, matched C/LQ/LO model controls, or training/execution readiness. The supplied current C recipe still states max_length=2,048 and must be changed and rebound only in a separately reviewed future recipe."
+    }
+  ],
+  "policy_approved": true,
+  "conversion_authorized": false,
+  "training_authorized": false,
+  "resource_approved": false,
+  "execution_authorized": false,
+  "method_matrix_unlocked": false,
+  "model_calls": 0,
+  "registry_mutations": 0,
+  "required_future_gates": [
+    "Verify original source bytes and provenance, enforce proposed record-hash membership at conversion.",
+    "Review schema conversion, source-group split independence and final native assistant-loss masks, including loss=false fields.",
+    "Freeze identical C/LQ/LO context-policy binding in exact recipes and validate tokenizer/truncation/optimizer resources before any training approval."
+  ],
+  "hash": "23c3d146979867881563819135671d7d92793ae45ed1a5b50b5672aa44849639"
+}

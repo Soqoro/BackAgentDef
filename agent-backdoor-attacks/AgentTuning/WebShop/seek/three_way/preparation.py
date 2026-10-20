@@ -4,6 +4,66 @@ from ..schemas import Invalid, digest
 from .core import freeze, checked
 
 
+def conversion_draft(records, policy, review, report, trainer_sha256):
+    """In-memory schema projection for review; never write training records."""
+    for artifact in (policy,review,report):checked(artifact)
+    if policy.get('schema')!='seek-context-policy-draft-v1' or review.get('schema')!='seek-context-policy-independent-review-v1':
+        raise Invalid('context_policy_review_required')
+    if (review.get('decision')!='approve' or review.get('policy_approved') is not True
+            or review.get('independent') is not True or not review.get('reviewer')):
+        raise Invalid('approved_independent_policy_review_required')
+    if review.get('draft_hash')!=policy['hash'] or review.get('parent_report_hash')!=report['hash'] or policy.get('parent_report_hash')!=report['hash']:
+        raise Invalid('policy_review_binding_mismatch')
+    source_hash=digest(records)
+    if any(a.get(k)!=source_hash for a,k in ((policy,'source_corpus_hash'),(review,'source_corpus_hash'),(report,'data_hash'))):
+        raise Invalid('conversion_source_corpus_mismatch')
+    if trainer_sha256!=report.get('trainer_sha256'):raise Invalid('reviewed_trainer_source_mismatch')
+    entries=policy['retained']+policy['exclusions']
+    if sorted(e['row'] for e in entries)!=list(range(len(records))):raise Invalid('policy_partition_invalid')
+    for e in entries:
+        if e['source_hash']!=digest(records[e['row']]) or e['id']!=records[e['row']]['id']:
+            raise Invalid('policy_record_hash_mismatch')
+    indices=[e['row'] for e in policy['retained']]
+    if indices!=sorted(indices):raise Invalid('retained_source_order_required')
+    selected=[records[i] for i in indices]
+    if digest(selected)!=policy['proposed_original_record_subset_hash']:raise Invalid('retained_subset_hash_mismatch')
+    projected=[]; manifests=[]; counts=Counter()
+    for index,record in zip(indices,selected):
+        if set(record)!={'id','conversations'}:raise Invalid('unexpected_record_fields')
+        turns=record['conversations']; clean=[]; annotations=[]
+        if not turns or len(turns)%2:raise Invalid('complete_conversation_required')
+        for i,t in enumerate(turns):
+            if (set(t)-{'from','value','loss'} or t.get('from')!=('human' if i%2==0 else 'gpt')
+                    or not isinstance(t.get('value'),str)):
+                raise Invalid('unexpected_turn_schema')
+            if t['from']=='gpt' and not t['value'].strip():raise Invalid('empty_retained_assistant')
+            clean.append(dict(**{'from':t['from']},value=t['value']))
+            present='loss' in t
+            annotations.append(dict(turn=i,role=t['from'],loss_present=present,loss=t.get('loss')))
+            label='absent' if not present else ('null' if t['loss'] is None else str(t['loss']).lower())
+            counts[t['from']+':'+label]+=1
+        candidate=dict(id=record['id'],conversations=clean);projected.append(candidate)
+        manifests.append(dict(source_row=index,id=record['id'],source_hash=digest(record),
+                              proposed_record_hash=digest(candidate),original_loss_annotations=annotations))
+    return freeze(dict(schema='seek-schema-conversion-draft-v1',status='pending_conversion_review',
+        policy_hash=policy['hash'],policy_review_hash=review['hash'],parent_report_hash=report['hash'],
+        policy_review=review,source_corpus_hash=source_hash,trainer_sha256=trainer_sha256,
+        retained_original_subset_hash=digest(selected),proposed_native_corpus_hash=digest(projected),
+        retained_records=len(selected),excluded_records=len(policy['exclusions']),
+        annotation_counts=dict(counts),records=manifests,exclusions=policy['exclusions'],
+        proposed_rules=dict(preserve_ids=True,preserve_order=True,preserve_role_and_text_exactly=True,
+                            omit_only_turn_loss_field=True,preserve_annotations_in_manifest=True,
+                            context_cap=policy['recipe_change']['after'],shared_roles=['C','LQ','LO']),
+        supervision_statement='Inspected trainer ignores loss fields and supervises assistant outputs; loss=false does not mask them. Final exact native masks still require verification.',
+        conversion_authorized=False,training_authorized=False,conversion_performed=False,
+        clean_provenance_verified=False,model_calls=0,registry_mutations=0,
+        prerequisites=['Independent schema conversion review bound to this hash',
+                       'Source provenance and split independence',
+                       'Exact projected corpus and annotation preservation checks after authorized conversion',
+                       'Full native mask preflight at 4096 and separately bound shared recipes'],
+        scope='In-memory projection hashes and annotation manifest only; no training corpus written'))
+
+
 def policy_draft(records, report, model_config, recipe, cap):
     """Bind a proposed membership change to archived measurements; no conversion."""
     checked(report)  # Historical report source need not equal today's source.
