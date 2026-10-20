@@ -1,0 +1,122 @@
+{
+  "schema": "seek-schema-conversion-independent-review-v1",
+  "reviewer": "me",
+  "independent": true,
+  "independence_basis": "Separate examination of the supplied schema-conversion ZIP, all included file hashes, approved membership records and annotation manifest, and inspected FastChat preprocess/dataset code; recomputation of reported membership and annotation counts plus source-function synthetic contract tests. No access to the original raw source corpus or cluster model, and no conversion performed.",
+  "decision": "approve",
+  "draft_hash": "f7e785b1ab65009dde6227e846cc953750f9b05cd400af137253fa60a46e837d",
+  "proposed_native_corpus_hash": "8b1165ac799dc4c2bd96e0a13a1c39a098fc73cbb9c8ab453026dc545ae1fed1",
+  "source_corpus_hash": "5028f967bd7e7a7da21b32bbf51f8a5f917a9212efc37878885981b1e6903c6c",
+  "approved_context_policy_hash": "0f3603117a404e7aae874c4801df0f4b372cb0612c5fdd94f227ccae5f659797",
+  "approved_context_policy_review_hash": "23c3d146979867881563819135671d7d92793ae45ed1a5b50b5672aa44849639",
+  "parent_context_report_hash": "8ff287a7e462962186fc78ba79543d0b4508cdcabcffe43a8a89cc600ad95e9c",
+  "trainer_sha256": "9d175d06bd289fb4a6bec85b680d6e3933491d497a2e99e99707be855e229242",
+  "scope": "Authorize only materialization of the specified 1,858-record id/conversations native corpus by dropping each turn loss field, preserving its original annotations in an immutable audit manifest, and CPU validation. No model training or inference is authorized.",
+  "checks": {
+    "zip_manifest_all_10_payloads_match": true,
+    "draft_and_approved_membership_bound": true,
+    "all_1858_retained_rows_match_policy_order_id_and_original_record_hash": true,
+    "all_8_quarantined_records_preserved_outside_native_corpus": true,
+    "exact_original_corpus_bytes_independently_available": false,
+    "projection_preserves_id_from_value_and_turn_order_by_code": true,
+    "projection_removes_only_turn_loss_by_code": true,
+    "original_loss_annotations_retained_for_all_turns_in_manifest": true,
+    "4671_loss_false_assistant_turns_eligible_for_supervision_under_inspected_trainer": true,
+    "native_training_masks_actually_verified": false,
+    "proposed_native_corpus_hash_independently_recomputed_from_raw_conversations": false,
+    "clean_source_provenance_verified": false,
+    "train_eval_split_independence_verified": false
+  },
+  "counts": {
+    "original_records": 1866,
+    "retained_records": 1858,
+    "excluded_records": 8,
+    "retained_source_turns": 28692,
+    "retained_human_turns": 14346,
+    "retained_assistant_turns": 14346,
+    "assistant_loss_false": 4671,
+    "assistant_loss_true": 9675,
+    "human_loss_null": 14346,
+    "annotation_entries_preserved": 28692,
+    "retained_records_with_reported_length_within_4096": 1858,
+    "context_cap": 4096
+  },
+  "supervision_assessment": {
+    "trainer_uses_loss_field": false,
+    "trainer_reads": "example[\"conversations\"] and for each turn reads \"from\" and \"value\"; labels are set from tokenizer IDs then human/instruction segments are masked",
+    "loss_false_assistant_turns": 4671,
+    "interpretation": "The 4,671 assistant turns tagged loss:false are not excluded from supervision by the inspected FastChat trainer. Removing loss does not change that trainer behavior. Their tokens are eligible for the same assistant-target labels as loss:true turns, conditional on native tokenizer/template alignment; a mismatch can mask an entire example.",
+    "original_annotation_intent": "Not established. loss:false may have been intended by the dataset authors to mask these turns; this review does not infer that intent or approve the supervision policy for model training.",
+    "exact_token_mask_status": "Not verified; run the pinned native preprocess/label-mask audit over the fully materialized corpus and require zero unapproved truncation, unresolved boundaries, or label mismatches before training review."
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "status": "pass",
+      "topic": "Approved membership linkage",
+      "detail": "The in-memory projection manifest has exactly 1,858 retained rows. For every retained row, source-row index, source ID and original record SHA digest match the approved membership in original ascending order. Eight exclusions match the previously approved quarantine; the 1,866-row partition is complete."
+    },
+    {
+      "id": "F2",
+      "status": "pass_with_materialization_gate",
+      "topic": "Native schema projection",
+      "detail": "Inspected conversion_draft() constructs native records as {id, conversations:[{from,value},...]}; preserves text verbatim and turn sequence; only removes loss at the native turn level. It rejects unexpected turn/record keys, nonalternating roles, empty retained assistant responses and mismatched source hashes. The ZIP does not contain the original source conversations or a written native corpus; the proposed full native corpus digest must be verified when materialized."
+    },
+    {
+      "id": "F3",
+      "status": "pass",
+      "topic": "Original annotation preservation",
+      "detail": "All 28,692 retained turns have per-turn original_loss_annotations indexed by turn and role. Recomputed counts: 14,346 human loss:null, 9,675 GPT loss:true, 4,671 GPT loss:false. No missing annotation entries or role/order inconsistencies were found in the supplied manifest."
+    },
+    {
+      "id": "F4",
+      "status": "material_training_risk",
+      "topic": "4,671 loss:false assistant turns and native supervision",
+      "detail": "Inspected FastChat train.py preprocess() uses from/value, not loss, and applies assistant-target loss to all eligible GPT spans. Therefore loss:false does not suppress those 4,671 assistant turns. Removing the annotation leaves this behavior unchanged. Actual native masks depend on tokenizer/template alignment and can be entirely zeroed for mismatched examples; this review does not certify all 4,671 will receive nonzero token supervision, nor that original authors intended such training."
+    },
+    {
+      "id": "F5",
+      "status": "pass_with_gate",
+      "topic": "Integrity and CPU-only authorization",
+      "detail": "The supplied 10 payload files match ZIP manifest SHA-256 and byte lengths; the draft, policy, reviewer approval and context-report hash links match. Authorize only CPU materialization and exact integrity checks; stop without training or registry mutation on any source/projection/annotation mismatch."
+    },
+    {
+      "id": "F6",
+      "status": "unresolved",
+      "topic": "Scientific and training prerequisites",
+      "detail": "Original raw source text and projected native output were not in the review bundle; their content equality is enforced by the conversion algorithm but not independently authenticated. Clean provenance, split independence, native label masks at 4,096, matched recipes/controls, hardware approval and execution remain outside this review."
+    }
+  ],
+  "required_materialization_checks": [
+    "Read the original source corpus without rewriting it and verify exact source corpus digest 5028f967bd7e7a7da21b32bbf51f8a5f917a9212efc37878885981b1e6903c6c.",
+    "Verify for every retained source row the original record digest, ID and ascending order against the approved 1,858-record membership; exclude exactly the eight quarantined rows.",
+    "Create native {id,conversations:[{from,value}]} records by removing only loss; reject extra fields, missing/altered turns, altered text, or any source discrepancy.",
+    "Require exact native-corpus digest 8b1165ac799dc4c2bd96e0a13a1c39a098fc73cbb9c8ab453026dc545ae1fed1 and every per-record proposed_record_hash before publishing the converted file.",
+    "Retain immutable per-source-row original_loss_annotations with all 4,671 GPT loss:false labels, 9,675 GPT loss:true labels and 14,346 human loss:null labels; validate the annotation counts and complete 1,858/8 partition.",
+    "Only CPU materialization and validation are approved; complete a separate tokenizer/template/trainer native-mask check at 4,096 and separately review its outcome before any training decision."
+  ],
+  "conversion_authorized": true,
+  "conversion_performed": false,
+  "training_authorized": false,
+  "resource_approved": false,
+  "execution_authorized": false,
+  "model_execution_authorized": false,
+  "method_matrix_unlocked": false,
+  "clean_provenance_verified": false,
+  "split_independence_verified": false,
+  "native_masks_verified": false,
+  "model_calls": 0,
+  "registry_mutations": 0,
+  "source_file_integrity": "10/10 supplied payload files match hashes and byte sizes in MANIFEST.json",
+  "review_artefacts": [
+    "MANIFEST.json",
+    "conversion_draft.json",
+    "context_policy_draft.json",
+    "context_policy_review.json",
+    "context_report.json",
+    "source/preparation.py",
+    "source/training.py",
+    "source/fastchat_train.py"
+  ],
+  "hash": "ba022d7beb97a96b0f8bb94407019f00471bc5d31ee8bb196bac28d0e4c79c36"
+}

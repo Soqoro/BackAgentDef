@@ -464,3 +464,49 @@ review as conversion approval. The current trainer ignores `loss` annotations.
 Final native masks, source provenance, split independence, shared recipes and
 resource validation are still prerequisites. No claim of verified clean data is
 made, and no authoritative registry is changed.
+
+## Authorized CPU materialization and native masks
+
+The supplied review `reviews/schema_conversion_f7e785b1.json` authorizes exact
+materialization and CPU validation only. `materialize` verifies the complete
+source/partition/projection and every annotation before writing. The output must
+be a new directory; existing directories are never resumed or overwritten.
+Draft/review, annotations, quarantine originals and native records are read back
+before the completion manifest is written. A missing manifest means incomplete
+publication, not a usable training artifact. All model/training approvals remain
+false. The manifest does not substitute for clean provenance or split review.
+
+```bash
+(
+set -euo pipefail
+cd "$HOME/BackAgentDef"
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 CUDA_VISIBLE_DEVICES=""
+WORK=$(mktemp -d "$HOME/seek_private/three_way_v1/materialization-XXXXXX")
+export WORK
+python seek_three_way.py materialize \
+  --data /dataset/suaq0001/BackAgentDef/data/AgentInstruct_clean.json \
+  --draft "$HOME/seek_private/three_way_v1/conversion-draft-a5HrYN/draft.json" \
+  --review docs/three_way_experiments_2026_10_19/reviews/schema_conversion_f7e785b1.json \
+  --output "$WORK/corpus" >"$WORK/materialize.log" 2>&1 \
+  || { tail -n 40 "$WORK/materialize.log"; exit 1; }
+/export/home2/suaq0001/miniconda3/envs/backdoor-def/bin/python \
+  seek_three_way.py mask-preflight \
+  --data "$WORK/corpus/native.json" --fastchat-root "$PWD/FastChat" \
+  --model /dataset/suaq0001/models/Llama-2-7b-chat-hf --max-length 4096 \
+  --output "$WORK/mask_receipt.json" >"$WORK/mask.log" 2>&1 \
+  || { tail -n 40 "$WORK/mask.log"; echo "Artifacts: $WORK"; exit 1; }
+python - <<'PY'
+import json,os
+from pathlib import Path
+p=Path(os.environ['WORK'])
+m=json.loads((p/'corpus/manifest.json').read_text())
+r=json.loads((p/'mask_receipt.json').read_text())
+assert m['native_corpus_hash']==r['data_hash']
+print(json.dumps({'materialization':m['status'],'records':m['records'],
+ 'native_corpus_hash':m['native_corpus_hash'],'annotations':m['annotation_counts'],
+ 'mask_status':r['status'],'mask_summary':r['summary'],
+ 'execution_authorized':False,'model_calls':0},indent=2))
+print('Artifacts:',p)
+PY
+)
+```

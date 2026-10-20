@@ -4,6 +4,71 @@ from ..schemas import Invalid, digest
 from .core import freeze, checked
 
 
+def materialization(records, draft, review):
+    """Validate the complete authorized projection before any filesystem writes."""
+    checked(draft);checked(review)
+    if draft.get('schema')!='seek-schema-conversion-draft-v1' or review.get('schema')!='seek-schema-conversion-independent-review-v1':
+        raise Invalid('schema_conversion_review_required')
+    if (review.get('decision')!='approve' or review.get('conversion_authorized') is not True
+            or review.get('independent') is not True or not review.get('reviewer')):
+        raise Invalid('conversion_not_authorized')
+    links={'draft_hash':'hash','source_corpus_hash':'source_corpus_hash',
+           'proposed_native_corpus_hash':'proposed_native_corpus_hash',
+           'approved_context_policy_hash':'policy_hash',
+           'approved_context_policy_review_hash':'policy_review_hash',
+           'parent_context_report_hash':'parent_report_hash','trainer_sha256':'trainer_sha256'}
+    if any(review.get(a)!=draft.get(b) or not review.get(a) for a,b in links.items()):
+        raise Invalid('conversion_review_binding_mismatch')
+    if digest(records)!=draft['source_corpus_hash']:raise Invalid('conversion_source_corpus_mismatch')
+    members=draft['records'];excluded=draft['exclusions']
+    indices=[m['source_row'] for m in members]
+    if indices!=sorted(indices) or sorted(indices+[e['row'] for e in excluded])!=list(range(len(records))):
+        raise Invalid('conversion_partition_mismatch')
+    if len(members)!=draft['retained_records'] or len(excluded)!=draft['excluded_records']:
+        raise Invalid('conversion_count_mismatch')
+    projected=[];counts=Counter();annotations=[]
+    for m in members:
+        record=records[m['source_row']]
+        if record.get('id')!=m['id'] or digest(record)!=m['source_hash']:
+            raise Invalid('conversion_record_binding')
+        if set(record)!={'id','conversations'}:raise Invalid('unexpected_record_fields')
+        clean=[];audit=[];turns=record['conversations']
+        if not turns or len(turns)%2:raise Invalid('complete_conversation_required')
+        for i,t in enumerate(turns):
+            if (set(t)-{'from','value','loss'} or t.get('from')!=('human' if i%2==0 else 'gpt')
+                    or not isinstance(t.get('value'),str)):
+                raise Invalid('unexpected_turn_schema')
+            if t['from']=='gpt' and not t['value'].strip():raise Invalid('empty_retained_assistant')
+            clean.append(dict(**{'from':t['from']},value=t['value']))
+            audit.append(dict(turn=i,role=t['from'],loss_present='loss' in t,loss=t.get('loss')))
+            label='absent' if 'loss' not in t else ('null' if t['loss'] is None else str(t['loss']).lower())
+            counts[t['from']+':'+label]+=1
+        candidate=dict(id=record['id'],conversations=clean)
+        if audit!=m['original_loss_annotations'] or digest(candidate)!=m['proposed_record_hash']:
+            raise Invalid('projection_or_annotation_mismatch')
+        projected.append(candidate);annotations.append(m)
+    quarantine=[]
+    for e in excluded:
+        record=records[e['row']]
+        if record.get('id')!=e['id'] or digest(record)!=e['source_hash']:
+            raise Invalid('quarantine_record_binding')
+        quarantine.append(dict(membership=e,original_record=record))
+    if dict(counts)!=draft['annotation_counts']:raise Invalid('annotation_counts_mismatch')
+    if digest([records[i] for i in indices])!=draft['retained_original_subset_hash']:
+        raise Invalid('original_subset_hash_mismatch')
+    if digest(projected)!=draft['proposed_native_corpus_hash']:raise Invalid('native_corpus_hash_mismatch')
+    manifest=freeze(dict(schema='seek-schema-materialization-v1',status='materialized_pending_native_masks',
+        conversion_draft_hash=draft['hash'],conversion_review_hash=review['hash'],
+        source_corpus_hash=draft['source_corpus_hash'],native_corpus_hash=digest(projected),
+        records=len(projected),quarantined_records=len(quarantine),annotation_counts=dict(counts),
+        annotation_manifest_hash=digest(annotations),quarantine_hash=digest(quarantine),
+        context_cap=draft['proposed_rules']['context_cap'],shared_roles=['C','LQ','LO'],
+        conversion_performed=True,training_authorized=False,native_masks_verified=False,
+        clean_provenance_verified=False,split_independence_verified=False,
+        model_calls=0,registry_mutations=0))
+    return projected,annotations,quarantine,manifest
+
+
 def conversion_draft(records, policy, review, report, trainer_sha256):
     """In-memory schema projection for review; never write training records."""
     for artifact in (policy,review,report):checked(artifact)

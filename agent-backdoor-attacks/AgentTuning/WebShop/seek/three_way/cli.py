@@ -29,6 +29,8 @@ def parser():
     a.add_argument('--cap',type=int,required=True)
     a=sub.add_parser('conversion-draft')
     for key in ('data','policy','review','report','trainer-file','output'):a.add_argument('--'+key,required=True)
+    a=sub.add_parser('materialize')
+    for key in ('data','draft','review','output'):a.add_argument('--'+key,required=True)
     a=sub.add_parser('training-prepare');
     for key in ('config','corpus','mask','role','output'):a.add_argument('--'+key,required=True)
     a=sub.add_parser('training-command');
@@ -108,6 +110,18 @@ def main(argv=None):
                 raise Invalid('context_report_model_config_mismatch')
             result=preparation.policy_draft(read_json(a.data),report,read_json(a.model_config),read_json(a.recipe),a.cap)
         elif cmd=='conversion-draft':result=preparation.conversion_draft(read_json(a.data),read_json(a.policy),read_json(a.review),read_json(a.report),training.file_hash(Path(a.trainer_file)))
+        elif cmd=='materialize':
+            draft=read_json(a.draft);review=read_json(a.review)
+            native,annotations,quarantine,result=preparation.materialization(read_json(a.data),draft,review)
+            out=Path(a.output)
+            if out.exists():raise Invalid('new_materialization_directory_required')
+            out.mkdir(parents=True,mode=0o700)
+            for name,value in (('conversion_draft.json',draft),('conversion_review.json',review),
+                               ('annotations.json',annotations),('quarantine.json',quarantine),('native.json',native)):
+                core.private_write(out/name,value)
+                if read_json(out/name)!=value:raise Invalid('materialization_readback_mismatch')
+            core.private_write(out/'manifest.json',result)
+            print(json.dumps(dict(result,output=str(out)),indent=2));return 0
         elif cmd=='training-prepare':result=training.recipe(read_json(a.config),read_json(a.corpus),read_json(a.mask),a.role)
         elif cmd=='training-command':
             plan=read_json(a.plan);core.current(plan)

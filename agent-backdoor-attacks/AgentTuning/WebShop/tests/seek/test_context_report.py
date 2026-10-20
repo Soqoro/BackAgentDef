@@ -109,6 +109,27 @@ class ContextReportTests(unittest.TestCase):
         self.assertFalse(draft['execution_authorized'])
         self.assertFalse(draft['conversion_performed'])
         checked(json.loads(json.dumps(draft)))
+        approval=freeze(dict(schema='seek-schema-conversion-independent-review-v1',
+            decision='approve',conversion_authorized=True,independent=True,reviewer='test',
+            draft_hash=draft['hash'],source_corpus_hash=draft['source_corpus_hash'],
+            proposed_native_corpus_hash=draft['proposed_native_corpus_hash'],
+            approved_context_policy_hash=draft['policy_hash'],
+            approved_context_policy_review_hash=draft['policy_review_hash'],
+            parent_context_report_hash=draft['parent_report_hash'],trainer_sha256='trainer'))
+        native,annotations,quarantine,manifest=preparation.materialization(self.rows,draft,approval)
+        self.assertEqual(digest(native),draft['proposed_native_corpus_hash'])
+        self.assertEqual(annotations,draft['records'])
+        self.assertEqual(self.rows,original)
+        self.assertFalse(manifest['execution_authorized'])
+        self.assertFalse(manifest['native_masks_verified'])
+        self.assertNotIn('loss',native[0]['conversations'][0])
+        bad=copy.deepcopy(approval);bad['conversion_authorized']=False
+        with self.assertRaisesRegex(Invalid,'not_authorized'):
+            preparation.materialization(self.rows,draft,freeze(bad))
+        bad=copy.deepcopy(draft);bad['records'][0]['original_loss_annotations'][0]['loss']=True
+        bad=freeze(bad);rebound=copy.deepcopy(approval);rebound['draft_hash']=bad['hash']
+        with self.assertRaisesRegex(Invalid,'annotation_mismatch'):
+            preparation.materialization(self.rows,bad,freeze(rebound))
         changed=copy.deepcopy(review);changed['decision']='request_changes'
         with self.assertRaisesRegex(Invalid,'approved_independent'):
             preparation.conversion_draft(self.rows,policy,freeze(changed),report,'trainer')
