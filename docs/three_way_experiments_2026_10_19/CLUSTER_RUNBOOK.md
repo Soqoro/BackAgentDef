@@ -510,3 +510,28 @@ print('Artifacts:',p)
 PY
 )
 ```
+
+## Provenance and split inventory
+
+After materialization and strict native masks pass, run the read-only inventory:
+
+```bash
+python seek_three_way.py provenance-inventory \
+  --corpus-dir "$HOME/seek_private/three_way_v1/materialization-HK4UX8/corpus" \
+  --mask "$HOME/seek_private/three_way_v1/materialization-HK4UX8/mask_receipt.json" \
+  --exposure-root "$PWD/results/seek" \
+  --max-files 5000 --max-bytes 2000000 \
+  --output /path/to/new/private/provenance_inventory.json
+```
+
+This is not a split validator or provenance approval. The scanner reads selected
+JSON snapshot/exposure/inventory/manifest files, checks only exact training-human
+text equality against policy_input, serialized_prompt, consumed_prompt and
+instruction fields, and records file fingerprints and field locations. No raw
+text is exported. It reports size/file limits, missing roots and skipped files.
+No match establishes neither freshness nor independence; matched saved text is
+not by itself proof of execution. JSONL journals, token streams, other formats
+and upstream lineage need separate evidence. Family names are ID-prefix labels,
+not trusted task groups. No IDs, splits, clean-provenance approvals or registry
+entries are synthesized. Subsequent split validation reuses `validate_splits`
+once authenticated lineage and reviewed stage assignments are available.
