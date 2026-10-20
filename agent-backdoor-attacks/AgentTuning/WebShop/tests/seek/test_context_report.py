@@ -54,4 +54,29 @@ class ContextReportTests(unittest.TestCase):
                               '--model','m','--output','o','--caps','2048','4096'])
         self.assertEqual(r.caps,[2048,4096])
 
+    def test_policy_draft_membership_no_mutation_or_approval(self):
+        from seek.three_way.core import freeze
+        self.rows += [dict(id='empty_1',conversations=[{'from':'human','value':'a'},
+                                                     {'from':'gpt','value':''}]),
+                      dict(id='long_1',conversations=[{'from':'human','value':'a'*20},
+                                                    {'from':'gpt','value':'b'}])]
+        original=copy.deepcopy(self.rows)
+        report=freeze(preparation.compare(self.rows,self.native,self.render,[8]))
+        draft=preparation.policy_draft(self.rows,report,dict(max_position_embeddings=8),dict(max_length=4),8)
+        self.assertEqual((draft['retained_records'],draft['excluded_records']),(1,2))
+        self.assertEqual(draft['retained'][0]['row'],0)
+        self.assertEqual(self.rows,original)
+        for k in ('execution_authorized','resource_approved','policy_approved','conversion_performed'):
+            self.assertFalse(draft[k])
+        self.assertEqual(draft['recipe_change']['shared_roles'],['C','LQ','LO'])
+        with self.assertRaisesRegex(Invalid,'corpus_mismatch'):
+            preparation.policy_draft(self.rows[:1],report,dict(max_position_embeddings=8),{},8)
+        with self.assertRaisesRegex(Invalid,'unscaled'):
+            preparation.policy_draft(self.rows,report,dict(max_position_embeddings=4),{},8)
+        bad=copy.deepcopy(report);bad['rows'][0]['source_hash']='wrong'
+        with self.assertRaisesRegex(Invalid,'mutated'):
+            preparation.policy_draft(self.rows,bad,dict(max_position_embeddings=8),{},8)
+        with self.assertRaisesRegex(Invalid,'row_binding'):
+            preparation.policy_draft(self.rows,freeze(bad),dict(max_position_embeddings=8),{},8)
+
 if __name__=='__main__':unittest.main()

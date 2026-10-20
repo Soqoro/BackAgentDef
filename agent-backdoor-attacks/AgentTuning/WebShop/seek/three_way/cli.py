@@ -6,7 +6,7 @@ import subprocess
 from pathlib import Path
 from ..schemas import Invalid,digest
 from ..storage import read_json,immutable_json,row_lock
-from . import core,training,readiness,study,spans,simulation
+from . import core,training,readiness,study,spans,simulation,preparation
 
 
 def parser():
@@ -24,6 +24,9 @@ def parser():
         for key in ('data','fastchat-root','model','output'):a.add_argument('--'+key,required=True)
         a.add_argument('--max-length',type=int,default=2048)
         if name=='context-report':a.add_argument('--caps',nargs='+',type=int,required=True)
+    a=sub.add_parser('context-draft')
+    for key in ('data','report','model-config','recipe','output'):a.add_argument('--'+key,required=True)
+    a.add_argument('--cap',type=int,required=True)
     a=sub.add_parser('training-prepare');
     for key in ('config','corpus','mask','role','output'):a.add_argument('--'+key,required=True)
     a=sub.add_parser('training-command');
@@ -97,6 +100,11 @@ def main(argv=None):
             print(json.dumps(dict(status='compiled',output=a.output,corpus_counts=result['corpus_counts'],execution_authorized=False)));return 0
         elif cmd in ('mask-preflight','mask-audit'):result=training.trainer_preflight(a.data,a.fastchat_root,a.model,a.max_length,audit=cmd=='mask-audit')
         elif cmd=='context-report':result=training.trainer_preflight(a.data,a.fastchat_root,a.model,a.max_length,policy_caps=a.caps)
+        elif cmd=='context-draft':
+            report=read_json(a.report)
+            if report.get('config_hash') != training.file_hash(Path(a.model_config)):
+                raise Invalid('context_report_model_config_mismatch')
+            result=preparation.policy_draft(read_json(a.data),report,read_json(a.model_config),read_json(a.recipe),a.cap)
         elif cmd=='training-prepare':result=training.recipe(read_json(a.config),read_json(a.corpus),read_json(a.mask),a.role)
         elif cmd=='training-command':
             plan=read_json(a.plan);core.current(plan)

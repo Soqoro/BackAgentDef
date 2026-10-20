@@ -1,6 +1,61 @@
 """Read-only context policy measurements; never a corpus converter or approval."""
 from collections import Counter
 from ..schemas import Invalid, digest
+from .core import freeze, checked
+
+
+def policy_draft(records, report, model_config, recipe, cap):
+    """Bind a proposed membership change to archived measurements; no conversion."""
+    checked(report)  # Historical report source need not equal today's source.
+    if report.get('schema') != 'seek-context-policy-report-v1' or report.get('status') != 'comparison_only':
+        raise Invalid('context_comparison_report_required')
+    if report.get('data_hash') != digest(records):
+        raise Invalid('context_report_corpus_mismatch')
+    if type(cap) is not int or cap <= 0 or cap not in report.get('caps', []):
+        raise Invalid('measured_context_cap_required')
+    limit = model_config.get('max_position_embeddings')
+    if type(limit) is not int or cap > limit or model_config.get('rope_scaling') is not None:
+        raise Invalid('unscaled_declared_model_context_required')
+    rows = report.get('rows', [])
+    if len(rows) != len(records) or report.get('records') != len(records):
+        raise Invalid('complete_context_report_required')
+    retained=[]; excluded=[]; families={}; selected=[]
+    for index,(record,row) in enumerate(zip(records,rows)):
+        if row.get('row') != index or row.get('id') != record.get('id') or row.get('source_hash') != digest(record):
+            raise Invalid('context_report_row_binding')
+        if row.get('status') != 'measured' or type(row.get('full_tokens')) is not int or row['full_tokens'] <= 0:
+            raise Invalid('unmeasured_record_requires_review')
+        empty=[i for i,t in enumerate(record['conversations']) if t['from']=='gpt' and not t['value'].strip()]
+        if row.get('empty_assistant_turns') != empty:
+            raise Invalid('empty_response_report_mismatch')
+        reasons=[]
+        if row['full_tokens'] > cap:reasons.append('whole_conversation_exceeds_proposed_cap')
+        if empty:reasons.append('empty_assistant_response_requires_provenance_review')
+        item=dict(row=index,id=record['id'],source_hash=digest(record),full_tokens=row['full_tokens'])
+        family=row['family'];counts=families.setdefault(family,dict(retained=0,excluded=0))
+        if reasons:
+            excluded.append(dict(item,reasons=reasons,empty_assistant_turns=empty));counts['excluded']+=1
+        else:
+            retained.append(item);selected.append(record);counts['retained']+=1
+    if not retained:raise Invalid('empty_proposed_corpus')
+    return freeze(dict(schema='seek-context-policy-draft-v1',status='pending_policy_review',
+        parent_report_hash=report['hash'],parent_report_source=report.get('source'),
+        source_corpus_hash=digest(records),model_config_hash=digest(model_config),
+        recipe_hash=digest(recipe),proposed_original_record_subset_hash=digest(selected),
+        source_records=len(records),retained_records=len(retained),excluded_records=len(excluded),
+        retained=retained,exclusions=excluded,families=families,
+        recipe_change=dict(field='max_length',before=recipe.get('max_length'),after=cap,
+                           shared_roles=['C','LQ','LO'],other_recipe_fields_changed=False),
+        policy=dict(unit='whole_conversation',truncation=False,history_rewriting=False,
+                    overlapping_windows=False,empty_response_repair=False),
+        clean_provenance_verified=False,policy_approved=False,conversion_performed=False,
+        model_calls=0,registry_mutations=0,
+        prerequisites=['Independent policy and exclusion review bound to this draft hash',
+                       'Clean-source provenance and split independence',
+                       'Explicit schema conversion review: original loss fields retained in subset hash',
+                       'Full native mask validation of the eventual exact training corpus',
+                       'Matched C/LQ/LO corpus and recipe binding; cluster resource verification'],
+        scope='Proposed membership only; original records are not modified or exported as training data'))
 
 
 def compare(records, native, render, caps):

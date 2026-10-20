@@ -373,3 +373,43 @@ them with hypothetical target-only counts. Target-only labels would require a
 separate implementation and mask validation. Occurrence counts are not token-
 weighted loss contributions or optimizer steps. Retaining the complete original
 corpus still requires provenance, split, masking and context-policy reviews.
+
+## Proposed whole-conversation membership draft
+
+`context-draft` binds an archived context report, unchanged source corpus,
+model config and recipe to a proposed membership manifest. It verifies the report
+hash, each source row hash/order, measured cap, and declared unscaled model limit.
+It does not require the historical report to have today's source fingerprints;
+those historical fingerprints are retained. It does not export converted training
+records, modify the recipe, or approve exclusions. Empty/overlong records retain
+source indices, hashes and reasons. The subset hash covers original records,
+including their original `loss` fields; it is not a native converted corpus hash.
+
+```bash
+(
+set -euo pipefail
+cd "$HOME/BackAgentDef"
+DRAFT_DIR=$(mktemp -d "$HOME/seek_private/three_way_v1/context-draft-XXXXXX")
+export DRAFT_DIR
+python seek_three_way.py context-draft \
+  --data /dataset/suaq0001/BackAgentDef/data/AgentInstruct_clean.json \
+  --report "$HOME/seek_private/three_way_v1/context-policy-4Ttyxc/report.json" \
+  --model-config /dataset/suaq0001/models/Llama-2-7b-chat-hf/config.json \
+  --recipe configs/seek/three_way/training_C_v1.json \
+  --cap 4096 --output "$DRAFT_DIR/draft.json" >"$DRAFT_DIR/run.log" 2>&1 \
+  || { tail -n 40 "$DRAFT_DIR/run.log"; exit 1; }
+python - <<'PY'
+import json, os
+from pathlib import Path
+p=Path(os.environ['DRAFT_DIR'])/'draft.json'
+r=json.loads(p.read_text())
+print(json.dumps({k:r[k] for k in ('status','hash','source_records','retained_records','excluded_records','families','exclusions','recipe_change','execution_authorized')},indent=2))
+print('Review draft:',p)
+PY
+)
+```
+
+Expected on the reviewed source: 1,858 retained and eight proposed exclusions.
+These are not hard-coded counts or an executed exclusion policy. C/LQ/LO must
+share the same approved benign membership and recipe change. Provenance, split
+independence, exact native conversion/masks and cluster resources remain pending.
