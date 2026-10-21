@@ -240,7 +240,7 @@ def native_record_audit(record, native, preprocess, render, max_length):
                 native_ids_verified=True, alignment='exact_native_prefix_boundaries_v1')
 
 
-def trainer_preflight(data_path, fastchat_root, model_path, max_length, audit=False, policy_caps=None):
+def trainer_preflight(data_path, fastchat_root, model_path, max_length, audit=False, policy_caps=None, annotation_path=None):
     """CPU/tokenizer only, no weights loaded. Local-only imports are verified."""
     import sys
     root=Path(fastchat_root).resolve(); sys.path.insert(0,str(root))
@@ -292,6 +292,35 @@ def trainer_preflight(data_path, fastchat_root, model_path, max_length, audit=Fa
                       tokenizer_files={p.name:file_hash(p) for p in Path(model_path).glob('*') if p.is_file() and ('tokenizer' in p.name or p.name=='special_tokens_map.json')},
                       config_hash=file_hash(Path(model_path)/'config.json'))
         return freeze(report)
+    if annotation_path is not None:
+        from .supervision import annotation_mask
+        annotations=read_json(annotation_path)
+        if len(annotations)!=len(records):raise Invalid('annotation_record_count')
+        comparisons=[]
+        for record,annotation in zip(records,annotations):
+            evidence=native_record_audit(record,native,train.preprocess,render,max_length)
+            actual=train.preprocess([record['conversations']],native)
+            def values(key):
+                row=actual[key][0]
+                return row.tolist() if hasattr(row,'tolist') else list(row)
+            _,comparison=annotation_mask(record,annotation,evidence,values('input_ids'),values('labels'))
+            comparisons.append(comparison)
+        return freeze(dict(schema='seek-annotation-mask-comparison-v1',status='pending_policy_review',
+            policy='explicit_false_assistant_labels_ignored_v1',data_hash=digest(records),
+            annotations_hash=digest(annotations),max_length=max_length,rows=comparisons,
+            summary={key:sum(r[key] for r in comparisons) for key in
+                ('native_supervised_tokens','alternative_supervised_tokens','removed_supervised_tokens',
+                 'false_assistant_turns','true_assistant_turns')},
+            trainer_origin=str(origin),trainer_sha256=file_hash(origin),
+            trainer_files={str(p.relative_to(root)):file_hash(p) for p in sorted((root/'fastchat').rglob('*.py'))},
+            tokenizer_files={p.name:file_hash(p) for p in Path(model_path).glob('*') if p.is_file() and ('tokenizer' in p.name or p.name=='special_tokens_map.json')},
+            config_hash=file_hash(Path(model_path)/'config.json'),tokenizer_class=type(native).__name__,
+            training_template=template_name, input_text_and_ids_preserved=True,
+            trainer_integration=False,policy_approved=False,model_calls=0,simulated=False,
+            limitations=['CPU comparison only; alternative labels are not wired into the trainer.',
+                        'Explicit true/false required for every assistant turn, including future attack examples.',
+                        'Masking includes the existing native assistant terminator boundary.',
+                        'Final assembled C/LQ/LO corpora each require independent validation.']))
     receipts=[]; unresolved=[]
     for index, record in enumerate(records):
         try:
