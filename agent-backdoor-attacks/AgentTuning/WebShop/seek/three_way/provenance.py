@@ -92,3 +92,105 @@ def inventory(corpus_dir, mask_path, roots, max_files=5000, max_bytes=2000000):
                                'Reviewed stage assignments and complete historical exposure inventory',
                                'Cross-stage overlap checks with existing validate_splits after lineage is available'],
         clean_provenance_verified=False,split_independence_verified=False,model_calls=0,registry_mutations=0))
+
+
+def product_exposure(candidate_path, roots, max_files=50000, max_bytes=100000000):
+    """Find candidate product references, never infer execution from saved text."""
+    import hashlib
+    import os
+    import re
+    if max_files <= 0 or max_bytes <= 0:
+        raise Invalid('positive_scan_limits_required')
+    raw = Path(candidate_path).read_bytes()
+    candidates = json.loads(raw)
+    products = defaultdict(set)
+    for row in candidates['records']:
+        for product in row['candidate_products']:
+            asin = product['asin']
+            if not re.fullmatch(r'[A-Z0-9]{10}', asin):
+                raise Invalid('invalid_candidate_asin')
+            if product['product_fingerprint'] != digest(asin):
+                raise Invalid('candidate_product_fingerprint_mismatch')
+            products[asin].add(row['id'])
+    if not products:
+        raise Invalid('no_candidate_products')
+    fingerprints = {digest(asin): asin for asin in products}
+    token = re.compile(r'(?<![A-Za-z0-9])[A-Z0-9]{10}(?![A-Za-z0-9])')
+    files, matches, skipped, errors = [], [], [], []
+    seen = set()
+    count = 0
+
+    def walk(value, field='$'):
+        if isinstance(value, dict):
+            for key, child in value.items():
+                # Some product-indexed artifacts use ASIN keys.
+                if key in products:
+                    yield field, key, 'asin_dictionary_key'
+                yield from walk(child, field + '.' + str(key))
+        elif isinstance(value, list):
+            for i, child in enumerate(value):
+                yield from walk(child, f'{field}[{i}]')
+        elif isinstance(value, str):
+            for asin in sorted(set(token.findall(value)) & products.keys()):
+                yield field, asin, 'literal_asin_reference'
+            if value in fingerprints:
+                yield field, fingerprints[value], 'exact_product_digest_reference'
+
+    for root_arg in roots:
+        root = Path(root_arg)
+        if not root.is_dir():
+            errors.append(dict(path=str(root), reason='missing_root'))
+            continue
+        def onerror(exc):
+            errors.append(dict(path=str(exc.filename), reason=type(exc).__name__))
+        for directory, dirs, names in os.walk(root, followlinks=False, onerror=onerror):
+            dirs.sort()
+            for name in sorted(names):
+                p = Path(directory) / name
+                if p.suffix not in ('.json', '.jsonl'):
+                    continue
+                resolved = str(p.resolve())
+                if resolved in seen:
+                    continue
+                seen.add(resolved)
+                count += 1
+                if count > max_files:
+                    continue
+                try:
+                    if p.stat().st_size > max_bytes:
+                        skipped.append(dict(path=str(p), reason='size_limit'))
+                        continue
+                    content = p.read_bytes()
+                    if len(content) > max_bytes:
+                        skipped.append(dict(path=str(p), reason='size_limit'))
+                        continue
+                    # Validate the whole file before accepting any matches.
+                    values = ([json.loads(line) for line in content.splitlines() if line.strip()]
+                              if p.suffix == '.jsonl' else [json.loads(content)])
+                    n = 0
+                    for i, value in enumerate(values):
+                        prefix = f'$line[{i + 1}]' if p.suffix == '.jsonl' else '$'
+                        for field, asin, kind in walk(value, prefix):
+                            matches.append(dict(path=str(p), field=field, asin=asin,
+                                kind=kind, candidate_training_ids=sorted(products[asin])))
+                            n += 1
+                    files.append(dict(path=str(p), sha256=hashlib.sha256(content).hexdigest(),
+                                      bytes=len(content), references=n))
+                except (OSError, ValueError, RecursionError) as exc:
+                    skipped.append(dict(path=str(p), reason=type(exc).__name__))
+    return freeze(dict(schema='seek-candidate-product-exposure-v1',
+        status='candidate_references_only', candidate_file_sha256=hashlib.sha256(raw).hexdigest(),
+        candidate_path=str(candidate_path), files=files, matches=matches, skipped=skipped,
+        scan=dict(candidate_files=count, parsed_files=len(files), skipped_files=len(skipped),
+                  beyond_file_limit=max(0, count-max_files), errors=errors,
+                  max_files=max_files, max_bytes=max_bytes),
+        summary=dict(candidate_products=len(products), references=len(matches),
+                     matched_products=len({m['asin'] for m in matches}),
+                     matched_training_records=len({r for m in matches for r in m['candidate_training_ids']})),
+        limitations=['References may be inventories, plans, prompts, observations, or journals; field paths require review.',
+                     'A saved reference does not prove a model consumed it or that a product was the goal or purchased.',
+                     'Exact digest references have no inferred semantic type; mixed fingerprint manifests require source review.',
+                     'All candidate alternatives retained; no trajectory identity or source authenticity established.',
+                     'Only JSON/JSONL under supplied roots checked; absent references never establish independence.'],
+        clean_provenance_verified=False, split_independence_verified=False,
+        model_calls=0, registry_mutations=0))

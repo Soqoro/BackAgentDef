@@ -36,6 +36,11 @@ def parser():
     a.add_argument('--exposure-root',action='append',required=True)
     a.add_argument('--max-files',type=int,default=5000)
     a.add_argument('--max-bytes',type=int,default=2000000)
+    a=sub.add_parser('product-exposure')
+    for key in ('candidates','output'):a.add_argument('--'+key,required=True)
+    a.add_argument('--exposure-root',action='append',required=True)
+    a.add_argument('--max-files',type=int,default=50000)
+    a.add_argument('--max-bytes',type=int,default=100000000)
     a=sub.add_parser('training-prepare');
     for key in ('config','corpus','mask','role','output'):a.add_argument('--'+key,required=True)
     a=sub.add_parser('training-command');
@@ -128,6 +133,7 @@ def main(argv=None):
             core.private_write(out/'manifest.json',result)
             print(json.dumps(dict(result,output=str(out)),indent=2));return 0
         elif cmd=='provenance-inventory':result=provenance.inventory(a.corpus_dir,a.mask,a.exposure_root,a.max_files,a.max_bytes)
+        elif cmd=='product-exposure':result=provenance.product_exposure(a.candidates,a.exposure_root,a.max_files,a.max_bytes)
         elif cmd=='training-prepare':result=training.recipe(read_json(a.config),read_json(a.corpus),read_json(a.mask),a.role)
         elif cmd=='training-command':
             plan=read_json(a.plan);core.current(plan)
