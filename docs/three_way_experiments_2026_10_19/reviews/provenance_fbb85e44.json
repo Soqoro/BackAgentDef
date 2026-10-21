@@ -1,0 +1,335 @@
+{
+  "schema": "seek-provenance-independent-review-v1",
+  "reviewer": "me",
+  "independent": true,
+  "independence_scope": "Independent inspection and recomputation over uploaded packet bytes and internal receipt joins; no independent access to raw upstream Parquet or materialized corpus, original catalogue, saved execution files, tokenizer binary, cluster filesystem, training logs, or live model calls.",
+  "manifest_sha256": "11c0405c1a29b9b9ecc5d6cf82a7b036f4b5c077f451d68c7278598591d79d3c",
+  "uploaded_zip_sha256": "22d1047604beee0beeb8c5523d8dd3a26c0f7e0477ce497f5b6c8a8246e981d8",
+  "decision": "request_changes",
+  "decision_scope": "The attached packet is internally consistent and its limited reported findings are accepted as documentary evidence. Full clean-source provenance, product/trajectory lineage, historical model-consumption coverage and split independence are NOT established. Changes/additional evidence are required before asserting a complete provenance review. This decision does not rescind previously scoped corpus/conversion CPU-only approvals.",
+  "bounded_document_evidence_accepted": true,
+  "provenance_complete": false,
+  "clean_provenance_verified": false,
+  "split_independence_verified": false,
+  "matched_controls_verified": false,
+  "training_authorized": false,
+  "resource_approved": false,
+  "model_execution_authorized": false,
+  "execution_authorized": false,
+  "method_matrix_unlocked": false,
+  "registry_mutations_authorized": false,
+  "conversion_authorized_by_this_review": false,
+  "status_summary": {
+    "reported_original_records": 1866,
+    "reviewed_native_records": 1858,
+    "quarantined_records": 8,
+    "reviewed_webshop_records": 350,
+    "context_cap_tokens": 4096,
+    "original_annotation_counts": {
+      "assistant_loss_false": 4671,
+      "assistant_loss_true": 9675,
+      "human_loss_null": 14346
+    },
+    "reported_native_mask_status": "passed",
+    "reported_truncated_records": 0,
+    "reported_lost_assistant_turns": 0,
+    "reported_unresolved_boundaries": 0,
+    "reported_mask_mismatches": 0,
+    "cached_upstream_exact_full_record_multiplicity_match": 1866,
+    "candidate_webshop_instructions": 350,
+    "unique_candidate_products": 356,
+    "record_product_associations": 358,
+    "ambiguous_training_records": 4,
+    "historical_scan_reported_files": 14248,
+    "historical_scan_reported_skips": 0,
+    "historical_scan_reported_errors": 0,
+    "candidate_fingerprint_references": 8316,
+    "inventory_files_holding_references": 3,
+    "references_establish_model_consumption": false
+  },
+  "verification": {
+    "fully_independently_verified_from_packet_bytes": [
+      "The manifest raw SHA-256 equals the requested binding; all eleven receipt sizes and SHA-256 values match the manifest.",
+      "All six internally self-sealed JSON receipts recompute to their own declared hashes under the stated canonical JSON hash convention.",
+      "The conversion draft hash, independent conversion review hash, native corpus digest, original candidate corpus digest, membership/exclusion row indices, and 4,096-token policy agree across the included receipts.",
+      "The draft's 1,858 unique retained identifiers are in increasing original source-row order and exactly complement the eight quarantined rows within 1,866 original row positions.",
+      "The original annotation-count totals recompute from 1,858 annotation arrays: 4,671 gpt:false, 9,675 gpt:true and 14,346 human:null.",
+      "The 1,858 mask-result rows align in order with the draft identifiers and assistant-turn counts. Within the receipt, all recorded retained token intervals, full lengths, supervised token totals, no-truncation flags and zero mismatch arrays are internally consistent.",
+      "The 350 WebShop lineage receipt IDs match the 350 reviewed WebShop IDs. Its reconstructed 344 price-suffix cases and six no-suffix cases match the stored instruction strings exactly.",
+      "All 350 source-candidate-to-product joins reconcile; 356 unique ASIN/fingerprint candidates yield 358 record-product associations; the four distinct-product ambiguities remain unresolved.",
+      "The exposure report contains 14,248 listed file entries and 8,316 references, all confined to the product_fingerprint field in three inventory JSON files (2,772 entries per file), all linking the single candidate B01DEDTZ28 / webshop_222.",
+      "The source field/hash/authorization flags inside the supplied receipts remain consistent with a bounded, nonexecuting provenance audit."
+    ],
+    "accepted_only_from_supplied_receipts_not_physically_reperformed": [
+      "The actual original 1,866 conversation texts, preserved final native corpus bytes and quarantined raw rows were not supplied; their content preservation and complete resulting corpus hash were not independently recomputed from raw files.",
+      "The real pinned LlamaTokenizer files and FastChat trainer implementation were not available as executable source bytes; therefore the reported native mask alignment and trainer treatment of loss:false are accepted as receipts rather than rerun independently.",
+      "The six local Hugging Face Parquet cache blobs, their content hashes, and their original 1,866-record exact-record equality result were not directly accessible for recomputation.",
+      "The source items_human_ins.json, full original product records, task_manifest, saved inventories, actual JSON/JSONL file bodies, and model call traces are not included. Their reported scan completeness and exact source-text matches are not independently recreated.",
+      "The reported historical scans indicate zero file skips and parsing errors inside declared scanning limits and roots. Actual root coverage and non-JSON file exposure were not verified."
+    ],
+    "check_suite": {
+      "checks": 22,
+      "passed": 22,
+      "failed": []
+    },
+    "check_artifact": "provenance_packet_review_workspace/independent_audit_checks.json"
+  },
+  "supported_findings": [
+    {
+      "topic": "corpus membership and conversion",
+      "finding": "Documentary chain binds the approved 1,858 ordered whole-conversation records, eight exclusions and 4,096 context policy to conversion draft f7e785... and native corpus digest 8b1165.... Original annotations remain listed separately. No standalone original/native text file was included for independent byte-for-byte corpus reconstruction.",
+      "classification": "independently checked receipt joins; corpus contents accepted from supplied receipts"
+    },
+    {
+      "topic": "native mask evidence",
+      "finding": "Receipt reports a non-simulated 4,096-token native mask preflight on all 1,858 records, 0 truncations, 0 lost/partial assistant turns, 0 unresolved boundaries and 0 mask mismatches; all per-row token and assistant-turn accounting checks passed. Earlier materialization manifest still legitimately says pending_native_masks and is supplemented by later passing receipt.",
+      "classification": "per-row receipt accounting independently recomputed; tokenization execution not independently rerun"
+    },
+    {
+      "topic": "loss false supervision",
+      "finding": "4,671 originally marked loss:false assistant turns are present in the retained supervision-count inventory and are eligible for assistant-label supervision under the inspected FastChat recipe as described in the independent conversion review; original annotation intent and final training objective remain unresolved.",
+      "classification": "annotation and mask receipt internally checked; inspected trainer behavior and original author intent not independently established here"
+    },
+    {
+      "topic": "local cached source",
+      "finding": "Supplied local cache comparison reports 1,866/1,866 exact full-record matches with multiplicity between candidate and six cached Parquet families. This is local equality evidence, not authenticated upstream origin or verified absence of prior contamination.",
+      "classification": "receipt reviewed only; parquet bytes absent"
+    },
+    {
+      "topic": "human instruction and candidate products",
+      "finding": "The packet represents 350 reviewed WebShop instructions with source candidates after the declared price-suffix handling. 30 have multiple source candidate rows, but only four have multiple distinct candidate products. The four exact ambiguous sets are retained without guessing. Price creation, original trajectory and catalogue version remain unresolved.",
+      "classification": "instruction normalization and cross-receipt grouping independently checked; original source and product histories absent"
+    },
+    {
+      "topic": "inventory product overlap",
+      "finding": "Exactly one candidate training record, webshop_222, has a product (B01DEDTZ28) recorded in the saved task inventory (2,772 tasks per inventory file). No candidate selected task link is recorded in the provided overlap receipt; this does not prove nonexposure.",
+      "classification": "receipt joins independently checked; inventory source inaccessible"
+    },
+    {
+      "topic": "historical scan coverage",
+      "finding": "A report lists 14,248 JSON/JSONL files parsed with no skipped files/errors within its declared scope. The 8,316 recorded candidate-product fingerprint occurrences all appear as $.tasks[*].product_fingerprint in three inventory files; there are no recorded occurrences in other scanned fields. These are saved inventory references and do not establish actual model consumption.",
+      "classification": "receipt-level file/reference accounting independently recomputed; historical files and consumed policy prompts absent"
+    },
+    {
+      "topic": "split checks",
+      "finding": "Exact full-human-turn hashes showed zero matches in the stated 14,346-turn/32,469-exposure-fingerprint comparison, and the instruction-only receipt reported zero exact inventory matches before price normalization. Those narrowly specified negatives do not establish stage-level task/product/trajectory/template independence.",
+      "classification": "zero results verified present in receipts; actual source matching not independently performed"
+    }
+  ],
+  "ambiguous_product_assignments": [
+    {
+      "training_record_id": "webshop_4",
+      "distinct_candidate_products": 3,
+      "candidate_asins": [
+        "B004R8WJHS",
+        "B01MR0TR0P",
+        "B073V5F2S4"
+      ],
+      "candidate_details": [
+        {
+          "asin": "B004R8WJHS",
+          "product_fingerprint": "243ac802a135bd874eb20317b7dac4b771edf4ef49f713461896524b3e1b32ff",
+          "source_positions": [
+            0
+          ]
+        },
+        {
+          "asin": "B01MR0TR0P",
+          "product_fingerprint": "dd3fc26a0b59ceb27722ef2a0ef96254b27a1d058a81ae705754b32af1a32dc4",
+          "source_positions": [
+            0
+          ]
+        },
+        {
+          "asin": "B073V5F2S4",
+          "product_fingerprint": "e8185a2d41aef7b6feee42235026040c6f00890e00b9368c6e50c4808494a23e",
+          "source_positions": [
+            0
+          ]
+        }
+      ],
+      "resolution": "unresolved; all candidates retained; no product selected by this review"
+    },
+    {
+      "training_record_id": "webshop_113",
+      "distinct_candidate_products": 5,
+      "candidate_asins": [
+        "B093L52RXG",
+        "B093SZ7QMH",
+        "B093YSBNHN",
+        "B093YTKGG5",
+        "B093YVJSWF"
+      ],
+      "candidate_details": [
+        {
+          "asin": "B093L52RXG",
+          "product_fingerprint": "850d47c70e70398dfdfe335bddfc3d5786518c999e28a09168a6c9b41865a3cb",
+          "source_positions": [
+            0
+          ]
+        },
+        {
+          "asin": "B093SZ7QMH",
+          "product_fingerprint": "f292ed3200273519c00ccb03fa252c3cfa732bb93d615c0835b86215236a3813",
+          "source_positions": [
+            0
+          ]
+        },
+        {
+          "asin": "B093YSBNHN",
+          "product_fingerprint": "c7d01822e70874d2d81d52818f53a149bc8629831684b7ed10c36f1c4c5604ff",
+          "source_positions": [
+            0
+          ]
+        },
+        {
+          "asin": "B093YTKGG5",
+          "product_fingerprint": "68c916ee0e644649d4ddb3e3e4d9a1487164ea851b7d5a74b4e3b63a8e5374d6",
+          "source_positions": [
+            0
+          ]
+        },
+        {
+          "asin": "B093YVJSWF",
+          "product_fingerprint": "3e7a6b2e8bf1c3fe9e94ddf90b8dddfa7a3ba057b63141fd7a0f09aaeb259785",
+          "source_positions": [
+            0
+          ]
+        }
+      ],
+      "resolution": "unresolved; all candidates retained; no product selected by this review"
+    },
+    {
+      "training_record_id": "webshop_144",
+      "distinct_candidate_products": 2,
+      "candidate_asins": [
+        "B01IA9B8V2",
+        "B09DK5YFVL"
+      ],
+      "candidate_details": [
+        {
+          "asin": "B01IA9B8V2",
+          "product_fingerprint": "d21b9705d4a8ce18a97a64ccc165d934ba5cac479681b21aa39dc8e051197956",
+          "source_positions": [
+            1
+          ]
+        },
+        {
+          "asin": "B09DK5YFVL",
+          "product_fingerprint": "ecb8329431e1c51736e4b59dbd4e4f6f462869208e5fedba4e473e93f21ac5bd",
+          "source_positions": [
+            0
+          ]
+        }
+      ],
+      "resolution": "unresolved; all candidates retained; no product selected by this review"
+    },
+    {
+      "training_record_id": "webshop_185",
+      "distinct_candidate_products": 2,
+      "candidate_asins": [
+        "B093KMVLFG",
+        "B093SZ5P7Z"
+      ],
+      "candidate_details": [
+        {
+          "asin": "B093KMVLFG",
+          "product_fingerprint": "f7de0c23827993cd7896f7575bccbd25c3bac1879e5f366f9fdee311e36f1d8b",
+          "source_positions": [
+            0
+          ]
+        },
+        {
+          "asin": "B093SZ5P7Z",
+          "product_fingerprint": "aa7c4f4dcb1be62a1c6c78d3f6a5165fbcc62702c6d00dbd4c7dd126ac875be6",
+          "source_positions": [
+            0,
+            1
+          ]
+        }
+      ],
+      "resolution": "unresolved; all candidates retained; no product selected by this review"
+    }
+  ],
+  "historical_exposure": {
+    "candidate_training_record_id": "webshop_222",
+    "candidate_product_asin": "B01DEDTZ28",
+    "inventory_field": "$.tasks[*].product_fingerprint",
+    "match_kind": "exact_product_digest_reference",
+    "matches_total": 8316,
+    "inventory_files_count": 3,
+    "matches_per_inventory_file": 2772,
+    "inventory_sources": [
+      {
+        "relative_suffix": "base_reference_inventory_v2/real/row-0000/inventory.json",
+        "reported_occurrences": 2772
+      },
+      {
+        "relative_suffix": "sneakers_inventory_v1/real/row-0000/inventory.json",
+        "reported_occurrences": 2772
+      },
+      {
+        "relative_suffix": "sneakers_inventory_v2/real/row-0000/inventory.json",
+        "reported_occurrences": 2772
+      }
+    ],
+    "distinct_positive_scanned_files": 3,
+    "scanned_json_jsonl_files": 14248,
+    "no_matches_outside_reported_inventory_fields": true,
+    "model_consumption_evidenced": false,
+    "interpretation": "Repeated candidate product-fingerprint entries in task inventories are not actual model-call exposures. No loaded prompt, observation, inference trace, clicked product, purchased product, or training/evaluation overlap is proven."
+  },
+  "unresolved_prerequisites": [
+    "Authenticate the upstream six-family AgentInstruct snapshot and the original-source-to-candidate-corpus transformation, including versions, hashes and receipts for any intervening changes; local cache equality alone is insufficient.",
+    "Supply raw original and materialized native corpus/tokenizer/trainer bytes or a independently executable hash-bound reproduction bundle to verify actual conversation and text preservation, source annotations, and native preprocessing without relying only on prior receipts.",
+    "Establish source human-instruction catalogue/version, exact price-ceiling generation rule and true per-record product/trajectory provenance. Preserve all four multi-ASIN alternatives until primary lineage evidence resolves them.",
+    "Freeze proposed experiment stages and map training data to actually used evaluation tasks, products, trajectories and template families; run independent cross-stage overlap checks (including validate_splits) in matched namespaces.",
+    "Audit actual model-consumed prompts and observations using call IDs, serialized input/token hashes, checkpoint/run IDs, agent logs and execution journals, including relevant formats and roots beyond the bounded JSON/JSONL inventory scan.",
+    "Resolve whether the 4,671 assistant loss:false annotations should be supervised under the intended C/LQ/LO training recipe; verify masks on the final assembled training inputs, not only the benign native corpus.",
+    "Provide exact initialization/data exposure/recipe provenance for clean and lexical arms and separately clarify whether legacy SQ/SO are training-matched. This packet establishes none of those comparisons."
+  ],
+  "required_changes": [
+    {
+      "priority": "P0",
+      "change": "Keep the original source and inventory receipts immutable; create a new provenance addendum containing reproducible upstream cache snapshot authentication, raw corpus transformation lineage and associated exact-hash binding.",
+      "reason": "Current packet proves local documentary consistency but not original clean provenance."
+    },
+    {
+      "priority": "P0",
+      "change": "Record four ambiguous product candidate sets verbatim as unresolved; do not force ASIN choice based solely on instruction wording or smallest ID.",
+      "reason": "Multiple products legitimately share identical/overlapping human instruction strings."
+    },
+    {
+      "priority": "P0",
+      "change": "Rename/clarify the 8,316 historical matches as saved inventory references, with no inferred policy-input delivery, token consumption, trigger exposure or independent call count.",
+      "reason": "Every match appears in inventory task metadata, not a demonstrated model-consumed field."
+    },
+    {
+      "priority": "P1",
+      "change": "Add source catalogue/version and price-generation lineage and task/product/trajectory/template-to-stage mapping; run validate_splits only on verified lineage and selected/frozen task stages.",
+      "reason": "Text identity and product fingerprint scans alone do not establish split independence."
+    },
+    {
+      "priority": "P1",
+      "change": "Audit actual historical model request/response logs and serialized prompts/observations, using physical inference identifiers and hashed contents; record files or formats outside the scan separately.",
+      "reason": "Absence of a fingerprint in scanned JSON/JSONL fields does not prove that a model never saw related content."
+    },
+    {
+      "priority": "P1",
+      "change": "Attach verifiable tokenizer/trainer/materialized-corpus inputs for independent replay and resolve final supervision intent for loss:false turns before any training request.",
+      "reason": "Native-mask receipt is strong internally but not an independent reproduction or training-policy approval."
+    }
+  ],
+  "prior_review_bindings": {
+    "context_policy_hash": "0f3603117a404e7aae874c4801df0f4b372cb0612c5fdd94f227ccae5f659797",
+    "conversion_draft_hash": "f7e785b1ab65009dde6227e846cc953750f9b05cd400af137253fa60a46e837d",
+    "conversion_approval_hash": "ba022d7beb97a96b0f8bb94407019f00471bc5d31ee8bb196bac28d0e4c79c36",
+    "native_corpus_digest": "8b1165ac799dc4c2bd96e0a13a1c39a098fc73cbb9c8ab453026dc545ae1fed1",
+    "native_mask_receipt_hash": "5726626f9575f55f0a218ca54144322319620800cfc215b173c18962bbae44a3",
+    "cached_source_comparison_receipt_bytes_hash": "b4123818a5cc23ed4509e82a7a5061d6fd48ad156150eb880cbab1d7da5c43dd",
+    "product_overlap_receipt_bytes_hash": "9bbe0c4551e7f082122e53a2c72dfeadc0dab9c652251d5a210a15bd2db5dc31",
+    "historical_exposure_receipt_hash": "13d648f8e8679f1ac0c221b66eb115f6c44231a79fdc9f832b5b36fecb24b08a"
+  },
+  "recommendation": "Accept this as an internally verified, bounded provenance packet; do not mark clean provenance, split independence, matched-controls, training readiness or model consumption as proved. Request the stated evidence additions before any broadened approval.",
+  "hash": "fbb85e442f038cd1a6f114222f4476c70613ede5e25b5e7fd2ba1d3019677be8"
+}
