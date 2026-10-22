@@ -1,0 +1,19 @@
+{
+  "schema": "seek-trainer-source-bundle-v1",
+  "files": {
+    "fastchat/train/train.py": {
+      "sha256": "9d175d06bd289fb4a6bec85b680d6e3933491d497a2e99e99707be855e229242",
+      "bytes": 12329
+    },
+    "fastchat/conversation.py": {
+      "sha256": "f641a0eb13edc43fc49c13b8c1fce3649f49567882bc0981d0677fd99c392e64",
+      "bytes": 102989
+    },
+    "fastchat/model/model_adapter.py": {
+      "sha256": "364bada5bd04f915ce94ccbca59cbfd95446231e91688a6a2259d4c9fd4b2a43",
+      "bytes": 92186
+    }
+  },
+  "model_calls": 0,
+  "execution_authorized": false
+}

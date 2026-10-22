@@ -1,0 +1,168 @@
+{
+  "annotations_hash": "d4cbd9e0dc138def5eda9d58631ced81e6fc431d5d59a50b34f1aabb576e22f1",
+  "approval_scope": "supervision-policy choice only; no trainer modification, training, resource, inference or downstream dataset approval",
+  "authorization": {
+    "clean_provenance_verified": false,
+    "execution_authorized": false,
+    "final_C_LQ_LO_corpus_masks_verified": false,
+    "matched_controls_established": false,
+    "method_matrix_unlocked": false,
+    "model_execution_authorized": false,
+    "original_annotation_intent_authenticated": false,
+    "resource_approved": false,
+    "split_independence_verified": false,
+    "supervision_policy_approved": true,
+    "trainer_integration_verified": false,
+    "training_authorized": false
+  },
+  "comparison_hash": "5b979d0c7544caacf213a577db9df607efb63541f7b0d10e2a953bd388035b07",
+  "corpus_membership_policy_previous_approval": "Unchanged: 1,858 retained whole conversations; eight exclusions; preserve source corpus and annotation manifest",
+  "decision": "approve",
+  "hash": "a5bca4dea37329a6cf2f77b6cc36800c70f7c9035c5a57e53408d85858bc5d68",
+  "independent_checks": {
+    "all_reported_input_ids_unchanged_flags_true": true,
+    "all_rows_preserve_some_positive_supervision": true,
+    "comparison_canonical_sha256_matches_declared": true,
+    "cross_receipt_annotation_hash_agrees": true,
+    "cross_receipt_corpus_hash_agrees": true,
+    "intent_evidence_canonical_sha256_matches_declared": true,
+    "per_record_false_turn_counts_reconcile": true,
+    "per_row_token_delta_and_nonnegative_validation": true,
+    "records_with_changed_loss_tokens": 1737,
+    "records_without_loss_false_turns": 121,
+    "removed_fraction_of_native_supervised_tokens": 0.28675635,
+    "retained_record_count": 1858,
+    "source_annotation_counts_reconcile_by_family": true,
+    "source_map_differences_between_comparison_and_intent_reports": [
+      {
+        "comparison_sha256": "657b06f971073e25d60485a1d3364bd5c080397d047db346926be1af8ca837ca",
+        "intent_evidence_sha256": null,
+        "path": "agent-backdoor-attacks/AgentTuning/WebShop/seek/three_way/supervision.py"
+      },
+      {
+        "comparison_sha256": "0a7674ac23279b6d8168b65a6a0895b453420f14fb30d67b29dbb1dcac3e2685",
+        "intent_evidence_sha256": "ed65313a33826f46f8a136143b0afd41372067a0ec7b1f46a14826881f99a286",
+        "path": "agent-backdoor-attacks/AgentTuning/WebShop/seek/three_way/training.py"
+      }
+    ],
+    "source_map_differences_interpretation": "The newer comparison tracks new supervision.py and a changed training.py relative to earlier intent inventory; not evidence of installed trainer integration.",
+    "supervised_tokens_removed": 174780,
+    "total_supervised_tokens_after": 434727,
+    "total_supervised_tokens_before": 609507,
+    "turn_text_hashes_match_json_string_sha256": true,
+    "unique_affected_assistant_turns": 4671,
+    "unique_record_ids": 1858
+  },
+  "independent_review": true,
+  "intent_evidence_hash": "3a52aff4eb6d24bd8aa063e8c12504cea521917e73da0a4fd1aa08ddeaf85a87",
+  "limitations": [
+    "The two uploads are saved CPU-generated receipts, not raw annotated corpus, token sequences or full trainer source files; exact native token masks and preservation cannot be independently recomputed from original data here.",
+    "Original annotation author intent remains unauthenticated; repeated text/turn position alone cannot prove that loss:false was intended as a training-mask instruction.",
+    "The alternative labels are not currently integrated into the reported FastChat training code and no model training or inference occurred.",
+    "Shared policy does not itself establish matched C/LQ/LO checkpoints, split independence, or comparability to legacy SQ/SO checkpoints."
+  ],
+  "max_length": 4096,
+  "native_corpus_hash": "8b1165ac799dc4c2bd96e0a13a1c39a098fc73cbb9c8ab453026dc545ae1fed1",
+  "per_family_token_effects": {
+    "alfworld": {
+      "alternative_supervised_tokens": 83973,
+      "false_assistant_turns": 336,
+      "original_supervised_tokens": 90021,
+      "removed_fraction": 0.067184,
+      "removed_supervised_tokens": 6048,
+      "retained_records": 336,
+      "true_assistant_turns": 4542
+    },
+    "db": {
+      "alternative_supervised_tokens": 127742,
+      "false_assistant_turns": 538,
+      "original_supervised_tokens": 129356,
+      "removed_fraction": 0.012477,
+      "removed_supervised_tokens": 1614,
+      "retained_records": 538,
+      "true_assistant_turns": 1109
+    },
+    "kg": {
+      "alternative_supervised_tokens": 105289,
+      "false_assistant_turns": 2862,
+      "original_supervised_tokens": 250297,
+      "removed_fraction": 0.579344,
+      "removed_supervised_tokens": 145008,
+      "retained_records": 318,
+      "true_assistant_turns": 1867
+    },
+    "mind2web": {
+      "alternative_supervised_tokens": 4831,
+      "false_assistant_turns": 0,
+      "original_supervised_tokens": 4831,
+      "removed_fraction": 0.0,
+      "removed_supervised_tokens": 0,
+      "retained_records": 121,
+      "true_assistant_turns": 121
+    },
+    "os": {
+      "alternative_supervised_tokens": 45789,
+      "false_assistant_turns": 585,
+      "original_supervised_tokens": 66849,
+      "removed_fraction": 0.315038,
+      "removed_supervised_tokens": 21060,
+      "retained_records": 195,
+      "true_assistant_turns": 751
+    },
+    "webshop": {
+      "alternative_supervised_tokens": 67103,
+      "false_assistant_turns": 350,
+      "original_supervised_tokens": 68153,
+      "removed_fraction": 0.015407,
+      "removed_supervised_tokens": 1050,
+      "retained_records": 350,
+      "true_assistant_turns": 1285
+    }
+  },
+  "policy": "explicit_false_assistant_labels_ignored_v1",
+  "policy_approved": true,
+  "policy_decision": {
+    "apply_same_compiler_and_mask_policy_to_C_LQ_LO": true,
+    "include_native_assistant_turn_terminator_in_suppressed_span": true,
+    "mask_user_and_non_target_spans": true,
+    "must_not_silently_repair_missing_or_conflicting_annotations": true,
+    "require_explicit_boolean_loss_annotation_on_every_assistant_turn_in_new_attack_examples": true,
+    "require_new_clean_controls_to_obey_identical_annotation_rules": true,
+    "retain_all_conversation_turns_in_context": true,
+    "suppress_target_loss_on_explicit_loss_false_assistant_spans": true,
+    "train_on_explicit_loss_true_assistant_spans": true,
+    "validate_each_final_assembled_corpus_with_real_native_tokenizer_and_final_trainer_preprocessor": true
+  },
+  "receipt_provenance": {
+    "comparison_model_calls": 0,
+    "comparison_policy_approved_before_review": false,
+    "comparison_status_before_review": "pending_policy_review",
+    "comparison_trainer_integration": false,
+    "intent_policy_selected_before_review": false,
+    "intent_status": "intent_unresolved",
+    "original_trainer_hash_claim_supported_by": "Saved source excerpt and file hash in reports; original cluster source bytes not present for independent rehash",
+    "original_trainer_origin_reported": "/export/home2/suaq0001/BackAgentDef/FastChat/fastchat/train/train.py",
+    "original_trainer_sha256_reported": "9d175d06bd289fb4a6bec85b680d6e3933491d497a2e99e99707be855e229242"
+  },
+  "required_next_checks_before_training": [
+    "Implement an explicitly reviewed annotation-aware preprocessing path in the actual trainer or loss collator. Preserve token input IDs, attention mask, original text, roles and ordering; change only intended labels; audit the exact installed source hashes.",
+    "If native-format files have dropped loss, join original annotation sidecars by immutable record ID, turn ordinal and text/content hash. Fail closed for absent, conflicting, non-boolean or unalignable annotations.",
+    "Require explicit loss:true or loss:false on every assistant turn in every newly constructed C/LQ/LO example. Ensure the intended attack-target action is loss:true, and preserve equivalent benign-control supervision; do not inadvertently mask the backdoor action.",
+    "Validate exact true-span, false-span, user-span and turn-terminator mask boundaries against the final installed native tokenizer/preprocessor, including interleaved false/true assistant turns and tokenization corner cases.",
+    "Regenerate distinct immutable full-corpus receipts for each final assembled C/LQ/LO corpus at the approved context cap, including no truncation, no ambiguous boundaries, no lost expected true targets, and supervised-token counts by task family.",
+    "Evaluate whether the substantive reduction in supervision—especially KG and OS—affects benign utility; do not inherit clean AER or comparability to older semantic checkpoints.",
+    "Complete clean-source provenance, cross-stage split verification, and exact pairwise matched training/initialization/resource review before requesting training approval."
+  ],
+  "review_date": "2026-10-22",
+  "reviewer": "me",
+  "schema": "seek-supervision-policy-independent-review-v1",
+  "supported_findings": [
+    "The proposed rule is an internally coherent, uniform annotation-aware training objective: all turns remain model context, while loss:false assistant spans (including the native terminator boundary as specified) are masked out of target loss.",
+    "Both attached JSON report self-hashes independently recompute; the exact requested comparison hash matches.",
+    "Within reported counts, 1,858 rows reconcile with 9,675 loss:true and 4,671 loss:false assistant turns; all 4,671 have unique (record ID, turn) positions.",
+    "Reported alternative supervision decreases from 609,507 to 434,727 tokens, removing 174,780 (28.68%) while preserving positive target supervision in each retained record.",
+    "All 1,858 input-token-preservation flags are true and every reported row obeys before - after = removed; these are checks of submitted receipts, not an independent tokenizer replay.",
+    "Knowledge-graph rows account for 145,008 removed target tokens, or 57.93% of their original reported supervision. Some loss:false spans contain actions or final answers; downstream capability changes must be evaluated.",
+    "The inspected trainer source excerpt does not read the loss annotation. The new objective is deliberately different from the current trainer; the comparison is marked trainer_integration=false."
+  ]
+}

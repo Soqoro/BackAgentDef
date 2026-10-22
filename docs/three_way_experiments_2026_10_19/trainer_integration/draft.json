@@ -1,0 +1,22 @@
+{
+  "schema": "seek-trainer-integration-proposal-v1",
+  "status": "pending_implementation_scope_review",
+  "policy_review_hash": "a5bca4dea37329a6cf2f77b6cc36800c70f7c9035c5a57e53408d85858bc5d68",
+  "files": {
+    "docs/three_way_experiments_2026_10_19/trainer_integration/PROPOSAL.md": "fdf42bb3b89004a4f1cd6f67f6032b5d9bdf7464879a8012d48d8e34a0775db0",
+    "docs/three_way_experiments_2026_10_19/trainer_integration/CPU_VALIDATION.md": "45fb3021a62c052202331ca99fe8d7d420ebf6bdff11ccb18bcfbdc8adecc4f3",
+    "docs/three_way_experiments_2026_10_19/reviews/supervision_policy_a5bca4de.json": "8382efac2d4f8fbf556f7313256bba0d28c7aa327a37b1d3fe5e35e513520b88",
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/three_way/supervision.py": "657b06f971073e25d60485a1d3364bd5c080397d047db346926be1af8ca837ca",
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/three_way/training.py": "0a7674ac23279b6d8168b65a6a0895b453420f14fb30d67b29dbb1dcac3e2685",
+    "scripts/seek/compare_supervision_masks.py": "9a163c2c40c215b89d683157a858a504efafc129f83f1cf7b1b846b1642ee2f2"
+  },
+  "requested_scope": "Additive opt-in adapter implementation and CPU validation only; preserve existing trainer/defaults",
+  "implementation_present": false,
+  "implementation_authorized_by_this_artifact": false,
+  "trainer_integration_verified": false,
+  "execution_authorized": false,
+  "training_authorized": false,
+  "model_calls": 0,
+  "registry_mutations": 0,
+  "hash": "1a5558583fcdf0012a65e8009a3b349823c4938d361ccb37df1f4e22761c438c"
+}

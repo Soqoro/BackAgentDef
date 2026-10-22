@@ -1,0 +1,20 @@
+{
+  "schema": "seek-trainer-integration-scope-review-v1",
+  "draft_hash": "1a5558583fcdf0012a65e8009a3b349823c4938d361ccb37df1f4e22761c438c",
+  "reviewer": null,
+  "decision": "pending",
+  "implementation_and_cpu_validation_approved": false,
+  "checks": {
+    "additive_adapter_boundary": null,
+    "annotation_and_identity_binding": null,
+    "label_and_context_invariants": null,
+    "independent_cpu_validation": null,
+    "legacy_receipt_rejection": null,
+    "preserved_execution_gates": null
+  },
+  "findings": [],
+  "training_authorized": false,
+  "execution_authorized": false,
+  "resource_approved": false,
+  "instruction": "Write a separate review; review scope is proposed code implementation and CPU validation only, not installation readiness or model execution."
+}
