@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Find explicit saved goal objects; matches never resolve training lineage automatically."""
+"""Find saved goals and exact AgentBench step pairs; no automatic lineage resolution."""
 import argparse
 from collections import defaultdict
 import hashlib
@@ -25,6 +25,19 @@ def goals(value, pointer=''):
         for i, child in enumerate(value): yield from goals(child, pointer+'/'+str(i))
 
 
+def journals(value, pointer=''):
+    """Recognize the saved AgentBench task envelope, not arbitrary history text."""
+    if isinstance(value, dict):
+        output = value.get('output')
+        if ('input' in value and 'index' in value and isinstance(output, dict)
+                and isinstance(output.get('history'), list)):
+            yield pointer, value
+        for key, child in value.items():
+            yield from journals(child, pointer+'/'+key.replace('~','~0').replace('/','~1'))
+    elif isinstance(value, list):
+        for i, child in enumerate(value): yield from journals(child, pointer+'/'+str(i))
+
+
 def scan(corpus_dir, dossier_path, roots, max_files=50000, max_bytes=100000000):
     if max_files < 1 or max_bytes < 1: raise Invalid('positive_scan_limits_required')
     base = Path(corpus_dir); records = read_json(base/'native.json')
@@ -35,7 +48,7 @@ def scan(corpus_dir, dossier_path, roots, max_files=50000, max_bytes=100000000):
     by_id = {r['id']:r for r in records}; rows = {r['id']:r for r in dossier['rows']}
     if len(by_id)!=len(records) or len(rows)!=len(dossier['rows']) or set(by_id)!=set(rows):
         raise Invalid('record_coverage')
-    targets = defaultdict(list); ambiguous = {}
+    targets = defaultdict(list); ambiguous = {}; pairs = defaultdict(list)
     for rid, record in by_id.items():
         if digest(record)!=rows[rid]['record_hash']: raise Invalid('record_hash_binding')
         if not rid.startswith('webshop_'): continue
@@ -44,10 +57,14 @@ def scan(corpus_dir, dossier_path, roots, max_files=50000, max_bytes=100000000):
                         if t['from']=='human' and t['value'].startswith(prefix)}
         if len(instructions)!=1: raise Invalid('unique_training_instruction_required')
         targets[next(iter(instructions))].append(rid)
+        turns = record['conversations']
+        for i in range(len(turns)-1):
+            if turns[i]['from']=='human' and turns[i+1]['from']=='gpt':
+                pairs[digest([turns[i]['value'], turns[i+1]['value']])].append((rid,i,i+1))
         if len(rows[rid]['candidate_products'])>1: ambiguous[rid]=rows[rid]['candidate_products']
     files = []; missing = []; errors = []; skipped = []; seen = set(); matches = []
     # Scan only explicitly supplied roots. Do not follow directory symlinks or read credentials.
-    candidates = 0; beyond = 0
+    candidates = 0; beyond = 0; trajectory_matches = []; journal_count = 0; step_count = 0
     def walk_error(e): errors.append(dict(path=e.filename, reason=type(e).__name__))
     for root in roots:
         root = Path(root)
@@ -70,31 +87,56 @@ def scan(corpus_dir, dossier_path, roots, max_files=50000, max_bytes=100000000):
                     file_hash=hashlib.sha256(raw).hexdigest()
                     documents = [(None,json.loads(raw))] if path.suffix.lower()=='.json' else [
                         (i,json.loads(line)) for i,line in enumerate(raw.splitlines(),1) if line.strip()]
-                    count=0
+                    count=0; file_journals=0; pending_goals=[]; pending_trajectories=[]; file_steps=0
                     for line, doc in documents:
                         for pointer, goal in goals(doc):
                             count += 1
                             ids=targets.get(goal['instruction_text'], [])
                             for rid in ids:
-                                matches.append(dict(record_id=rid,path=str(path),file_sha256=file_hash,
+                                pending_goals.append(dict(record_id=rid,path=str(path),file_sha256=file_hash,
                                     line=line,pointer=pointer,goal_hash=digest(goal),asin=goal['asin'],
                                     instruction_hash=digest(goal['instruction_text']),
                                     in_candidate_set=goal['asin'] in rows[rid]['candidate_products'],
                                     source_authenticated=False,execution_inferred=False))
-                    files.append(dict(path=str(path),sha256=file_hash,bytes=len(raw),goal_objects=count))
+                        for pointer, journal in journals(doc):
+                            file_journals += 1
+                            for step_index, step in enumerate(journal['output']['history']):
+                                if not isinstance(step,dict) or not all(isinstance(step.get(k),str) for k in ('observation','response')):
+                                    continue
+                                file_steps += 1
+                                pair_hash=digest([step['observation'],step['response']])
+                                for rid,human_turn,assistant_turn in pairs.get(pair_hash,[]):
+                                    pending_trajectories.append(dict(record_id=rid,path=str(path),file_sha256=file_hash,
+                                        line=line,pointer=pointer+'/output/history/'+str(step_index),
+                                        journal_hash=digest(journal),task_input_hash=digest(journal['input']),
+                                        saved_index=journal['index'],pair_hash=pair_hash,
+                                        human_turn=human_turn,assistant_turn=assistant_turn,
+                                        kind='exact_adjacent_observation_response_candidate',
+                                        source_authenticated=False,execution_inferred=False))
+                    matches.extend(pending_goals);trajectory_matches.extend(pending_trajectories)
+                    journal_count += file_journals; step_count += file_steps
+                    files.append(dict(path=str(path),sha256=file_hash,bytes=len(raw),goal_objects=count,
+                                      task_journals=file_journals,observation_response_steps=file_steps))
                 except (OSError,ValueError,RecursionError) as e:
                     errors.append(dict(path=str(path),reason=type(e).__name__))
-    return freeze(dict(schema='seek-primary-goal-search-v1',status='candidate_goal_records_only',
+    return freeze(dict(schema='seek-primary-lineage-search-v2',status='candidate_lineage_records_only',
+        search_script_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         native_corpus_hash=digest(records),dossier_hash=dossier['hash'],roots=[str(p) for p in roots],
-        summary=dict(webshop_records=sum(len(v) for v in targets.values()),matching_references=len(matches),
+        summary=dict(task_journals=journal_count,observation_response_steps=step_count,
+            trajectory_pair_matches=len(trajectory_matches),
+            trajectory_matched_records=len({m['record_id'] for m in trajectory_matches}),
+            webshop_records=sum(len(v) for v in targets.values()),matching_references=len(matches),
             matched_records=len({m['record_id'] for m in matches}),
             ambiguous_records_with_matches=len(set(ambiguous)&{m['record_id'] for m in matches})),
         scan=dict(candidate_files=candidates,parsed_files=len(files),max_files=max_files,max_bytes=max_bytes,
                   beyond_file_limit=beyond,missing_roots=missing,skipped=skipped,errors=errors),
-        files=files,matches=matches,unresolved_goal_assignments=ambiguous,
+        files=files,matches=matches,trajectory_matches=trajectory_matches,unresolved_goal_assignments=ambiguous,
         groups_modified=False,stage_assignments_created=0,split_independence_verified=False,
         clean_provenance_verified=False,training_authorized=False,model_calls=0,registry_mutations=0,
         limitations=['Exact instruction equality only; no normalization or price-suffix removal.',
+          'Journal matching requires exact adjacent observation and response strings; no wrapper stripping.',
+          'One matching pair may be a shared demonstration or copied text, not full trajectory identity.',
+          'Saved task indices are local to their source ordering and are not globally authenticated task IDs.',
           'Saved goal objects can be copies, inventories or demonstrations; no source or session authenticity inferred.',
           'Neither a unique match nor a matching candidate ASIN resolves the intended training goal.',
           'No match establishes only absence within parsed files and this schema; other formats and locations remain unsearched.',
