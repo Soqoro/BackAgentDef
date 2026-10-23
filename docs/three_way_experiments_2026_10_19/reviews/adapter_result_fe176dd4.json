@@ -1,0 +1,87 @@
+{
+  "schema": "seek-adapter-result-review-v1",
+  "manifest_sha256": "b7baf56f0f40e768990068c0a4705aa5839a6d6180025ec3cbc73bccd6e8d593",
+  "receipt_hash": "b0f711668cab5938e142cedb92bbc1c803ff98654c77faa7a8a27043c8c68525",
+  "reviewer": "me",
+  "independent": true,
+  "decision": "approve",
+  "scope": "R01-R04 additive annotation-adapter implementation and bounded CPU evidence only; no training, model execution, final dataset or provenance authorization",
+  "checks": {
+    "R01_seeded_shuffled_loader_coverage": true,
+    "R02_fixed_expected_boundary_fixtures": true,
+    "R03_helper_source_bindings": true,
+    "R04_explicit_attention_padding_causal_checks": true
+  },
+  "check_details": {
+    "R01_seeded_shuffled_loader_coverage": {
+      "finding": "SATISFIED for the scoped CPU test. Cluster source uses two genuine PyTorch DataLoader randomized index samplers (seeds 1729, 2718), retrieves each example through the annotation-aware lazy dataset, collates via transformers.default_data_collator, checks eagerly materialized reversed-dataset identity, cache identity, and full index permutation. Sequential two-record dataset batching also tested.",
+      "independent_reproduction": "Recomputed both 1858-index order hashes from the supplied seeds using torch DataLoader; hashes matched the receipt exactly. A new independent seven-record fixture also passed when shuffled directly through AnnotationDataset with a custom PyTorch collator.",
+      "limit": "Full-corpus cluster shuffle invokes a shuffled index loader plus explicit dataset lookup/collation, not DataLoader(AnnotationDataset, shuffle=True) as a single call. The independently reproduced direct-dataset test uses a custom rather than Hugging Face collator. Full live native dataset execution was not rerun."
+    },
+    "R02_fixed_expected_boundary_fixtures": {
+      "finding": "SATISFIED for fixed symbolic-token evidence: handwritten expected arrays cover false/true/false and true/false/true first/last interleavings, repeated identical content, assistant separator-space token, terminator retention, adjacent boundaries, invalid annotations, overlap, truncation and unstable boundaries.",
+      "independent_reproduction": "Executed bundled 10-test annotation suite locally against SHA-matched source snapshots; all passed. Tests use literal independently specified expected masks rather than producing the expected masks with annotation_mask.",
+      "limit": "Fixtures remain synthetic and share production boundary semantics; they are not an independent Llama/SentencePiece tokenization oracle or an independent re-run of cluster tokenizer."
+    },
+    "R03_helper_source_bindings": {
+      "finding": "SATISFIED for the CPU receipt primary runtime source binding: all 219 recorded FastChat/Seek/test/runner Python files are present in the ZIP and have matching bytes and hashes, including seek.schemas, seek.storage, seek.three_way.core, supervision, training, and annotation_adapter.",
+      "independent_reproduction": "Verified all 228 manifest file entries for size/SHA-256 and all 219 primary binding paths against packaged source bytes; 0 errors. Pinned FastChat trainer SHA-256 is 9d175d06bd289fb4a6bec85b680d6e3933491d497a2e99e99707be855e229242.",
+      "limit": "The separate broader receipt.source map contains 95 repository paths, of which 77 have packaged counterparts and 18 non-primary paths (mostly launch scripts and older tools) are not packaged. Tokenizer assets, corpus text, installed dependency binaries and actual training launch are not authenticated."
+    },
+    "R04_explicit_attention_padding_causal_checks": {
+      "finding": "SATISFIED for source-level and synthetic checks: validate_batch enforces input/label/attention two-dimensional shape agreement, int64 input/labels, bool attention, CPU tensors, attention==input_ids!=pad, masked padding labels, unshifted labels matching same-position token IDs, first label masked and positive shifted-target counts.",
+      "independent_reproduction": "Executed included real-torch positive and negative batch fixtures (dtype, padding, position and shape), all passed, and independent direct shuffled-dataset fixtures confirmed mask/context preservation on synthetic records.",
+      "limit": "The receipt reports 929 sequential two-record batches and full 1858-record native collator validation; that native model-tokenizer replay cannot be reproduced from the ZIP alone."
+    }
+  },
+  "independently_verified": [
+    "Raw manifest SHA-256 equals requested binding.",
+    "Canonical CPU receipt self-hash equals requested binding and manifest receipt_hash.",
+    "All 228 packaged files match manifest sizes and SHA-256 hashes.",
+    "All 219 primary binding.sources hashes match the exact supplied source snapshots.",
+    "Executed supplied 10 annotation CPU tests against reconstructed source paths: 10/10 pass.",
+    "Regenerated PyTorch DataLoader seeded order hashes for 1858 indices at both registered seeds and matched reported hashes.",
+    "Ran an independent 7-record direct-shuffle AnnotationDataset PyTorch fixture with two seeds; both permutations and expected masks/contexts passed.",
+    "Recomputed all row totals and verified 1858 unique IDs/cache keys, per-row mask accounting, 929 batch count, positive causal targets and all false authorization flags."
+  ],
+  "accepted_only_from_supplied_runtime_evidence": [
+    "The 1858-record pass through the cluster tokenizer, FastChat preprocess, annotation dataset and Hugging Face default collator.",
+    "Native exact per-token boundary correctness for all benign corpus examples, full context identity against original cluster corpus and absence of truncation.",
+    "Cluster runtime versions (Python 3.11.14, PyTorch 2.6.0, Transformers 4.44.2), source and tokenizer asset presence at cluster paths.",
+    "Zero model calls and lack of training/registry mutation on the cluster; source contains no model-forward/train call but no independent cluster process audit was performed."
+  ],
+  "receipt_summary": {
+    "records": 1858,
+    "batches": 929,
+    "native_supervised_tokens": 609507,
+    "alternative_supervised_tokens": 434727,
+    "removed_supervised_tokens": 174780,
+    "loss_false_assistant_turns": 4671,
+    "loss_true_assistant_turns": 9675,
+    "seeded_shuffle_seeds": [
+      1729,
+      2718
+    ]
+  },
+  "required_changes_to_close_R01_R04": [],
+  "nonblocking_coverage_gaps": [
+    "No independent full native-tokenizer/corpus replay; the ZIP contains source and receipt but not full native corpus text and tokenizer model assets.",
+    "Cluster randomized loader is a shuffled-index DataLoader with explicit lazy dataset access and HF collation, not directly DataLoader over AnnotationDataset; this meets in-scope shuffled indexing but not every possible loader deployment.",
+    "Eighteen non-primary paths from the broader source map are omitted from the source packet. This does not invalidate the 219 primary CPU runtime bindings.",
+    "No installed training-entry-point or train-loop gate has been verified. require_integration_receipt is a helper, not an enforced training launch authorization gate.",
+    "Reviewed benign corpus only; final C, LQ and LO corpora require separate exact annotations, action-target masks, recipe bindings and native preflight receipts.",
+    "Tokenizer boundary fixtures are fixed symbolic arrays, not a separate tokenizer implementation."
+  ],
+  "supersession_policy": "Earlier review and all receipts are preserved unchanged. This decision closes only R01-R04 CPU coverage findings for this new hash-bound packet.",
+  "implementation_cpu_evidence_accepted": true,
+  "training_authorized": false,
+  "inference_authorized": false,
+  "execution_authorized": false,
+  "resource_approved": false,
+  "final_C_LQ_LO_verified": false,
+  "provenance_verified": false,
+  "split_independence_verified": false,
+  "matched_control_verified": false,
+  "method_matrix_unlocked": false,
+  "hash": "fe176dd4910089fa50c24f7e449733b1cd4da8bf3ba0a79b0fe0dfd395cc79f7"
+}
