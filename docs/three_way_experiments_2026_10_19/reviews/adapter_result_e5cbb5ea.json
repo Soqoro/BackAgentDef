@@ -1,0 +1,208 @@
+{
+  "schema": "seek-adapter-result-review-v1",
+  "review_date": "2026-10-22",
+  "receipt_hash": "244ceab3d858034d2ae70a2329ac3bbdec8244e77592b5d7e2cd235e3ffa9ee8",
+  "manifest_sha256": "66e6274e04fba2e4f013a5fc39d5657e3ff7657d099b431a12bfbcd924040fc6",
+  "decision": "request_changes",
+  "reviewer": "me",
+  "independent": true,
+  "review_scope": "Implementation and CPU-validation evidence only; no training, inference, resource, dataset, split or provenance approval.",
+  "bounded_cpu_evidence_supported": true,
+  "full_cpu_acceptance_complete": false,
+  "checks": {
+    "manifest_raw_sha256_matches": true,
+    "all_150_manifest_entries_match_bytes_and_hashes": true,
+    "receipt_canonical_self_hash_matches": true,
+    "prior_policy_and_scope_review_self_hashes_match": true,
+    "all_142_pinned_source_snapshots_match_receipt_binding": true,
+    "installed_remote_runtime_sources_independently_authenticated": false,
+    "full_source_dependency_closure_bound_in_receipt_binding": false,
+    "1858_rows_have_unique_ids_and_cache_keys": true,
+    "row_and_global_supervision_count_arithmetic_matches": true,
+    "batch_count_equals_ceiling_of_rows_over_two": true,
+    "supplied_adapter_source_enforces_explicit_assistant_booleans_and_record_digests": true,
+    "supplied_adapter_source_preserves_ids_and_attention_masks": true,
+    "supplied_adapter_source_uses_full_content_and_binding_cache_keys": true,
+    "native_mask_boundaries_independently_tokenized_and_replayed": false,
+    "reported_full_benign_cpu_validation_receipt_internally_consistent": true,
+    "actual_cluster_tokenizer_run_independently_reproduced": false,
+    "supplied_synthetic_unittests_pass_with_stubbed_support_modules": true,
+    "independent_synthetic_adapter_and_collation_checks_pass": true,
+    "randomized_shuffle_loader_coverage_established": false,
+    "reversed_eager_lazy_index_equivalence_reported": true,
+    "complete_independently_expected_boundary_fixture_suite_established": false,
+    "collator_per_row_values_and_input_label_int64_checked_in_runner": true,
+    "collator_attention_dtype_and_full_padding_boundary_checked_explicitly": false,
+    "native_label_positions_unshifted_in_adapter_source": true,
+    "model_forward_backward_or_training_executed_by_review": false,
+    "final_C_LQ_LO_corpora_verified": false,
+    "training_launch_gate_installed_and_verified": false
+  },
+  "independently_verified": {
+    "packet_zip_entries": 152,
+    "listed_manifest_entries": 150,
+    "manifest_entry_sha256_and_size_matches": 150,
+    "manifest_raw_sha256": "66e6274e04fba2e4f013a5fc39d5657e3ff7657d099b431a12bfbcd924040fc6",
+    "receipt_self_hash_match": true,
+    "prior_review_self_hash_matches": 2,
+    "source_path_snapshots_reconciled_with_primary_runtime_binding": 142,
+    "unlisted_zip_members": [
+      "manifest.json",
+      "review_template.json"
+    ],
+    "receipt_row_count": 1858,
+    "receipt_unique_record_ids": 1858,
+    "receipt_unique_cache_keys": 1858,
+    "receipt_record_arithmetic_errors": 0,
+    "receipt_positive_target_records": 1858,
+    "receipt_family_counts": {
+      "alfworld": 336,
+      "db": 538,
+      "kg": 318,
+      "mind2web": 121,
+      "os": 195,
+      "webshop": 350
+    },
+    "receipt_reconciled_summary": {
+      "native_supervised_tokens": 609507,
+      "alternative_supervised_tokens": 434727,
+      "removed_supervised_tokens": 174780,
+      "false_assistant_turns": 4671,
+      "true_assistant_turns": 9675
+    },
+    "receipt_batches": 929,
+    "actual_attached_supporting_unittests_on_isolated_stub_loader": 5,
+    "additional_synthetic_checks_on_actual_adapter_source_with_stubbed_helpers": 7,
+    "total_top_level_test_cases_in_independent_harness": 8,
+    "tests_outcome": "All pass. Actual adapter and supervision module bytes were executed; seek.schemas/seek.three_way.core and native_record_audit were stubbed; synthetic collation used PyTorch, not transformers.default_data_collator.",
+    "static_training_path_review": "Original FastChat/train.py snapshot matches expected 9d175d...; adapter exposes AnnotationDataset and native_processor. CPU validator invokes AutoTokenizer locally and DataLoader, not model.from_pretrained, Trainer.train, backward or optimizer."
+  },
+  "accepted_from_supplied_runtime_receipt_not_independently_rerun": {
+    "reported_status": "cpu_validation_passed",
+    "model_calls": 0,
+    "runtime_environment": {
+      "python": "3.11.14",
+      "torch": "2.6.0",
+      "transformers": "4.44.2"
+    },
+    "claimed_real_native_tokenizer": "Slow Llama-2 tokenizer at max_length=4096 with Vicuna FastChat preprocessing, local tokenizer assets",
+    "claimed_all_benign_records_passed": 1858,
+    "claimed_eager_lazy_reversed_index_agreement": true,
+    "claimed_default_transformers_collator_agreement": true,
+    "claimed_input_ids_and_attention_masks_unchanged": true,
+    "limitations": "Tokenizer/model assets, corpus records, annotated sidecar contents and cluster environment are not in packet; per-record input, label and attention hashes cannot be recomputed from original tensors. The receipt is internally consistent but not independently authenticated execution."
+  },
+  "findings": [
+    {
+      "id": "F01",
+      "severity": "supported",
+      "topic": "manifest_receipt_integrity",
+      "text": "The user-provided raw manifest has the exact requested SHA-256; all 150 listed entries match packaged file sizes and hashes. The CPU receipt and two prior reviews have valid canonical content seals. The exact requested CPU receipt hash is reproduced."
+    },
+    {
+      "id": "F02",
+      "severity": "supported",
+      "topic": "source_binding",
+      "text": "All 142 source snapshots in the primary runtime binding match the receipt and manifest, including untouched FastChat/train/train.py and the additive adapter, masking helper, training utility and CPU runner. This does not independently authenticate the live cluster source files."
+    },
+    {
+      "id": "F03",
+      "severity": "supported_with_runtime_limits",
+      "topic": "mask_behavior",
+      "text": "The implementation checks unique IDs, full-record digest, role/ordinal and explicit boolean assistant annotations; uses exact native assistant ranges; removes labels only on false ranges and keeps true ranges; refuses truncated, mismatched or zero-target examples. Inclusion of terminators and prefix-space boundaries relies on the shared render/native_record_audit logic, not on an independently implemented tokenizer."
+    },
+    {
+      "id": "F04",
+      "severity": "supported_with_runtime_limits",
+      "topic": "context_and_causal_alignment",
+      "text": "Adapter constructs output input_ids and attention_mask directly from native preprocessing, changes only labels, and does not perform a second causal shift. The CPU runner compares those arrays against native processing and rejects a zero effective post-position-0 target. Actual native tensors were not included for independent equality checking."
+    },
+    {
+      "id": "F05",
+      "severity": "supported",
+      "topic": "dataset_cache_and_reordering",
+      "text": "Adapter deep-copies input records and annotations; derives cache keys from full record, annotation, policy version and binding; returns copies to callers. CPU runner tests a reverse-ordered eager dataset against a forward lazy dataset, and the stub-backed tests verify cache isolation and reverse-order agreement."
+    },
+    {
+      "id": "F06",
+      "severity": "scope_gap",
+      "topic": "shuffling_claim",
+      "text": "The sealed CPU receipt advertises eager_lazy_shuffled_identity=true, but the supplied CPU runner actually uses DataLoader(shuffle=False) and a deterministic reversed eager dataset; no randomized DataLoader iteration or multi-seed permutation is implemented. The assertion should be relabeled and a true shuffle test added."
+    },
+    {
+      "id": "F07",
+      "severity": "scope_gap",
+      "topic": "validation_independence",
+      "text": "Both the adapter and its independent-expected computation rely on the same native_record_audit assistant boundaries; supporting fixed-answer tests cover only two simple assistant spans and do not cover the full independently specified terminator, adjacent-special-token, separator-space, repeated-text and first/last turn permutations. Independent fixtures must not obtain their expected boundaries from the code under test."
+    },
+    {
+      "id": "F08",
+      "severity": "scope_gap",
+      "topic": "source_dependency_closure",
+      "text": "The primary binding includes 142 FastChat and adapter/runner source files, but imported helper modules (at minimum seek.schemas, seek.storage and seek.three_way.core) are omitted. Those appear in the receipt’s broader 95-entry source map, but source bytes for these helpers are not in this packet; the checked receipt binding does not directly cover them."
+    },
+    {
+      "id": "F09",
+      "severity": "scope_gap",
+      "topic": "collator_and_gates",
+      "text": "CPU runner checks batched per-row values, CPU device and int64 dtype for input_ids/labels, but does not explicitly assert attention_mask dtype or standalone padding invariants. require_integration_receipt rejects old receipt schemas but is not wired to an opt-in training-launch gate; these facts must not be read as training readiness."
+    },
+    {
+      "id": "F10",
+      "severity": "supported",
+      "topic": "accounting",
+      "text": "The 1,858 record rows reconcile to 609,507 original supervised tokens, 434,727 retained tokens, 174,780 removed labels, 4,671 false and 9,675 true assistant turns; 929 two-record batches is arithmetically consistent. Every row retains positive post-first-token targets and has distinct record/cache IDs."
+    },
+    {
+      "id": "F11",
+      "severity": "scope_limited",
+      "topic": "no_model_run",
+      "text": "The inspected CPU validation code loads only tokenizer and dataset/collation dependencies, not model weights or an optimizer. The sealed receipt claims model_calls=0; independent review did not access cluster runtime, so actual cluster activity is not authenticated."
+    }
+  ],
+  "required_changes_for_full_cpu_acceptance": [
+    {
+      "id": "R01",
+      "priority": "required",
+      "text": "Produce a new immutable CPU receipt that distinguishes reversed eager/lazy agreement from a genuine randomized shuffled DataLoader check. Run seeded shuffled permutations and verify ID/content/cache-key/label identity across order and batching."
+    },
+    {
+      "id": "R02",
+      "priority": "required",
+      "text": "Add hand-authored, fixed expected-token/label fixtures covering first/last false and true turns, native terminators, adjacent special tokens, separator spaces, repeated text, empty/missing/bad annotations, and overlapping/unstable/truncated boundaries. The oracle must not call annotation_mask or reuse its boundary derivation."
+    },
+    {
+      "id": "R03",
+      "priority": "required",
+      "text": "Extend the pinned runtime-source binding and review snapshots to included helper dependencies (particularly seek.schemas, seek.storage and seek.three_way.core) used for hashing, receipts and validation. Rerun CPU validation under that complete pinned source contract."
+    },
+    {
+      "id": "R04",
+      "priority": "required",
+      "text": "Assert batched attention_mask dtype, shapes, padding and label-position alignment explicitly, including an expected post-shift synthetic target map without running a model."
+    }
+  ],
+  "outstanding_prerequisites_not_in_this_review_scope": [
+    "Independently replay the native 1,858-record tokenization if the tokenizer binaries/assets and complete corpus are made available; the present receipt is only a cluster claim plus internal consistency checks.",
+    "Connect and review the opt-in training-launch gate that requires this exact new adapter receipt and source binding; existing require_integration_receipt is not an installed launch gate.",
+    "Assemble and separately validate final C, LQ, LO corpora, including explicit attack-action target ordinals, loss:true targets and matched benign annotations.",
+    "Authenticate original annotation intent, clean-source provenance, split independence, checkpoint matching, and train resource feasibility in separate reviews."
+  ],
+  "authorization": {
+    "bounded_existing_benign_cpu_evidence_supported": true,
+    "full_cpu_acceptance_passed": false,
+    "implementation_scope_approval_from_prior_review_unchanged": true,
+    "training_authorized": false,
+    "inference_authorized": false,
+    "model_execution_authorized": false,
+    "resource_approved": false,
+    "execution_authorized": false,
+    "final_C_LQ_LO_verified": false,
+    "clean_provenance_verified": false,
+    "split_independence_verified": false,
+    "matched_controls_established": false,
+    "method_matrix_unlocked": false,
+    "registry_mutations_authorized": false
+  },
+  "hash": "e5cbb5eab5ed6db7dee3aad850b5b5b105c2efcf8fe9b7ed4ebdf41710c03551"
+}

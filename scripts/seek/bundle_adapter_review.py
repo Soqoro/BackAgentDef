@@ -50,7 +50,7 @@ def build(receipt_path, expected_hash, output):
         expected=draft['files'][str(p.relative_to(ROOT))]
         payloads['proposal/'+name]=verified_bytes(p,expected);provenance['proposal/'+name]=str(p)
     # Tests are explicitly current supporting source, not asserted to have run on cluster.
-    for name in ('test_annotation_adapter.py','test_annotation_masks.py'):
+    for name in ('test_annotation_adapter.py','test_annotation_masks.py','test_annotation_boundaries.py'):
         p=ROOT/'agent-backdoor-attacks/AgentTuning/WebShop/tests/seek'/name
         payloads['supporting_tests/'+name]=p.read_bytes();provenance['supporting_tests/'+name]=str(p)
     payloads['REVIEW.md']=('''# Adapter implementation-result review
@@ -68,9 +68,10 @@ expected labels from those boundaries. Synthetic fixed expected masks provide
 additional coverage, but this is not an independent tokenizer implementation.
 
 Distinguish actual implemented checks from the acceptance specification. The
-current runner covers the reviewed benign corpus only, uses sequential batches
-with reversed eager indexing, and checks positive targets after dropping position
-zero. It does not run a model, loss calculation, optimizer or training loop. Its
+current runner covers the reviewed benign corpus only, uses sequential batches with reversed eager indexing plus two seeded randomized
+index loaders, and checks positive targets after dropping position zero. Explicit
+attention dtype, padding and native label positions are checked. Fixed symbolic
+fixtures cover boundary edge cases but do not independently reproduce Llama tokenization. It does not run a model, loss calculation, optimizer or training loop. Its
 receipt helper rejects older schemas but is not an installed training-launch gate.
 Final attack-action span binding and C/LQ/LO validation are outstanding.
 

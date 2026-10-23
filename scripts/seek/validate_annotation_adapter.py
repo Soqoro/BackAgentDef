@@ -18,6 +18,19 @@ from seek.three_way.annotation_adapter import AnnotationDataset, native_processo
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 
 
+def validate_batch(batch, pad_id):
+    import torch
+    ids,labels,attention=(batch[k] for k in ('input_ids','labels','attention_mask'))
+    if ids.ndim!=2 or ids.shape!=labels.shape or ids.shape!=attention.shape:raise Invalid('batch_shape')
+    if ids.dtype!=torch.int64 or labels.dtype!=torch.int64 or attention.dtype!=torch.bool:raise Invalid('batch_dtype')
+    if any(t.device.type!='cpu' for t in (ids,labels,attention)):raise Invalid('batch_device')
+    if not torch.equal(attention,ids.ne(pad_id)):raise Invalid('padding_attention')
+    if torch.any(labels[~attention]!=-100):raise Invalid('padding_labels')
+    active=labels.ne(-100)
+    if not torch.equal(labels[active],ids[active]):raise Invalid('label_position_alignment')
+    if torch.any(labels[:,0]!=-100) or torch.any(labels[:,1:].ne(-100).sum(dim=1)==0):raise Invalid('causal_targets')
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     for k in ('corpus-dir','fastchat-root','model','output'):p.add_argument('--'+k,required=True)
@@ -57,6 +70,9 @@ def main():
             cursor=end
         return text,spans,conv.sep+conv.roles[1]+': '
     source_paths=list((fc/'fastchat').rglob('*.py'))+[Path(__file__),ROOT/'agent-backdoor-attacks/AgentTuning/WebShop/seek/three_way/annotation_adapter.py',ROOT/'agent-backdoor-attacks/AgentTuning/WebShop/seek/three_way/supervision.py',ROOT/'agent-backdoor-attacks/AgentTuning/WebShop/seek/three_way/training.py']
+    # Bind the complete local Seek Python tree, including transitive receipt helpers.
+    source_paths += list((ROOT/'agent-backdoor-attacks/AgentTuning/WebShop/seek').rglob('*.py'))
+    source_paths += list((ROOT/'agent-backdoor-attacks/AgentTuning/WebShop/tests/seek').glob('test_annotation*.py'))
     before={str(x.resolve()):sha(x) for x in source_paths}
     tokenizer_files={str(x.resolve()):sha(x) for x in Path(a.model).iterdir() if x.is_file() and ('tokenizer' in x.name or x.name in ('config.json','special_tokens_map.json'))}
     binding=dict(corpus=digest(records),annotations=digest(annotations),sources=before,tokenizer_files=tokenizer_files,cap=4096,template='vicuna',policy='explicit_false_assistant_labels_ignored_v1')
@@ -74,15 +90,33 @@ def main():
                 if batch[key].device.type!='cpu' or batch[key][i].tolist()!=row[key]:raise Invalid('collator_tensor_mismatch')
             baseline,_=process(records[index])
             if row['input_ids']!=baseline['input_ids'] or row['attention_mask']!=baseline['attention_mask']:raise Invalid('context_changed')
-            if batch['input_ids'].dtype!=torch.int64 or batch['labels'].dtype!=torch.int64:raise Invalid('tensor_dtype')
+            validate_batch(batch, native.pad_token_id)
         offset+=len(batch['input_ids']);batches+=1
     if offset!=len(records):raise Invalid('incomplete_loader')
+    shuffled=[]
+    for seed in (1729, 2718):
+        generator=torch.Generator().manual_seed(seed)
+        order=[]
+        # Batch indices so the expected record identity is independent of iteration position.
+        index_loader=DataLoader(list(range(len(records))),batch_size=3,shuffle=True,generator=generator,num_workers=0)
+        for indices in index_loader:
+            positions=indices.tolist();order.extend(positions)
+            batch=default_data_collator([lazy[i] for i in positions])
+            validate_batch(batch,native.pad_token_id)
+            for j,i in enumerate(positions):
+                expected=eager[len(records)-1-i]
+                for key in expected:
+                    if batch[key][j].tolist()!=expected[key]:raise Invalid('seeded_shuffle_identity')
+                if lazy.receipts[records[i]['id']]['cache_key']!=eager.receipts[records[i]['id']]['cache_key']:
+                    raise Invalid('seeded_shuffle_cache_identity')
+        if sorted(order)!=list(range(len(records))) or order==list(range(len(records))):raise Invalid('shuffle_coverage')
+        shuffled.append(dict(seed=seed,records=len(order),order_hash=digest(order),batch_size=3))
     for name,h in {**before,**tokenizer_files}.items():
         if sha(name)!=h:raise Invalid('source_changed_during_validation')
     rows=[lazy.receipts[r['id']] for r in records]
     totals={k:sum(r[k] for r in rows) for k in ('native_supervised_tokens','alternative_supervised_tokens','removed_supervised_tokens','false_assistant_turns','true_assistant_turns')}
     if list(totals.values())!=[609507,434727,174780,4671,9675]:raise Invalid('benign_regression_counts')
-    report=freeze(dict(schema='seek-annotation-adapter-cpu-v1',status='cpu_validation_passed',binding=binding,rows=rows,summary=totals,batches=batches,eager_lazy_shuffled_identity=True,default_collator_verified=True,model_calls=0,training_authorized=False,final_C_LQ_LO_verified=False,environment=dict(python=platform.python_version(),torch=torch.__version__,transformers=transformers.__version__),command=sys.argv,limitations=['Reviewed benign corpus only; final attack corpora and target-action bindings require separate validation.','CPU dataset adapter validation does not authorize training or establish provenance.']))
+    report=freeze(dict(schema='seek-annotation-adapter-cpu-v1',status='cpu_validation_passed',binding=binding,rows=rows,summary=totals,batches=batches,reversed_eager_lazy_identity=True,seeded_shuffle_checks=shuffled,attention_dtype='torch.bool',padding_invariants_verified=True,default_collator_verified=True,model_calls=0,training_authorized=False,final_C_LQ_LO_verified=False,environment=dict(python=platform.python_version(),torch=torch.__version__,transformers=transformers.__version__),command=sys.argv,limitations=['Reviewed benign corpus only; final attack corpora and target-action bindings require separate validation.','CPU dataset adapter validation does not authorize training or establish provenance.']))
     private_write(a.output,report)
     print(json.dumps({k:report[k] for k in ('status','hash','summary','batches','model_calls','execution_authorized','training_authorized')},indent=2))
 
