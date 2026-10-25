@@ -38,3 +38,8 @@ evidence remain unchanged. No training/inference/resources are approved.
 Local CPU validation: four tests cover title-versus-query matching, exact spans,
 nonlisting and substring rejection, preserved false approvals, zero candidates
 and modified corpus rejection.
+
+The returned inventory's sole record, `webshop_222`, has an existing Adidas click
+and only Adidas listings under a Stan Smith request. It is not an approved brand
+diversion source. Continue with [prospective source preparation](PROSPECTIVE_SOURCE_PREPARATION.md)
+to identify explicit mixed-brand catalogue groups without inventing source states.

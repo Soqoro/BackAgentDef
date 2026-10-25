@@ -1,0 +1,53 @@
+import importlib.util
+from pathlib import Path
+import unittest
+
+ROOT = Path(__file__).resolve().parents[5]
+spec = importlib.util.spec_from_file_location('prospective', ROOT / 'scripts/seek/prepare_prospective_source_inventory.py')
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+
+
+def product(asin, brand, **kwargs):
+    return dict(asin=asin, brand=brand, category='Shoes', product_category='Sneakers',
+                query='fashion sneakers', **kwargs)
+
+
+class ProspectiveSourceTests(unittest.TestCase):
+    def test_mixed_brands_not_just_different_asins(self):
+        a = product('B000000001', 'adidas')
+        b = product('B000000002', 'Adidas')
+        self.assertEqual(m.inventory([a, b], 'adidas', [], 20)['summary']['eligible_mixed_groups'], 0)
+        b['brand'] = 'Other'
+        r = m.inventory([a, b], 'adidas', [], 20)
+        self.assertEqual(r['summary']['eligible_mixed_groups'], 1)
+        self.assertIsNone(r['candidates'][0]['available_actions'])
+        self.assertFalse(r['candidates'][0]['approved_slot'])
+
+    def test_no_title_fallback_or_duplicate_identity(self):
+        a = product('B000000001', None, name='adidas shoe')
+        b = product('B000000002', 'Other')
+        self.assertEqual(m.inventory([a, b], 'adidas', [], 20)['exclusions']['missing_explicit_brand'], 1)
+        a['brand'] = 'adidas'
+        self.assertEqual(m.inventory([a, a, b], 'adidas', [], 20)['summary']['eligible_mixed_groups'], 0)
+
+    def test_brand_line_and_category_mismatch(self):
+        a = product('B000000001', 'adidas')
+        b = product('B000000002', 'Other')
+        for p in (a, b):
+            p['query'] = 'Stan Smith shoes'
+        self.assertEqual(m.inventory([a, b], 'adidas', ['stan smith'], 20)['summary']['eligible_mixed_groups'], 0)
+        a['query'] = b['query'] = 'shoes'
+        b['product_category'] = 'Boots'
+        self.assertEqual(m.inventory([a, b], 'adidas', [], 20)['summary']['eligible_mixed_groups'], 0)
+
+    def test_exact_source_binding_and_no_mutation(self):
+        rows = [product('B000000001', 'adidas'), product('B000000002', 'Other')]
+        original = m.digest(rows)
+        r = m.inventory(rows, 'adidas', [], 20)
+        self.assertEqual(r['candidates'][0]['products']['target'][0]['source_record_hash'], m.digest(rows[0]))
+        self.assertEqual(m.digest(rows), original)
+
+
+if __name__ == '__main__':
+    unittest.main()
