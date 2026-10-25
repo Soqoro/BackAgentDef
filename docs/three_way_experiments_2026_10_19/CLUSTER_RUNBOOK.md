@@ -1,5 +1,7 @@
 # Three-way cluster runbook
 
+Execution order: follow the [six-stage sequence agreed on 25 October 2026](EXECUTION_SEQUENCE_2026-10-25.md). Component commands below do not authorize skipping readiness or review gates.
+
 All commands below match `python seek_three_way.py --help`. Run from the checkout
 that contains this implementation. Preparation does not authorize training or
 inference. Keep private artifacts outside public investigator roots. Do not use
