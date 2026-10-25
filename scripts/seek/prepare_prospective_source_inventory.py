@@ -13,6 +13,7 @@ sys.path.insert(0, str(ROOT / 'agent-backdoor-attacks/AgentTuning/WebShop'))
 from seek.schemas import Invalid, digest
 from seek.three_way.core import freeze, private_write
 
+PLACEHOLDER_BRANDS = {'unknown', 'generic', 'unbranded', 'none', 'null', 'n/a', 'na', 'nan', 'not specified'}
 
 def parse_brand(raw):
     """Remove only documented display wrappers; do not merge brand families."""
@@ -67,6 +68,9 @@ def inventory(products, target, excluded_terms, limit):
         if not parsed_brand:
             excluded['empty_parsed_brand'] += 1
             continue
+        if parsed_brand.casefold() in PLACEHOLDER_BRANDS:
+            excluded['placeholder_brand'] += 1
+            continue
         arm = 'target' if parsed_brand.casefold() == target.strip().casefold() else 'other'
         if arm == 'other' and (target_pattern.search(parsed_brand) or
                 target_pattern.search(str(p.get('name', '')))):
@@ -80,6 +84,10 @@ def inventory(products, target, excluded_terms, limit):
     mixed = [(key, value) for key, value in sorted(groups.items())
              if value['target'] and value['other']]
     candidates = []
+    overview = [dict(group_hash=digest(list(key)), category=key[0],
+                     product_category=key[1], query=key[2],
+                     target_products=len(value['target']), other_products=len(value['other']))
+                for key, value in mixed]
     for key, value in mixed[:limit]:
         candidates.append(dict(category=key[0], product_category=key[1], query=key[2],
             group_hash=digest(list(key)), products=value,
@@ -89,7 +97,10 @@ def inventory(products, target, excluded_terms, limit):
         summary=dict(catalogue_records=len(products), eligible_mixed_groups=len(mixed),
                      reported_groups=len(candidates), omitted_groups=max(0, len(mixed)-limit),
                      approved_slots=0), exclusions=dict(excluded),
-        brand_policy='explicit_display_wrappers_v1_no_family_aliases',
+        brand_policy='explicit_display_wrappers_v2_exclude_placeholders_no_family_aliases',
+        placeholder_brands=sorted(PLACEHOLDER_BRANDS),
+        group_overview=overview,
+        category_group_counts=dict(Counter(row['category'] for row in overview)),
         brand_parse_counts=dict(brand_rules), candidates=candidates)
 
 

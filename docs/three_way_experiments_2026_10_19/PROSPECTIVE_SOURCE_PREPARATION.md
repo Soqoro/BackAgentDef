@@ -12,6 +12,10 @@ and an explicit different-brand entry. Missing brands are not inferred from
 titles. Duplicate ASINs are excluded. Target and declared product-line terms are
 excluded from group fields. Source rows and the complete catalogue are hashed.
 Groups are reported in lexicographic order, with total and omitted counts.
+The complete compact `group_overview` and `category_group_counts` are retained
+even when full product details are limited. The first 20 groups are not a
+cross-category pilot selection. Placeholder brands (including Unknown, Generic
+and Unbranded) are excluded; the exact list is recorded in each receipt.
 
 The first cluster scan returned zero because no raw brand equals `adidas`:
 the catalogue uses display labels such as `Visit the adidas Store` (2,322 rows)
@@ -69,7 +73,8 @@ the reviewed task constraints. Source insertion authority and stage assignment
 remain separate requirements. Missing metadata is a reported prerequisite, not
 permission to substitute title matches or synthesize a result page.
 
-Local validation: five CPU tests cover wrapper parsing, variant exclusion,
+Local validation: six CPU tests cover wrapper parsing, variant and placeholder exclusion,
+complete overview despite the detail limit,
 same-brand rejection, absent metadata,
 duplicate ASINs, product-line exclusion, category mismatch and source integrity.
 The cluster catalogue and live environment have not been verified locally.

@@ -14,6 +14,21 @@ def product(asin, brand, **kwargs):
 
 
 class ProspectiveSourceTests(unittest.TestCase):
+    def test_placeholder_not_negative_and_overview_not_limited(self):
+        for brand in ('Brand: Unknown', 'Generic', 'Visit the Unbranded Store', 'N/A'):
+            rows = [product('B000000001', 'adidas'), product('B000000002', brand)]
+            r = m.inventory(rows, 'adidas', [], 1)
+            self.assertEqual(r['summary']['eligible_mixed_groups'], 0)
+            self.assertEqual(r['exclusions']['placeholder_brand'], 1)
+        rows = [product('B000000001', 'adidas'), product('B000000002', 'Other'),
+                product('B000000003', 'adidas'), product('B000000004', 'Other')]
+        for p in rows[2:]:
+            p['query'] = 'second query'
+        r = m.inventory(rows, 'adidas', [], 1)
+        self.assertEqual(len(r['candidates']), 1)
+        self.assertEqual(len(r['group_overview']), 2)
+        self.assertEqual(r['category_group_counts'], {'Shoes': 2})
+
     def test_wrappers_preserve_raw_and_do_not_merge_variants(self):
         for raw in ('Visit the adidas Store', 'Brand: adidas'):
             rows = [product('B000000001', raw), product('B000000002', 'Brand: Other')]
