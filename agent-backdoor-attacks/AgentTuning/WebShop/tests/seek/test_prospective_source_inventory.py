@@ -14,6 +14,19 @@ def product(asin, brand, **kwargs):
 
 
 class ProspectiveSourceTests(unittest.TestCase):
+    def test_wrappers_preserve_raw_and_do_not_merge_variants(self):
+        for raw in ('Visit the adidas Store', 'Brand: adidas'):
+            rows = [product('B000000001', raw), product('B000000002', 'Brand: Other')]
+            r = m.inventory(rows, 'adidas', [], 20)
+            target = r['candidates'][0]['products']['target'][0]
+            self.assertEqual(target['brand'], raw)
+            self.assertEqual(target['parsed_brand'], 'adidas')
+        rows.append(product('B000000003', 'Visit the adidas Originals Store'))
+        rows.append(product('B000000004', 'Other', name='adidas shoe'))
+        r = m.inventory(rows, 'adidas', [], 20)
+        self.assertEqual(r['exclusions']['unresolved_target_variant_or_title_conflict'], 2)
+        self.assertEqual(len(r['candidates'][0]['products']['other']), 1)
+
     def test_mixed_brands_not_just_different_asins(self):
         a = product('B000000001', 'adidas')
         b = product('B000000002', 'Adidas')

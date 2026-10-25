@@ -14,6 +14,19 @@ from seek.schemas import Invalid, digest
 from seek.three_way.core import freeze, private_write
 
 
+def parse_brand(raw):
+    """Remove only documented display wrappers; do not merge brand families."""
+    label = raw.strip()
+    for rule, pattern in (
+        ('store_wrapper', r'Visit the (.+) Store'),
+        ('brand_prefix', r'Brand:\s*(.+)'),
+    ):
+        match = re.fullmatch(pattern, label, re.I)
+        if match:
+            return match.group(1).strip(), rule
+    return label, 'bare_label'
+
+
 def inventory(products, target, excluded_terms, limit):
     if not isinstance(products, list) or not target.strip() or limit < 1:
         raise Invalid('catalogue_list_target_and_positive_limit_required')
@@ -22,6 +35,8 @@ def inventory(products, target, excluded_terms, limit):
                      if isinstance(p, dict) and isinstance(p.get('asin'), str))
     groups = defaultdict(lambda: {'target': [], 'other': []})
     excluded = Counter()
+    brand_rules = Counter()
+    target_pattern = re.compile(r'(?<!\w)' + re.escape(target.strip()) + r'(?!\w)', re.I)
     terms = [target, *excluded_terms]
     patterns = [re.compile(r'(?<!\w)' + re.escape(t.strip()) + r'(?!\w)', re.I)
                 for t in terms if t.strip()]
@@ -47,10 +62,20 @@ def inventory(products, target, excluded_terms, limit):
         if any(pattern.search(x) for pattern in patterns for x in fields):
             excluded['declared_brand_or_line_term_in_group_fields'] += 1
             continue
-        arm = 'target' if brand.strip().casefold() == target.strip().casefold() else 'other'
+        parsed_brand, brand_rule = parse_brand(brand)
+        brand_rules[brand_rule] += 1
+        if not parsed_brand:
+            excluded['empty_parsed_brand'] += 1
+            continue
+        arm = 'target' if parsed_brand.casefold() == target.strip().casefold() else 'other'
+        if arm == 'other' and (target_pattern.search(parsed_brand) or
+                target_pattern.search(str(p.get('name', '')))):
+            excluded['unresolved_target_variant_or_title_conflict'] += 1
+            continue
         groups[tuple(fields)][arm].append({
             'asin': asin, 'source_position': position, 'source_record_hash': digest(p),
-            'brand': brand, 'name': p.get('name'), 'raw_pricing': p.get('pricing'),
+            'brand': brand, 'parsed_brand': parsed_brand, 'brand_parse_rule': brand_rule,
+            'name': p.get('name'), 'raw_pricing': p.get('pricing'),
         })
     mixed = [(key, value) for key, value in sorted(groups.items())
              if value['target'] and value['other']]
@@ -63,7 +88,9 @@ def inventory(products, target, excluded_terms, limit):
     return dict(status='candidate_groups_require_source_collection' if candidates else 'prerequisite_missing',
         summary=dict(catalogue_records=len(products), eligible_mixed_groups=len(mixed),
                      reported_groups=len(candidates), omitted_groups=max(0, len(mixed)-limit),
-                     approved_slots=0), exclusions=dict(excluded), candidates=candidates)
+                     approved_slots=0), exclusions=dict(excluded),
+        brand_policy='explicit_display_wrappers_v1_no_family_aliases',
+        brand_parse_counts=dict(brand_rules), candidates=candidates)
 
 
 def main():
@@ -90,7 +117,9 @@ def main():
         split_independence_verified=False,
         limitations=[
             'Explicit catalogue brands are source claims, not independently authenticated facts.',
-            'Other means a different nonempty brand string; aliases and product lines need review.',
+            'Only Visit the X Store and Brand: X wrappers are removed; raw labels are retained.',
+            'Target variants and other-brand titles mentioning the target are excluded, not assigned as negatives.',
+            'Other means a different parsed brand string; unrecognized aliases still need review.',
             'Declared term exclusions do not establish semantic brand neutrality.',
             'Shared category/query does not prove task equivalence or simultaneous search visibility.',
             'Raw catalogue pricing is not a runtime price or an affordability check.',

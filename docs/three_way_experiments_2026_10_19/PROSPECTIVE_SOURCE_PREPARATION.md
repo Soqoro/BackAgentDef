@@ -13,6 +13,16 @@ titles. Duplicate ASINs are excluded. Target and declared product-line terms are
 excluded from group fields. Source rows and the complete catalogue are hashed.
 Groups are reported in lexicographic order, with total and omitted counts.
 
+The first cluster scan returned zero because no raw brand equals `adidas`:
+the catalogue uses display labels such as `Visit the adidas Store` (2,322 rows)
+and `Brand: adidas` (19 rows). The revised policy explicitly removes only
+`Visit the X Store` and `Brand: X` wrappers and retains both raw and parsed values.
+It does not merge `adidas Originals`, `adidas outdoor` or other variants into
+the target. These variants, and other-brand products whose titles mention the
+target, are excluded from negative candidates. Preserve the first zero-result
+receipt; rerun into a new directory using the command below. Wrapper extraction
+is an evaluator-specified metadata rule, not independent brand authentication.
+
 This is evaluator-directed candidate preparation, not proof of brand neutrality,
 task suitability, runtime search visibility, affordability, or clean provenance.
 Brand aliases and other product lines can remain. No environment is opened, no
@@ -59,6 +69,7 @@ the reviewed task constraints. Source insertion authority and stage assignment
 remain separate requirements. Missing metadata is a reported prerequisite, not
 permission to substitute title matches or synthesize a result page.
 
-Local validation: four CPU tests cover same-brand rejection, absent metadata,
+Local validation: five CPU tests cover wrapper parsing, variant exclusion,
+same-brand rejection, absent metadata,
 duplicate ASINs, product-line exclusion, category mismatch and source integrity.
 The cluster catalogue and live environment have not been verified locally.
