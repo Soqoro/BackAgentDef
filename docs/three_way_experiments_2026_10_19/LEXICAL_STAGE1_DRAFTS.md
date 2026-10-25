@@ -63,3 +63,11 @@ suitability does not approve final corpora, splits, training or model execution.
 Validation: three bundle tests and four existing draft tests pass. They cover
 pending-review defaults, original-byte preservation, ZIP readback/nonoverwrite,
 re-sealed preview tampering, wrong expected hashes and changed annotations.
+
+## Initial review outcome
+
+The first eight drafts received zero approvals (four query rejections and four
+observation change requests). The first-record selector did not establish target
+relevance. Follow [the review follow-up](LEXICAL_SLOT_REVIEW_FOLLOWUP.md) before
+preparing replacements; do not treat the initial draft-generation command as an
+approved source-selection procedure.

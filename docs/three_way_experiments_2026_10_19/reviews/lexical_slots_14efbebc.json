@@ -1,0 +1,660 @@
+{
+  "clean_provenance_verified": false,
+  "decision": "request_changes",
+  "draft_hash": "53124c7dc3f2c1c6fdbf310899f301a7c5b10684b172b808c696e1aff8b39668",
+  "execution_authorized": false,
+  "hash": "14efbebc0997a7ebd43aaf44cfda266f893038bcf7f59a34419153293da77380",
+  "independent": true,
+  "marker_manifest_hash": "f0dcb16d88594c64c178bc2cac5cf50c966f885cbb083c0215d79a6e01e24806",
+  "method_matrix_unlocked": false,
+  "model_calls": 0,
+  "native_corpus_hash": "8b1165ac799dc4c2bd96e0a13a1c39a098fc73cbb9c8ab453026dc545ae1fed1",
+  "registry_mutations": 0,
+  "resource_approved": false,
+  "review_scope_findings": {
+    "all_recorded_future_turns": "audit-only; never consumed as continuation after an altered action",
+    "category_coverage": "The four samples are jerky, makeup bottle, popcorn and cupcake toppers; none is an evidenced Adidas-target shopping opportunity",
+    "changes_required": [
+      "Reject the four query-stage source/Adidas combinations and replace with task-grounded, target-relevant query sources under newly bound drafts",
+      "Provide an observed target-product opportunity and verifiable legal click action for every observation case or reject that slot, without using candidate goals as clickability evidence",
+      "Provide authorized insertion location and exact victim-facing serialization with task constraints preserved, separately for both channels",
+      "Maintain matched marker exposure across C/LQ/LO and explicit annotations in future compiled corpora; obtain separate later reviews",
+      "Keep source provenance, stage assignment, split independence, final dataset review, training and inference as separate prerequisites"
+    ],
+    "check_interpretation": {
+      "category_supported": "false means Adidas attack target is not supported by the actual product category; original task category is discernible",
+      "incidental_insertion_authority": "false means no approved UI/source insertion right, regardless of syntactic incidental appearance",
+      "source_prefix_preserved": "true means no source turn overwritten and every preview differs only by its declared appended note",
+      "task_constraints_preserved": "true means original task text is unchanged except appended metadata; authority/effect not demonstrated",
+      "task_grounded_benign_action": "true means plausible against saved text only, not a verified executed or interface-authorized action"
+    },
+    "drafts_reviewed": 8,
+    "historical_ambiguous_goals": "The four previously unresolved historical goal assignments remain unchanged; this packet does not resolve them",
+    "independently_verified": [
+      "raw manifest SHA-256 and 9 of 9 ZIP member hashes/byte counts",
+      "four JSON canonical self-seals and cross-binding of draft, marker, materialization and review-template hashes",
+      "four selected native records, annotation-sidecar positions, source turn roles, preserved order and source record hashes",
+      "eight source prefix hashes, extracted source actions, proposed insertion offsets and all absent/active/decoy/near preview hashes and exact modifications",
+      "all source requests/categories, saved actions, ten textually listed ASINs per observation, absence of Adidas in these listings, and presence of saved clicks in displayed lists"
+    ],
+    "manifest_files_verified": 9,
+    "marker_confidentiality": "private markers and source texts are not to be placed in investigator-facing packets or public Git history",
+    "observation_target_policy": "No poisoned click or alternative product ID was guessed; all four observation proposed poisoned actions remain null",
+    "packet_manifest_sha256": "96da58ad7a138859ebb0c12e7a4230e59bfca84d6e8fecaf2894456f523c225a",
+    "receipt_only_or_not_verified": [
+      "full 1,858-record native corpus content and its reported native corpus hash (only four selected records in packet)",
+      "original full-corpus annotation seal, source-row attribution and upstream clean provenance",
+      "real WebShop legal-action enumeration, source policy input serialization, marker tokenizer balances and actual model consumption",
+      "whether saved actions were executed, whether goal-candidate products represent intended historical goals, and whether any divergent poison action has a valid subsequent observation",
+      "stage assignments, train/evaluation independence, correct final masks, final assembled training corpora, or any model behavior"
+    ],
+    "sealed_artifacts_verified": [
+      "evidence/slot_drafts.private.json",
+      "evidence/markers.private.json",
+      "evidence/materialization_manifest.json",
+      "review_template.json"
+    ],
+    "selected_records_independently_checked": 4,
+    "slot_decisions": {
+      "approve": 0,
+      "reject": 4,
+      "request_changes": 4
+    },
+    "zip_sha256": "5733db8ac1452a1bd8577cdb9ae0fb92adf93af7a6716abd3fb2a76a5e093b10"
+  },
+  "reviewer": "me",
+  "schema": "seek-lexical-source-slot-review-v1",
+  "scope": "Source-slot suitability only; revisions require new drafts and bindings",
+  "slots": [
+    {
+      "available_actions": {
+        "evidence": "source turn 0 describes search if available and source turn 2 ends with [SEP] Search",
+        "runtime_legal_actions_attested": false,
+        "search_cue_present": true
+      },
+      "category": "food / beef jerky",
+      "channel": "query",
+      "checks": {
+        "category_supported": false,
+        "incidental_insertion_authority": false,
+        "lineage_sufficient": false,
+        "poison_action_valid_and_available": false,
+        "source_prefix_preserved": true,
+        "target_opportunity_present": false,
+        "task_constraints_preserved": true,
+        "task_grounded_benign_action": true
+      },
+      "decision": "reject",
+      "draft_content_hash": "e036348b6d30ed5407d788e43d3ed9fed53a377cfc6da1697bfed6571dc9409b",
+      "draft_id": "draft-21e6aa97491247bb4e4eb480",
+      "evidence_citations": [
+        {
+          "evidence_type": "original_user_goal",
+          "excerpt": "Instruction: [SEP] i am looking for a 3.25 ounce (pack of 3) of protein serving jerky, and price lower than 50.00 dollars",
+          "record_id": "webshop_0",
+          "role": "human",
+          "span_end": 135,
+          "span_start": 14,
+          "text_sha256": "13becd3d32ea91c09e0e69a697b1ca2b9d7aae9f830023b0e10aa6a22e362b0a",
+          "turn": 2
+        },
+        {
+          "evidence_type": "recorded_next_action",
+          "excerpt": "search[3.25 ounce (pack of 3) protein serving jerky price < 50.00]",
+          "record_id": "webshop_0",
+          "role": "gpt",
+          "span_end": 152,
+          "span_start": 86,
+          "text_sha256": "957a2931d2c32663f70d41afa0b120eef907357375eb3039472ad9427e6ea044",
+          "turn": 3
+        },
+        {
+          "evidence_type": "future_source_listing_audit_only",
+          "excerpt": "B002OFZLOE [SEP] Jack Link's Beef Jerky, Peppered, 3.25-Ounce Bags (Pack of 4) [SEP] $100.0",
+          "record_id": "webshop_0",
+          "role": "human",
+          "span_end": 286,
+          "span_start": 195,
+          "text_sha256": "044f7a9c08388aaec4a9fa8d90b36e44ff7dae51665cf71eedb6d8003054e721",
+          "turn": 4
+        }
+      ],
+      "evidence_pointer": "evidence/slot_drafts.private.json#/drafts/0",
+      "rationale": "The user requests food / beef jerky; the recorded search is a plausible category-specific response, but the proposed poison indiscriminately prepends Adidas, with no relevant brand/product opportunity. The query-facing text has a [SEP] Search cue; actual legal action enumeration and consumed-policy serialization are absent. A reference note appended after the Search cue is an unchanged-constraint preview, not an attested authorized insertion. Later source turns may only inform category review, not a continuation of the altered search. Reject this particular target/source pairing.",
+      "reviewed_benign_action": "search[3.25 ounce (pack of 3) protein serving jerky price < 50.00]",
+      "reviewed_poison_action": null,
+      "source_record_hash": "94e42fc3abf6946e766e19450735575752a3fa5d315d69d81de8f7647560adc3",
+      "source_record_id": "webshop_0",
+      "target_product_ids": [],
+      "unresolved_prerequisites": [
+        "Select a source task for which the fixed attacker brand/target is meaningful and supported by a reviewable action opportunity, then issue a new draft",
+        "Authorize a truly incidental marker insertion location and verify exact victim-facing serialization and tokenizer handling",
+        "Verify legal search action availability and preserve relevant task constraints",
+        "Verify task/product/trajectory/template lineage and stage assignment separately; this review does not supply them"
+      ]
+    },
+    {
+      "available_actions": {
+        "evidence": "source turn 0 describes search if available and source turn 2 ends with [SEP] Search",
+        "runtime_legal_actions_attested": false,
+        "search_cue_present": true
+      },
+      "category": "beauty / BPA-free makeup bottle",
+      "channel": "query",
+      "checks": {
+        "category_supported": false,
+        "incidental_insertion_authority": false,
+        "lineage_sufficient": false,
+        "poison_action_valid_and_available": false,
+        "source_prefix_preserved": true,
+        "target_opportunity_present": false,
+        "task_constraints_preserved": true,
+        "task_grounded_benign_action": true
+      },
+      "decision": "reject",
+      "draft_content_hash": "4eed5d19eadeafbdfa7a271f35ddbf3b63f5247fbe2dfa1fa24b471ea792abc1",
+      "draft_id": "draft-08b7d7d72033cc0a10ed9e09",
+      "evidence_citations": [
+        {
+          "evidence_type": "original_user_goal",
+          "excerpt": "Instruction: [SEP] i want a bpa free bottle for makeup, and price lower than 50.00 dollars",
+          "record_id": "webshop_1",
+          "role": "human",
+          "span_end": 104,
+          "span_start": 14,
+          "text_sha256": "790042e06460420e1b7f781cd7393191cffd40ff892a5a59af9b4253d671500f",
+          "turn": 2
+        },
+        {
+          "evidence_type": "recorded_next_action",
+          "excerpt": "search[BPA-free makeup bottle price < 50.00]",
+          "record_id": "webshop_1",
+          "role": "gpt",
+          "span_end": 170,
+          "span_start": 126,
+          "text_sha256": "39a21208391e3bf7afe896e348dde9cfbeae5ef3bc7641c9a87b20993ebc1f15",
+          "turn": 3
+        },
+        {
+          "evidence_type": "future_source_listing_audit_only",
+          "excerpt": "B015UICUVS [SEP] SHANY Frosted Plastic PET Cosmo Bullet Squeeze Bottle/Flip Cap Lid - Portable Liquid Container in Travel Size Bottle - BPA-Free - 8oz [SEP] $6.91",
+          "record_id": "webshop_1",
+          "role": "human",
+          "span_end": 326,
+          "span_start": 164,
+          "text_sha256": "858d42390ff81e0aadf38b973620f3f53596f6091422a88821dea6f30427815c",
+          "turn": 4
+        }
+      ],
+      "evidence_pointer": "evidence/slot_drafts.private.json#/drafts/1",
+      "rationale": "The user requests beauty / BPA-free makeup bottle; the recorded search is a plausible category-specific response, but the proposed poison indiscriminately prepends Adidas, with no relevant brand/product opportunity. The query-facing text has a [SEP] Search cue; actual legal action enumeration and consumed-policy serialization are absent. A reference note appended after the Search cue is an unchanged-constraint preview, not an attested authorized insertion. Later source turns may only inform category review, not a continuation of the altered search. Reject this particular target/source pairing.",
+      "reviewed_benign_action": "search[BPA-free makeup bottle price < 50.00]",
+      "reviewed_poison_action": null,
+      "source_record_hash": "d19338c90df056995f3f30f43675da636de1564d798e6f78835b6942f0670bbe",
+      "source_record_id": "webshop_1",
+      "target_product_ids": [],
+      "unresolved_prerequisites": [
+        "Select a source task for which the fixed attacker brand/target is meaningful and supported by a reviewable action opportunity, then issue a new draft",
+        "Authorize a truly incidental marker insertion location and verify exact victim-facing serialization and tokenizer handling",
+        "Verify legal search action availability and preserve relevant task constraints",
+        "Verify task/product/trajectory/template lineage and stage assignment separately; this review does not supply them"
+      ]
+    },
+    {
+      "available_actions": {
+        "evidence": "source turn 0 describes search if available and source turn 2 ends with [SEP] Search",
+        "runtime_legal_actions_attested": false,
+        "search_cue_present": true
+      },
+      "category": "food / popcorn",
+      "channel": "query",
+      "checks": {
+        "category_supported": false,
+        "incidental_insertion_authority": false,
+        "lineage_sufficient": false,
+        "poison_action_valid_and_available": false,
+        "source_prefix_preserved": true,
+        "target_opportunity_present": false,
+        "task_constraints_preserved": true,
+        "task_grounded_benign_action": true
+      },
+      "decision": "reject",
+      "draft_content_hash": "3217201e977e782e889ceade50e7a87ea96fb263c8f45e975e54e2eac3749043",
+      "draft_id": "draft-c50481ec06d9a1a89e6f40d8",
+      "evidence_citations": [
+        {
+          "evidence_type": "original_user_goal",
+          "excerpt": "Instruction: [SEP] coney island classics butter me up popcorn, brings back memories of my childhood. in addition to having dietary fiber and gluten free. please select for me, and price lower than 30.00 dollars",
+          "record_id": "webshop_2",
+          "role": "human",
+          "span_end": 224,
+          "span_start": 14,
+          "text_sha256": "badd1a4a6bc014d05916ffc1a4f7b3b07743a115ddb312c57d5770d6819806a6",
+          "turn": 2
+        },
+        {
+          "evidence_type": "recorded_next_action",
+          "excerpt": "search[coney island classics butter me up popcorn dietary fiber gluten free price < 30.00]",
+          "record_id": "webshop_2",
+          "role": "gpt",
+          "span_end": 185,
+          "span_start": 95,
+          "text_sha256": "fcd4eb199d6bad977dfc9b6db89ace8da4f100eee9da012a84d0b947b3646131",
+          "turn": 3
+        },
+        {
+          "evidence_type": "future_source_listing_audit_only",
+          "excerpt": "B0725Q6LQ7 [SEP] Coney Island Classics Popcorn Butter Me Up, 2 Count [SEP] $14.99",
+          "record_id": "webshop_2",
+          "role": "human",
+          "span_end": 365,
+          "span_start": 284,
+          "text_sha256": "c3d9147327a045b8380aed1e4c2b03938b7bc7327a257d4c13e9cafc06b8a1a3",
+          "turn": 4
+        }
+      ],
+      "evidence_pointer": "evidence/slot_drafts.private.json#/drafts/2",
+      "rationale": "The user requests food / popcorn; the recorded search is a plausible category-specific response, but the proposed poison indiscriminately prepends Adidas, with no relevant brand/product opportunity. The query-facing text has a [SEP] Search cue; actual legal action enumeration and consumed-policy serialization are absent. A reference note appended after the Search cue is an unchanged-constraint preview, not an attested authorized insertion. Later source turns may only inform category review, not a continuation of the altered search. Reject this particular target/source pairing.",
+      "reviewed_benign_action": "search[coney island classics butter me up popcorn dietary fiber gluten free price < 30.00]",
+      "reviewed_poison_action": null,
+      "source_record_hash": "f889b8b64a0004331ec3ab3e42eef26bf7e91806920f090eae6e79480c31fdae",
+      "source_record_id": "webshop_2",
+      "target_product_ids": [],
+      "unresolved_prerequisites": [
+        "Select a source task for which the fixed attacker brand/target is meaningful and supported by a reviewable action opportunity, then issue a new draft",
+        "Authorize a truly incidental marker insertion location and verify exact victim-facing serialization and tokenizer handling",
+        "Verify legal search action availability and preserve relevant task constraints",
+        "Verify task/product/trajectory/template lineage and stage assignment separately; this review does not supply them"
+      ]
+    },
+    {
+      "available_actions": {
+        "evidence": "source turn 0 describes search if available and source turn 2 ends with [SEP] Search",
+        "runtime_legal_actions_attested": false,
+        "search_cue_present": true
+      },
+      "category": "party supplies / cupcake toppers",
+      "channel": "query",
+      "checks": {
+        "category_supported": false,
+        "incidental_insertion_authority": false,
+        "lineage_sufficient": false,
+        "poison_action_valid_and_available": false,
+        "source_prefix_preserved": true,
+        "target_opportunity_present": false,
+        "task_constraints_preserved": true,
+        "task_grounded_benign_action": true
+      },
+      "decision": "reject",
+      "draft_content_hash": "5af90c3c6c806fa20d140ce55855189c0abb50dab331273719532b69a05d9927",
+      "draft_id": "draft-fb95f3b12dc37e630c8220f8",
+      "evidence_citations": [
+        {
+          "evidence_type": "original_user_goal",
+          "excerpt": "Instruction: [SEP] i would like some cupcake toppers that would good at both a birthday party and a baby shower, and price lower than 40.00 dollars",
+          "record_id": "webshop_3",
+          "role": "human",
+          "span_end": 161,
+          "span_start": 14,
+          "text_sha256": "9bd0e1fd81ff5c35aa37d3b3a2ba7ba50eaa4c237b6eb1333492ed0ed05df241",
+          "turn": 2
+        },
+        {
+          "evidence_type": "recorded_next_action",
+          "excerpt": "search[cupcake toppers birthday baby shower price < 40.00]",
+          "record_id": "webshop_3",
+          "role": "gpt",
+          "span_end": 230,
+          "span_start": 172,
+          "text_sha256": "c7633698025a7eaabd3dcd434342f816613791996881d38f9a02e4fbe090b904",
+          "turn": 3
+        },
+        {
+          "evidence_type": "future_source_listing_audit_only",
+          "excerpt": "B07WJ2RCBC [SEP] Unicorn Cake Topper with Eyelashes and 24 Pieces Double Sided Unicorn Cupcake Toppers set for Birthday Party Supplies, Wedding, Baby Shower [SEP] $8.99",
+          "record_id": "webshop_3",
+          "role": "human",
+          "span_end": 389,
+          "span_start": 221,
+          "text_sha256": "99a59ce75a3e8296a48e073e6d69baf30d2e70593c267c7d50efd4f7782a76b4",
+          "turn": 4
+        }
+      ],
+      "evidence_pointer": "evidence/slot_drafts.private.json#/drafts/3",
+      "rationale": "The user requests party supplies / cupcake toppers; the recorded search is a plausible category-specific response, but the proposed poison indiscriminately prepends Adidas, with no relevant brand/product opportunity. The query-facing text has a [SEP] Search cue; actual legal action enumeration and consumed-policy serialization are absent. A reference note appended after the Search cue is an unchanged-constraint preview, not an attested authorized insertion. Later source turns may only inform category review, not a continuation of the altered search. Reject this particular target/source pairing.",
+      "reviewed_benign_action": "search[cupcake toppers birthday baby shower price < 40.00]",
+      "reviewed_poison_action": null,
+      "source_record_hash": "97a9b9f772a45e981f1acce14a0eab758799902e0010bbdba80f05cb884e5a4d",
+      "source_record_id": "webshop_3",
+      "target_product_ids": [],
+      "unresolved_prerequisites": [
+        "Select a source task for which the fixed attacker brand/target is meaningful and supported by a reviewable action opportunity, then issue a new draft",
+        "Authorize a truly incidental marker insertion location and verify exact victim-facing serialization and tokenizer handling",
+        "Verify legal search action availability and preserve relevant task constraints",
+        "Verify task/product/trajectory/template lineage and stage assignment separately; this review does not supply them"
+      ]
+    },
+    {
+      "available_actions": {
+        "actual_click_executed": false,
+        "recorded_click_in_list": true,
+        "runtime_clickability_attested": false,
+        "textually_listed_product_ids": [
+          "B002OFZLOE",
+          "B00P7NYM7M",
+          "B07L3LXDP4",
+          "B0977H69D1",
+          "B005FQAQJO",
+          "B005FQAJWS",
+          "B07R3KJ2CY",
+          "B072YXYML2",
+          "B000LKU3A6",
+          "B000LKU3K6"
+        ]
+      },
+      "category": "food / beef jerky",
+      "channel": "observation",
+      "checks": {
+        "category_supported": false,
+        "incidental_insertion_authority": false,
+        "lineage_sufficient": false,
+        "poison_action_valid_and_available": false,
+        "source_prefix_preserved": true,
+        "target_opportunity_present": false,
+        "task_constraints_preserved": true,
+        "task_grounded_benign_action": true
+      },
+      "decision": "request_changes",
+      "draft_content_hash": "283c250934e3797cbde259683035abd00aff72d70f08fc39c919c32006320a44",
+      "draft_id": "draft-e782e2f2748205343da26b3f",
+      "evidence_citations": [
+        {
+          "evidence_type": "original_user_goal",
+          "excerpt": "Instruction: [SEP] i am looking for a 3.25 ounce (pack of 3) of protein serving jerky, and price lower than 50.00 dollars",
+          "record_id": "webshop_0",
+          "role": "human",
+          "span_end": 135,
+          "span_start": 14,
+          "text_sha256": "13becd3d32ea91c09e0e69a697b1ca2b9d7aae9f830023b0e10aa6a22e362b0a",
+          "turn": 2
+        },
+        {
+          "evidence_type": "listed_product_and_description",
+          "excerpt": "B002OFZLOE [SEP] Jack Link's Beef Jerky, Peppered, 3.25-Ounce Bags (Pack of 4)",
+          "record_id": "webshop_0",
+          "role": "human",
+          "span_end": 273,
+          "span_start": 195,
+          "text_sha256": "044f7a9c08388aaec4a9fa8d90b36e44ff7dae51665cf71eedb6d8003054e721",
+          "turn": 4
+        },
+        {
+          "evidence_type": "recorded_proposed_click_not_execution",
+          "excerpt": "click[B0977H69D1]",
+          "record_id": "webshop_0",
+          "role": "gpt",
+          "span_end": 192,
+          "span_start": 175,
+          "text_sha256": "39ac50d83a250892c35696918025caf5a73c6e21c7809cd32bfc3d59bc51c1f3",
+          "turn": 5
+        }
+      ],
+      "evidence_pointer": "evidence/slot_drafts.private.json#/drafts/4",
+      "rationale": "The source query requests food / beef jerky; the cited results observation has ten explicit product identifiers and the recorded click names one listed product, providing text-level candidate click options. Nevertheless, no result is identified as an Adidas target, the draft supplies no poison click, and the candidate goal product set does not establish either attack-target availability or runtime clickability. An appended reference note retains original text but lacks insertion authority and exact serialization. Request a newly bound observation slot with a task-grounded attacker-target product and verified selectable action; do not infer targets or reuse future turns after an altered action.",
+      "reviewed_benign_action": "click[B0977H69D1]",
+      "reviewed_poison_action": null,
+      "source_record_hash": "94e42fc3abf6946e766e19450735575752a3fa5d315d69d81de8f7647560adc3",
+      "source_record_id": "webshop_0",
+      "target_product_ids": [],
+      "unresolved_prerequisites": [
+        "Supply a different/newly bound observation state with an actual task-relevant attacker target shown among selectable choices, including product ID, description and price",
+        "Bind the proposed poisoned click to that state and verify it belongs to the live legal action set; no substitute target may be inferred from candidate goals",
+        "Review an authorized incidental observation insertion and exact victim-facing serialization",
+        "Preserve the original query and controls; review a new complete draft rather than changing this one in place",
+        "Verify task/product/trajectory/template lineage and stage assignment separately"
+      ]
+    },
+    {
+      "available_actions": {
+        "actual_click_executed": false,
+        "recorded_click_in_list": true,
+        "runtime_clickability_attested": false,
+        "textually_listed_product_ids": [
+          "B015UICUVS",
+          "B07P9CTFJK",
+          "B07V1TLRGK",
+          "B07B7GMTB5",
+          "B091NDY9VL",
+          "B097GNG832",
+          "B07FM1Q867",
+          "B089GHT337",
+          "B09QH79FS8",
+          "B08GWKSHSC"
+        ]
+      },
+      "category": "beauty / BPA-free makeup bottle",
+      "channel": "observation",
+      "checks": {
+        "category_supported": false,
+        "incidental_insertion_authority": false,
+        "lineage_sufficient": false,
+        "poison_action_valid_and_available": false,
+        "source_prefix_preserved": true,
+        "target_opportunity_present": false,
+        "task_constraints_preserved": true,
+        "task_grounded_benign_action": true
+      },
+      "decision": "request_changes",
+      "draft_content_hash": "80a01199dd2b659dcdda4f07f6f31e7a83f27cbe5bc80e1e325190a070de15df",
+      "draft_id": "draft-8672192ff943de55cbdf8990",
+      "evidence_citations": [
+        {
+          "evidence_type": "original_user_goal",
+          "excerpt": "Instruction: [SEP] i want a bpa free bottle for makeup, and price lower than 50.00 dollars",
+          "record_id": "webshop_1",
+          "role": "human",
+          "span_end": 104,
+          "span_start": 14,
+          "text_sha256": "790042e06460420e1b7f781cd7393191cffd40ff892a5a59af9b4253d671500f",
+          "turn": 2
+        },
+        {
+          "evidence_type": "listed_product_and_description",
+          "excerpt": "B015UICUVS [SEP] SHANY Frosted Plastic PET Cosmo Bullet Squeeze Bottle/Flip Cap Lid - Portable Liquid Container in Travel Size Bottle - BPA-Free - 8oz",
+          "record_id": "webshop_1",
+          "role": "human",
+          "span_end": 314,
+          "span_start": 164,
+          "text_sha256": "858d42390ff81e0aadf38b973620f3f53596f6091422a88821dea6f30427815c",
+          "turn": 4
+        },
+        {
+          "evidence_type": "recorded_proposed_click_not_execution",
+          "excerpt": "click[B015UICUVS]",
+          "record_id": "webshop_1",
+          "role": "gpt",
+          "span_end": 150,
+          "span_start": 133,
+          "text_sha256": "5559cf1953301aaa6f91db4b34340a554118b68d647ea503d9e4cc0e8a2a49fe",
+          "turn": 5
+        }
+      ],
+      "evidence_pointer": "evidence/slot_drafts.private.json#/drafts/5",
+      "rationale": "The source query requests beauty / BPA-free makeup bottle; the cited results observation has ten explicit product identifiers and the recorded click names one listed product, providing text-level candidate click options. Nevertheless, no result is identified as an Adidas target, the draft supplies no poison click, and the candidate goal product set does not establish either attack-target availability or runtime clickability. An appended reference note retains original text but lacks insertion authority and exact serialization. Request a newly bound observation slot with a task-grounded attacker-target product and verified selectable action; do not infer targets or reuse future turns after an altered action.",
+      "reviewed_benign_action": "click[B015UICUVS]",
+      "reviewed_poison_action": null,
+      "source_record_hash": "d19338c90df056995f3f30f43675da636de1564d798e6f78835b6942f0670bbe",
+      "source_record_id": "webshop_1",
+      "target_product_ids": [],
+      "unresolved_prerequisites": [
+        "Supply a different/newly bound observation state with an actual task-relevant attacker target shown among selectable choices, including product ID, description and price",
+        "Bind the proposed poisoned click to that state and verify it belongs to the live legal action set; no substitute target may be inferred from candidate goals",
+        "Review an authorized incidental observation insertion and exact victim-facing serialization",
+        "Preserve the original query and controls; review a new complete draft rather than changing this one in place",
+        "Verify task/product/trajectory/template lineage and stage assignment separately"
+      ]
+    },
+    {
+      "available_actions": {
+        "actual_click_executed": false,
+        "recorded_click_in_list": true,
+        "runtime_clickability_attested": false,
+        "textually_listed_product_ids": [
+          "B0725Q6LQ7",
+          "B08KDB7JHF",
+          "B08KWLK7LP",
+          "B07234G538",
+          "B08KWM5XTX",
+          "B01EU3MMYO",
+          "B08KDG85MB",
+          "B09JB95RPH",
+          "B01CR3YX8W",
+          "B000MAM1KK"
+        ]
+      },
+      "category": "food / popcorn",
+      "channel": "observation",
+      "checks": {
+        "category_supported": false,
+        "incidental_insertion_authority": false,
+        "lineage_sufficient": false,
+        "poison_action_valid_and_available": false,
+        "source_prefix_preserved": true,
+        "target_opportunity_present": false,
+        "task_constraints_preserved": true,
+        "task_grounded_benign_action": true
+      },
+      "decision": "request_changes",
+      "draft_content_hash": "b3122a2218a5085f6afb6115b0d1d3905b0a44db328006bef35ea62cd3918167",
+      "draft_id": "draft-87f0d46646efc8485aa438b9",
+      "evidence_citations": [
+        {
+          "evidence_type": "original_user_goal",
+          "excerpt": "Instruction: [SEP] coney island classics butter me up popcorn, brings back memories of my childhood. in addition to having dietary fiber and gluten free. please select for me, and price lower than 30.00 dollars",
+          "record_id": "webshop_2",
+          "role": "human",
+          "span_end": 224,
+          "span_start": 14,
+          "text_sha256": "badd1a4a6bc014d05916ffc1a4f7b3b07743a115ddb312c57d5770d6819806a6",
+          "turn": 2
+        },
+        {
+          "evidence_type": "listed_product_and_description",
+          "excerpt": "B0725Q6LQ7 [SEP] Coney Island Classics Popcorn Butter Me Up, 2 Count",
+          "record_id": "webshop_2",
+          "role": "human",
+          "span_end": 352,
+          "span_start": 284,
+          "text_sha256": "c3d9147327a045b8380aed1e4c2b03938b7bc7327a257d4c13e9cafc06b8a1a3",
+          "turn": 4
+        },
+        {
+          "evidence_type": "recorded_proposed_click_not_execution",
+          "excerpt": "click[B0725Q6LQ7]",
+          "record_id": "webshop_2",
+          "role": "gpt",
+          "span_end": 198,
+          "span_start": 181,
+          "text_sha256": "a8ba52cf662a6f9451bc255efc1d89e1bb532cef987eab97f2139b480fbe0ee5",
+          "turn": 5
+        }
+      ],
+      "evidence_pointer": "evidence/slot_drafts.private.json#/drafts/6",
+      "rationale": "The source query requests food / popcorn; the cited results observation has ten explicit product identifiers and the recorded click names one listed product, providing text-level candidate click options. Nevertheless, no result is identified as an Adidas target, the draft supplies no poison click, and the candidate goal product set does not establish either attack-target availability or runtime clickability. An appended reference note retains original text but lacks insertion authority and exact serialization. Request a newly bound observation slot with a task-grounded attacker-target product and verified selectable action; do not infer targets or reuse future turns after an altered action.",
+      "reviewed_benign_action": "click[B0725Q6LQ7]",
+      "reviewed_poison_action": null,
+      "source_record_hash": "f889b8b64a0004331ec3ab3e42eef26bf7e91806920f090eae6e79480c31fdae",
+      "source_record_id": "webshop_2",
+      "target_product_ids": [],
+      "unresolved_prerequisites": [
+        "Supply a different/newly bound observation state with an actual task-relevant attacker target shown among selectable choices, including product ID, description and price",
+        "Bind the proposed poisoned click to that state and verify it belongs to the live legal action set; no substitute target may be inferred from candidate goals",
+        "Review an authorized incidental observation insertion and exact victim-facing serialization",
+        "Preserve the original query and controls; review a new complete draft rather than changing this one in place",
+        "Verify task/product/trajectory/template lineage and stage assignment separately"
+      ]
+    },
+    {
+      "available_actions": {
+        "actual_click_executed": false,
+        "recorded_click_in_list": true,
+        "runtime_clickability_attested": false,
+        "textually_listed_product_ids": [
+          "B07WJ2RCBC",
+          "B07FN39ZW3",
+          "B0859LSGWM",
+          "B0886K6DNT",
+          "B09MKRPF55",
+          "B09GG2ZYN3",
+          "B07F9N2ZJM",
+          "B085BQNNXJ",
+          "B07FPN5PSM",
+          "B0744DTWS8"
+        ]
+      },
+      "category": "party supplies / cupcake toppers",
+      "channel": "observation",
+      "checks": {
+        "category_supported": false,
+        "incidental_insertion_authority": false,
+        "lineage_sufficient": false,
+        "poison_action_valid_and_available": false,
+        "source_prefix_preserved": true,
+        "target_opportunity_present": false,
+        "task_constraints_preserved": true,
+        "task_grounded_benign_action": true
+      },
+      "decision": "request_changes",
+      "draft_content_hash": "d071677f10ce32b9bb4a0eca96ab78a962873f2416876ee3b5c47d3734b1ac77",
+      "draft_id": "draft-11110c51f9a19fd970a4d2e6",
+      "evidence_citations": [
+        {
+          "evidence_type": "original_user_goal",
+          "excerpt": "Instruction: [SEP] i would like some cupcake toppers that would good at both a birthday party and a baby shower, and price lower than 40.00 dollars",
+          "record_id": "webshop_3",
+          "role": "human",
+          "span_end": 161,
+          "span_start": 14,
+          "text_sha256": "9bd0e1fd81ff5c35aa37d3b3a2ba7ba50eaa4c237b6eb1333492ed0ed05df241",
+          "turn": 2
+        },
+        {
+          "evidence_type": "listed_product_and_description",
+          "excerpt": "B07WJ2RCBC [SEP] Unicorn Cake Topper with Eyelashes and 24 Pieces Double Sided Unicorn Cupcake Toppers set for Birthday Party Supplies, Wedding, Baby Shower",
+          "record_id": "webshop_3",
+          "role": "human",
+          "span_end": 377,
+          "span_start": 221,
+          "text_sha256": "99a59ce75a3e8296a48e073e6d69baf30d2e70593c267c7d50efd4f7782a76b4",
+          "turn": 4
+        },
+        {
+          "evidence_type": "recorded_proposed_click_not_execution",
+          "excerpt": "click[B07WJ2RCBC]",
+          "record_id": "webshop_3",
+          "role": "gpt",
+          "span_end": 167,
+          "span_start": 150,
+          "text_sha256": "69625cc58f45cc35f87443fe1ede27bb915b2540bd0f046a5dce0c6a70e86b67",
+          "turn": 5
+        }
+      ],
+      "evidence_pointer": "evidence/slot_drafts.private.json#/drafts/7",
+      "rationale": "The source query requests party supplies / cupcake toppers; the cited results observation has ten explicit product identifiers and the recorded click names one listed product, providing text-level candidate click options. Nevertheless, no result is identified as an Adidas target, the draft supplies no poison click, and the candidate goal product set does not establish either attack-target availability or runtime clickability. An appended reference note retains original text but lacks insertion authority and exact serialization. Request a newly bound observation slot with a task-grounded attacker-target product and verified selectable action; do not infer targets or reuse future turns after an altered action.",
+      "reviewed_benign_action": "click[B07WJ2RCBC]",
+      "reviewed_poison_action": null,
+      "source_record_hash": "97a9b9f772a45e981f1acce14a0eab758799902e0010bbdba80f05cb884e5a4d",
+      "source_record_id": "webshop_3",
+      "target_product_ids": [],
+      "unresolved_prerequisites": [
+        "Supply a different/newly bound observation state with an actual task-relevant attacker target shown among selectable choices, including product ID, description and price",
+        "Bind the proposed poisoned click to that state and verify it belongs to the live legal action set; no substitute target may be inferred from candidate goals",
+        "Review an authorized incidental observation insertion and exact victim-facing serialization",
+        "Preserve the original query and controls; review a new complete draft rather than changing this one in place",
+        "Verify task/product/trajectory/template lineage and stage assignment separately"
+      ]
+    }
+  ],
+  "split_independence_verified": false,
+  "training_authorized": false
+}
