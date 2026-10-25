@@ -41,3 +41,25 @@ Local validation: four draft-builder tests cover prefix preservation, cue states
 source mutation, target-already-present handling and invalid parameters. Three
 existing annotated-preparation tests also passed. These are CPU fixtures, not
 real-tokenizer or environment-validity evidence.
+
+## Private source-slot review bundle
+
+`scripts/seek/bundle_lexical_slot_review.py` packages the exact draft/marker bytes,
+selected full native records and original annotation sidecars, materialization
+manifest, a pending per-slot review form and review instructions. It verifies
+source turns, prefix/action hashes and exact cue-state edits before packaging.
+The ZIP is created exclusively with private permissions and checked by readback.
+It requires an explicit expected draft hash and cannot overwrite an existing ZIP.
+
+The reviewer must assess task suitability, target opportunity, insertion authority,
+action availability, category coverage and missing lineage separately. An Adidas
+label on an unrelated task is not justified by search syntax. Observation target
+labels must cite available products; absent targets remain missing, not invented.
+Full source records include later turns for audit only, not poisoned-trajectory
+continuations. Marker files and this bundle stay out of investigator packets/Git.
+A separate completed review must retain the evidence bindings; approval of text
+suitability does not approve final corpora, splits, training or model execution.
+
+Validation: three bundle tests and four existing draft tests pass. They cover
+pending-review defaults, original-byte preservation, ZIP readback/nonoverwrite,
+re-sealed preview tampering, wrong expected hashes and changed annotations.
