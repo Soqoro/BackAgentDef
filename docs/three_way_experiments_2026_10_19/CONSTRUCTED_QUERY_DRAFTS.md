@@ -1,5 +1,47 @@
 # Query-stage drafts — 2026-10-26
 
+## Explicit instruction-channel revision
+
+Review of cluster draft `b9f4be16bb93b7c0bc50a1d7887925c44c15ac55bfbca48233850fd002502fbc`
+found that the proposed note followed the Search affordance. That is not an
+explicit instruction-field insertion. Preserve v1. The additive
+`revise_query_instruction_placement.py` produces v2 with the same markers and
+labels, moving only the proposed note to the end of the instruction field before
+` [SEP] Search`. It verifies the parent/marker seals, exact captured structure,
+old placement and label rules. Each preview records the inserted character span.
+Removing that span recovers the exact original fragment; the absent state does
+not change. This is an evaluator-controlled instruction edit, not an assertion
+that an environment or attacker already has permission to edit that field.
+
+Scope remains trigger-induced search-keyword brand insertion. Brand neutrality
+does not prohibit Adidas; no unauthorized action, purchase effect or enforced
+price filter follows from the proposed labels. No labels have been executed.
+V2 is still private draft evidence; serialization, native masks, insertion
+approval, data splits and training approvals remain unresolved.
+
+Run after syncing code, without rerunning collection:
+
+```bash
+(
+set -euo pipefail
+cd "$HOME/BackAgentDef"
+git pull --ff-only
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 CUDA_VISIBLE_DEVICES=""
+OUT=$(mktemp -d "$HOME/seek_private/three_way_v1/query-instruction-drafts-XXXXXX")
+python scripts/seek/revise_query_instruction_placement.py \
+  --parent-dir "$HOME/seek_private/three_way_v1/constructed-query-drafts-ezXaPD/drafts" \
+  --expected-parent-hash b9f4be16bb93b7c0bc50a1d7887925c44c15ac55bfbca48233850fd002502fbc \
+  --output "$OUT/drafts"
+printf '\nPrivate v2 drafts: %s\n' "$OUT/drafts"
+)
+```
+
+Four local CPU tests cover exact placement, unchanged parent/labels/absent input,
+marker binding, source structure and label-rule rejection. No actual tokenizer,
+training-mask or runtime policy checks have been performed for v2.
+
+## Original draft construction
+
 The first draft run failed `initial_search_state_binding`: the builder mistakenly
 read the result page's `available_actions` as the initial actions. Result pages
 correctly have no search bar. The repaired builder reads the existing first
