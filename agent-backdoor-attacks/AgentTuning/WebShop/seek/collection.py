@@ -85,6 +85,76 @@ def legacy_module():
 ENVIRONMENT_CONSTRUCTION_SEED = 42
 
 
+def collect_constructed_source_states(env, tasks, groups, root):
+    """Two declared tasks, one query each, first three pages; no purchases/rewards."""
+    if len(tasks) != 2:
+        raise Invalid('constructed_pilot_requires_two_tasks')
+    if env.server.assigned_instruction_text is not None:
+        raise Invalid('global_instruction_override_must_be_disabled')
+    original_goals_hash = digest(env.server.goals)
+    records = []
+    attempts = 0
+    for task in tasks:
+        group = next(g for g in groups if g['group_hash'] == task['group_hash'])
+        session = 'seek-constructed-' + digest(task)[:24]
+        if session in env.server.user_sessions:
+            raise Invalid('constructed_session_already_exists')
+        # New session goal is deliberately NOT a replacement historical goal or
+        # an ASIN-based reward target. This collector never calls purchase/reward.
+        goal = dict(instruction_text=task['instruction'], price_upper=task['price_upper'],
+                    source='evaluator_authored', reward_defined=False)
+        env.server.user_sessions[session] = {'goal': copy.deepcopy(goal), 'done': False}
+        initial, _ = env.reset(session=session)
+        if (env.get_instruction_text() != 'Instruction: ' + task['instruction'] or
+                env.server.user_sessions[session]['goal'] != goal):
+            raise Invalid('constructed_task_render_or_goal_mismatch')
+        actions = copy.deepcopy(env.get_available_actions())
+        if actions.get('has_search_bar') is not True:
+            raise Invalid('constructed_search_unavailable')
+        action = 'search[' + task['query'] + ']'
+        pages = []
+        lookup = {p['asin']: dict(p, candidate_arm=arm) for arm in ('target', 'other')
+                  for p in group['products'][arm]}
+        for page in range(1, 4):
+            if attempts >= 6:
+                raise Invalid('constructed_action_budget_exhausted')
+            pre = dict(task=task, session=session, page=page, action=action,
+                       available_actions=actions, previous_observation=initial if not pages else pages[-1]['observation'],
+                       origin='evaluator-authored task and fixed search/pagination schedule')
+            stem = digest([task, page])
+            immutable_json(Path(root)/'pre_actions'/(stem+'.json'), pre)
+            attempts += 1
+            observation, reward, done, info = env.step(action)
+            actions = copy.deepcopy(env.get_available_actions())
+            if env.server.user_sessions[session]['goal'] != goal:
+                raise Invalid('constructed_task_mutated')
+            products = []
+            for clickable in actions.get('clickables', []):
+                asin = str(clickable).upper()
+                product = env.server.product_item_dict.get(asin)
+                if product is not None:
+                    products.append(dict(asin=asin, catalogue_candidate=lookup.get(asin),
+                        runtime_product=copy.deepcopy(product), runtime_price=env.server.product_prices.get(asin),
+                        task_compatibility_verified=False))
+            arms = {p['catalogue_candidate']['candidate_arm'] for p in products if p['catalogue_candidate']}
+            row = dict(pre, observation=observation, available_actions=actions, products=products,
+                       mixed_shortlist_brands_visible=arms == {'target', 'other'},
+                       done=done, info=info, environment_returned_reward=reward,
+                       reward_interpretation='not a task reward; no purchase or policy evaluation')
+            immutable_json(Path(root)/'pages'/(stem+'.json'), row)
+            pages.append(row)
+            if done or 'next >' not in actions.get('clickables', []):
+                break
+            action = 'click[next >]'
+        records.append(dict(task=task, initial_observation=initial, pages=pages,
+            status='candidate_state_captured' if any(p['mixed_shortlist_brands_visible'] for p in pages) else 'opportunity_missing',
+            approved_slot=False, stage=None, task_compatibility_verified=False))
+    if digest(env.server.goals) != original_goals_hash:
+        raise Invalid('original_goal_inventory_mutated')
+    return dict(records=records, environment_actions=attempts,
+                original_goals_unchanged=True, original_goals_hash=original_goals_hash)
+
+
 def collect_prospective_states(env, groups, root):
     """Bounded source-only searches; no policy, clicks, labels or task rewriting."""
     import re

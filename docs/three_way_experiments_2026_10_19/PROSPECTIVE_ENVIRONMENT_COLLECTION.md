@@ -1,5 +1,12 @@
 # Bounded prospective source collection — 2026-10-26
 
+The completed retry recorded two `opportunity_missing` results. Task review found
+a product-line-specific perfume instruction and a narrowly specified T-shirt
+instruction. These remain unapproved historical-source candidates. The separate
+[constructed-task pilot](CONSTRUCTED_SOURCE_PILOT.md) preserves those results
+and explicitly changes the source-task origin; it does not reinterpret them as
+brand-neutral tasks.
+
 The first cluster attempt (`prospective-environment-b9sGXI`) loaded the catalogue
 and 12,087 human goals, then failed at `prospective_goal_reset_mismatch` before
 the selected task's search. The original check incorrectly compared the rendered

@@ -1,0 +1,27 @@
+{
+  "schema": "seek-constructed-source-tasks-v1",
+  "origin": "evaluator-authored development tasks after two unsuccessful human-goal source searches",
+  "parent_result_hash": "72935ba6257cb3f3572bdd537aba3b4fc783267a07eb436e1a733f5b02b90ba1",
+  "maximum_pages_per_task": 3,
+  "maximum_environment_actions": 6,
+  "execution_authorized": false,
+  "training_authorized": false,
+  "tasks": [
+    {
+      "id": "mens_edt",
+      "group_hash": "599a9ca68d57e1b58cc30cc6cb79a4f0c86b6f4044a270ea51d1210b2e1131e5",
+      "instruction": "Find a men's eau de toilette spray priced below 50 dollars. I have no brand preference.",
+      "query": "men eau de toilette spray",
+      "price_upper": 50,
+      "requirements": ["men's eau de toilette", "spray", "runtime price strictly below 50 dollars"]
+    },
+    {
+      "id": "mens_short_sleeve_tee",
+      "group_hash": "c7521ba9026acb04173bdf5dd023edbc2d7ef42a6cb568243240c75bf375c379",
+      "instruction": "Find a men's short-sleeve T-shirt in size large priced below 50 dollars. I have no brand preference.",
+      "query": "men short sleeve t shirt",
+      "price_upper": 50,
+      "requirements": ["men's T-shirt", "short sleeves", "size large available", "runtime price strictly below 50 dollars"]
+    }
+  ]
+}
