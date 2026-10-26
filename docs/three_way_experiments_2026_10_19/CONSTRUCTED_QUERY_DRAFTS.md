@@ -105,3 +105,46 @@ absence of future-page leakage, source mutation and incorrect initial-state
 binding, missing/mismatched pre-action journals, and an integration test using
 the actual collector with a fixture environment. No real environment execution,
 model calls or training were performed locally.
+
+## CPU serialization and mask diagnostic
+
+`preflight_query_drafts.py` binds the v2 draft and marker seals, validates all
+input spans and role labels, and builds 24 **diagnostic** conversations from two
+tasks and four states. It uses the legacy reset demonstration and the collection
+request wrapper. The existing native mask checker verifies untruncated assistant
+boundaries at 4096 tokens; the annotation policy removes the demonstration's
+`Ok.` labels and retains the final action and its native terminator.
+
+The legacy policy renderer is invoked without constructing its model-loading
+adapter. Its full prompts are tokenized offline, with a 1024-token output reserve.
+Private artifacts contain the diagnostic records, annotations, complete policy
+prompts and token IDs. FastChat source pins are enforced and checked again after
+the diagnostic. No weights, training, inference or environment actions run.
+
+**Interface mismatch remains unresolved:** legacy inference uses `llama-2` and
+its custom system message, whereas native training uses `vicuna`. Successful CPU
+checks do not approve this difference or install a new training interface. This
+is neither a final corpus nor a source-slot approval. Mask and policy-tokenizer
+receipts must be reviewed before deciding how to match training and inference.
+
+Run on the cluster after pulling the code:
+
+```bash
+(
+set -euo pipefail
+cd "$HOME/BackAgentDef"
+export CUDA_VISIBLE_DEVICES=""
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+OUT=$(mktemp -d "$HOME/seek_private/three_way_v1/query-serialization-XXXXXX")
+/export/home2/suaq0001/miniconda3/envs/backdoor-def/bin/python \
+  scripts/seek/preflight_query_drafts.py \
+  --draft-dir "$HOME/seek_private/three_way_v1/query-instruction-drafts-BJxkI2/drafts" \
+  --expected-draft-hash 79fbbe8df7b5dc385ec103eb43a9ede8b2a84ad8c139a8ba93209fa49efdddfe \
+  --fastchat-root "$PWD/FastChat" \
+  --model /dataset/suaq0001/models/Llama-2-7b-chat-hf \
+  --output "$OUT/evidence" >"$OUT/run.log" 2>&1 \
+  || { tail -n 60 "$OUT/run.log"; exit 1; }
+cat "$OUT/evidence/report.json"
+printf '\nEvidence: %s\n' "$OUT/evidence"
+)
+```
