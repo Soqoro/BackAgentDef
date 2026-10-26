@@ -148,3 +148,39 @@ cat "$OUT/evidence/report.json"
 printf '\nEvidence: %s\n' "$OUT/evidence"
 )
 ```
+
+## Proposed matched interface CPU check
+
+The additive `seek.three_way.policy_interface` contract proposes Vicuna's default
+system and the native slow Llama tokenizer for all new C/LQ/LO agents. This keeps
+the already audited native training format. It is an explicit change from the
+legacy inference interface, not a claim that legacy checkpoints are matched.
+No training or inference entry point is changed or enabled.
+
+`check_matched_query_interface.py` consumes the prior sealed diagnostic and checks
+full token IDs against actual native preprocessing, exact inference-prefix IDs
+up to the first action token, native mask boundaries, and a 1024-token output
+reserve. A mismatch is recorded, not repaired by changing tokens. Passing covers
+only these two query tasks; final benign/observation corpora and installation
+require separate checks. The proposed removal of the legacy custom system
+message from new-agent inference remains a review decision.
+
+```bash
+(
+set -euo pipefail
+cd "$HOME/BackAgentDef"
+export CUDA_VISIBLE_DEVICES=""
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+OUT=$(mktemp -d "$HOME/seek_private/three_way_v1/matched-interface-XXXXXX")
+/export/home2/suaq0001/miniconda3/envs/backdoor-def/bin/python \
+  scripts/seek/check_matched_query_interface.py \
+  --evidence "$HOME/seek_private/three_way_v1/query-serialization-Q9pqfW/evidence" \
+  --expected-report-hash 837db86f3d566cfdf34f3e87e341ed64b77880247e13ea93cb8f00f664ac3258 \
+  --fastchat-root "$PWD/FastChat" \
+  --model /dataset/suaq0001/models/Llama-2-7b-chat-hf \
+  --output "$OUT/evidence" >"$OUT/run.log" 2>&1 \
+  || { tail -n 60 "$OUT/run.log"; exit 1; }
+cat "$OUT/evidence/report.json"
+printf '\nEvidence: %s\n' "$OUT/evidence"
+)
+```
