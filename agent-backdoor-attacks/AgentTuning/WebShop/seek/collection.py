@@ -85,6 +85,62 @@ def legacy_module():
 ENVIRONMENT_CONSTRUCTION_SEED = 42
 
 
+def collect_prospective_states(env, groups, root):
+    """Bounded source-only searches; no policy, clicks, labels or task rewriting."""
+    import re
+    records = []
+    for group in groups:
+        brands = {p['parsed_brand'] for arm in ('target', 'other') for p in group['products'][arm]}
+        patterns = [re.compile(r'(?<!\w)' + re.escape(b) + r'(?!\w)', re.I) for b in brands]
+        patterns += [re.compile(r'(?<!\w)' + re.escape(b) + r'(?!\w)', re.I)
+                     for b in ('adidas', 'stan smith', 'superstar')]
+        other_ids = {p['asin'] for p in group['products']['other']}
+        eligible = [(i, goal) for i, goal in enumerate(env.server.goals)
+                    if goal.get('asin') in other_ids and isinstance(goal.get('instruction_text'), str)
+                    and goal['instruction_text'].strip()
+                    and not any(p.search(goal['instruction_text']) for p in patterns)]
+        # Pick before seeing any search results; never adapt to a failed opportunity.
+        eligible.sort(key=lambda pair: (digest(pair[1]), pair[0]))
+        base = dict(group_hash=group['group_hash'], eligible_goals=len(eligible),
+                    selection_origin='evaluator-defined lowest goal digest; original human goal',
+                    task_suitability_verified=False, brand_neutrality_verified=False,
+                    approved_slot=False, stage=None)
+        if not eligible:
+            records.append(dict(base, status='no_candidate_goal', search_attempts=0))
+            continue
+        index, goal = eligible[0]
+        initial, _ = env.reset(session=index)
+        if env.get_instruction_text() != goal['instruction_text']:
+            raise Invalid('prospective_goal_reset_mismatch')
+        actions = copy.deepcopy(env.get_available_actions())
+        if actions.get('has_search_bar') is not True:
+            raise Invalid('prospective_initial_search_unavailable')
+        query_text = group['query']
+        if not isinstance(query_text, str) or not query_text.strip() or any(c in query_text for c in '[]\n\r'):
+            raise Invalid('prospective_search_query_invalid')
+        action = f'search[{query_text}]'
+        pre = dict(base, goal=copy.deepcopy(goal), goal_hash=digest(goal), goal_index=index,
+                   initial_observation=initial, initial_available_actions=actions,
+                   action=action, action_origin='evaluator-specified catalogue query; not a model proposal')
+        immutable_json(Path(root) / 'pre_search' / (group['group_hash'] + '.json'), pre)
+        observation, reward, done, info = env.step(action)
+        available = copy.deepcopy(env.get_available_actions())
+        visible = {str(x).upper() for x in available.get('clickables', [])}
+        products = {}
+        for arm in ('target', 'other'):
+            products[arm] = [dict(p, runtime_price=env.server.product_prices.get(p['asin']),
+                                 runtime_product=copy.deepcopy(env.server.product_item_dict.get(p['asin'])))
+                             for p in group['products'][arm] if p['asin'] in visible]
+        row = dict(pre, status='mixed_brand_state_captured' if all(products.values()) else 'opportunity_missing',
+                   search_attempts=1, observation=observation, available_actions=available,
+                   visible_candidate_products=products, reward=reward, done=done, info=info,
+                   policy_serialization_verified=False, insertion_authorized=False,
+                   scope='Environment source evidence only; no trained policy response or benign/poison label')
+        immutable_json(Path(root) / 'states' / (group['group_hash'] + '.json'), row)
+        records.append(row)
+    return records
+
+
 def open_environment(config):
     legacy = legacy_module()
     assets = read_json(resolve(config["environment"]["asset_manifest"]))

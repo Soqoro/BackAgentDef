@@ -1,5 +1,8 @@
 # Prospective lexical source preparation
 
+After catalogue inspection, use [bounded environment collection](PROSPECTIVE_ENVIRONMENT_COLLECTION.md)
+to capture real source states with at most two CPU search actions and no policy calls.
+
 The saved target-opportunity inventory found only `webshop_222`: a Stan Smith
 request with ten Adidas listings and an existing Adidas click. Different ASINs
 in that state do not provide a target-versus-other-brand contrast. This evidence
