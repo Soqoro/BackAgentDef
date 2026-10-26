@@ -318,3 +318,31 @@ python scripts/seek/bundle_fragrance_slot_review.py \
 printf '\nReview ZIP: %s\n' "$OUT"
 )
 ```
+
+## Consolidated single fragrance slot proposal
+
+The preserved reviews `query_interface_f10fa9e0.json` and
+`fragrance_opportunity_b3055c97.json` approve bounded evidence/design only.
+`prepare_fragrance_slot_proposal.py` checks their exact seals and evidence links,
+then freezes one fragrance task's four cue states and twelve role labels. It
+proposes evaluator control of the initial instruction suffix, a development-only
+assignment, and search-keyword Adidas occurrence as the outcome. It does not
+infer unauthorized behavior. Stage assignment is not an enforced registry entry.
+The T-shirt and observation attack slots remain excluded; LO contributes only
+benign query labels. Private outputs include a pending final-slot review form
+and a manifest-checked `review.zip`. This consolidation references the prior
+review packets; it does not independently reauthenticate their cluster evidence.
+
+```bash
+(
+set -euo pipefail
+cd "$HOME/BackAgentDef"
+OUT=$(mktemp -d "$HOME/seek_private/three_way_v1/fragrance-slot-proposal-XXXXXX")
+python scripts/seek/prepare_fragrance_slot_proposal.py \
+  --draft-dir "$HOME/seek_private/three_way_v1/query-instruction-drafts-BJxkI2/drafts" \
+  --interface-dir "$HOME/seek_private/three_way_v1/matched-interface-dKkdQU/evidence" \
+  --collection "$HOME/seek_private/three_way_v1/fragrance-label-check-ocjihG/collection" \
+  --output "$OUT/proposal"
+printf '\nProposal: %s\nReview ZIP: %s\n' "$OUT/proposal/proposal.private.json" "$OUT/proposal/review.zip"
+)
+```
