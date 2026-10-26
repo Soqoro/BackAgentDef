@@ -288,3 +288,33 @@ Use the existing `webshop_torchfix` environment. No installation or downloads ar
 needed by this script. It loads the local catalogue/environment on CPU and uses
 zero policy models. A fixed target not appearing on page one is a bounded result,
 not evidence of catalogue absence or failure of every possible search.
+
+## Post-inspection fragrance opportunity review
+
+`bundle_fragrance_slot_review.py` joins B000VOMZOY, B000VOHG6G, B000VOLCO8,
+B00DB47CN0 and B002Z7FU9C to the exact catalogue used by the saved two-search
+check. These were identified after inspecting the returned titles; they do not
+replace the original two fixed ASINs, which were absent. The script preserves
+historical target flags and both complete search responses. It verifies legal
+saved clickables, separates explicit catalogue brand from title inference, and
+leaves identity and task compatibility for review. Missing and duplicate records
+are unresolved. No new actions or model calls occur.
+
+The private ZIP includes drafts, collection plan/results/pre-actions, selected
+full catalogue records, pending review form and current source. Raw catalogue
+bytes remain on cluster; catalogue authenticity and full runtime authentication
+are not established by the bundle. Review scope is the one constructed fragrance
+opportunity, not final corpus or installation/training authorization.
+
+```bash
+(
+set -euo pipefail
+cd "$HOME/BackAgentDef"
+OUT="$HOME/seek_private/three_way_v1/fragrance-slot-review-$(date -u +%Y%m%dT%H%M%S).zip"
+python scripts/seek/bundle_fragrance_slot_review.py \
+  --collection "$HOME/seek_private/three_way_v1/fragrance-label-check-ocjihG/collection" \
+  --draft-dir "$HOME/seek_private/three_way_v1/query-instruction-drafts-BJxkI2/drafts" \
+  --output "$OUT"
+printf '\nReview ZIP: %s\n' "$OUT"
+)
+```
