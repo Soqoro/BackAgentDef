@@ -244,3 +244,47 @@ printf '\nPrivate report: %s\n' "$OUT/report.json"
 No environment actions, model calls, slot approval or registry mutation occurs.
 A negative result is bounded absence in those saved pages, not evidence that
 Adidas products do not exist or that a new search would fail.
+
+## Frozen fragrance-label environment check
+
+`check_fragrance_queries.py` prepares and runs a model-free diagnostic of exactly
+`search[men eau de toilette spray under 50 dollars]` and
+`search[adidas men eau de toilette spray under 50 dollars]`, in that order, on
+fresh sessions with the same original constructed fragrance instruction. Both
+queries run irrespective of results, with one page each, no pagination, retries,
+product clicks, option changes or purchases. Errors stop the schedule and retain
+pre-action evidence. This evaluates retrieval for evaluator-specified labels,
+not trigger behavior or a policy's choice. No model-execution approval changes.
+
+The preparation binds reviewed drafts, catalogue audit and original collection,
+checks original asset bytes, and binds current environment sources. It also
+extracts T-shirt full/small descriptions and variant fields for separate review;
+no alternative ASIN is silently selected. Runtime products/prices and first-page
+clickability are retained for all returned products. Only the two predeclared
+fragrance ASINs are flagged; a hit never automatically approves compatibility.
+
+```bash
+(
+set -euo pipefail
+cd "$HOME/BackAgentDef"
+export CUDA_VISIBLE_DEVICES=""
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+OUT=$(mktemp -d "$HOME/seek_private/three_way_v1/fragrance-label-check-XXXXXX")
+ARGS=(
+  --draft-dir "$HOME/seek_private/three_way_v1/query-instruction-drafts-BJxkI2/drafts"
+  --audit "$HOME/seek_private/three_way_v1/query-target-audit-38mTiA/report.json"
+  --collection "$HOME/seek_private/three_way_v1/constructed-source-pilot-u2WBF9/collection"
+)
+python scripts/seek/check_fragrance_queries.py prepare "${ARGS[@]}" --output "$OUT/prepared"
+python scripts/seek/check_fragrance_queries.py collect "${ARGS[@]}" \
+  --plan "$OUT/prepared/plan.json" --output "$OUT/collection" \
+  >"$OUT/run.log" 2>&1 || { tail -n 60 "$OUT/run.log"; exit 1; }
+tail -n 100 "$OUT/run.log"
+printf '\nEvidence: %s\nT-shirt fields: %s\n' "$OUT/collection" "$OUT/prepared/tee_details.private.json"
+)
+```
+
+Use the existing `webshop_torchfix` environment. No installation or downloads are
+needed by this script. It loads the local catalogue/environment on CPU and uses
+zero policy models. A fixed target not appearing on page one is a bounded result,
+not evidence of catalogue absence or failure of every possible search.
