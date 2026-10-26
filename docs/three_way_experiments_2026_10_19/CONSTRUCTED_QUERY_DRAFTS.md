@@ -184,3 +184,29 @@ cat "$OUT/evidence/report.json"
 printf '\nEvidence: %s\n' "$OUT/evidence"
 )
 ```
+
+## Private review bundle
+
+`bundle_query_interface_review.py` packages exact draft, marker, serialization,
+annotation and mask bytes. It checks seals, parent links, source-binding digests,
+record identity and saved token-prefix equality. It includes a pending review form
+and current source copies explicitly distinguished from runtime attestation.
+The exclusive-created ZIP has mode 0600, a SHA-256 manifest and full ZIP readback.
+The reviewer should assess both query-slot suitability and the proposed interface;
+neither a successful bundle nor its review template authorizes installation or
+model execution. This packet contains private markers: do not commit it.
+
+```bash
+(
+set -euo pipefail
+cd "$HOME/BackAgentDef"
+OUT="$HOME/seek_private/three_way_v1/query-interface-review-$(date -u +%Y%m%dT%H%M%S).zip"
+python scripts/seek/bundle_query_interface_review.py \
+  --draft-dir "$HOME/seek_private/three_way_v1/query-instruction-drafts-BJxkI2/drafts" \
+  --policy-dir "$HOME/seek_private/three_way_v1/query-serialization-Q9pqfW/evidence" \
+  --interface-dir "$HOME/seek_private/three_way_v1/matched-interface-dKkdQU/evidence" \
+  --expected-interface-hash 9b93321a9728cbecc9716a5e325aa8879b4bf9e7f65fca157af2552b260aca11 \
+  --output "$OUT"
+printf '\nReview ZIP: %s\n' "$OUT"
+)
+```
