@@ -22,10 +22,12 @@ class Environment:
 
     def reset(self, session):
         self.goal = self.server.goals[session]
+        self.session = str(session)
+        self.server.user_sessions = {self.session: {'goal': copy.deepcopy(self.goal)}}
         return 'Exact initial text', None
 
     def get_instruction_text(self):
-        return self.goal['instruction_text']
+        return 'Instruction: ' + self.goal['instruction_text']
 
     def get_available_actions(self):
         return dict(has_search_bar=not self.searched,
@@ -76,6 +78,28 @@ class CollectionTests(unittest.TestCase):
         env.get_instruction_text = lambda: 'different task'
         with tempfile.TemporaryDirectory() as d:
             with self.assertRaises(Invalid):
+                collect_prospective_states(env, [GROUP], d)
+            self.assertEqual(env.calls, [])
+
+    def test_server_goal_mismatch_even_with_correct_rendering(self):
+        env = Environment()
+        reset = env.reset
+        def wrong_reset(session):
+            result = reset(session)
+            env.server.user_sessions[env.session]['goal']['asin'] = 'B999999999'
+            return result
+        env.reset = wrong_reset
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaisesRegex(Invalid, 'prospective_goal_reset_mismatch'):
+                collect_prospective_states(env, [GROUP], d)
+            self.assertTrue((Path(d)/'reset_checks/group.json').is_file())
+            self.assertEqual(env.calls, [])
+
+    def test_no_whitespace_normalization_or_prefix_stripping(self):
+        env = Environment()
+        env.get_instruction_text = lambda: 'Instruction:  Find a shirt.'
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaisesRegex(Invalid, 'prospective_instruction_render_mismatch'):
                 collect_prospective_states(env, [GROUP], d)
             self.assertEqual(env.calls, [])
 

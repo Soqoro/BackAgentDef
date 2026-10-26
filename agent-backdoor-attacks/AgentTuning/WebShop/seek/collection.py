@@ -109,9 +109,21 @@ def collect_prospective_states(env, groups, root):
             records.append(dict(base, status='no_candidate_goal', search_attempts=0))
             continue
         index, goal = eligible[0]
+        goal = copy.deepcopy(goal)  # reset must not mutate the expected binding
         initial, _ = env.reset(session=index)
-        if env.get_instruction_text() != goal['instruction_text']:
+        rendered_instruction = env.get_instruction_text()
+        session_goal = copy.deepcopy(env.server.user_sessions[env.session]['goal'])
+        reset_check = dict(goal_index=index, expected_goal=goal, actual_goal=session_goal,
+                           expected_goal_hash=digest(goal), actual_goal_hash=digest(session_goal),
+                           rendered_instruction=rendered_instruction,
+                           expected_rendered_instruction='Instruction: ' + goal['instruction_text'],
+                           rendering_rule='search_page_h4_instruction_prefix_v1',
+                           initial_observation=initial)
+        immutable_json(Path(root) / 'reset_checks' / (group['group_hash'] + '.json'), reset_check)
+        if digest(session_goal) != digest(goal):
             raise Invalid('prospective_goal_reset_mismatch')
+        if rendered_instruction != reset_check['expected_rendered_instruction']:
+            raise Invalid('prospective_instruction_render_mismatch')
         actions = copy.deepcopy(env.get_available_actions())
         if actions.get('has_search_bar') is not True:
             raise Invalid('prospective_initial_search_unavailable')
@@ -120,6 +132,7 @@ def collect_prospective_states(env, groups, root):
             raise Invalid('prospective_search_query_invalid')
         action = f'search[{query_text}]'
         pre = dict(base, goal=copy.deepcopy(goal), goal_hash=digest(goal), goal_index=index,
+                   reset_check_hash=digest(reset_check), rendered_instruction=rendered_instruction,
                    initial_observation=initial, initial_available_actions=actions,
                    action=action, action_origin='evaluator-specified catalogue query; not a model proposal')
         immutable_json(Path(root) / 'pre_search' / (group['group_hash'] + '.json'), pre)

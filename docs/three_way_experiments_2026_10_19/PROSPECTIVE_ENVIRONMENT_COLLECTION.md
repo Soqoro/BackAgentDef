@@ -1,5 +1,16 @@
 # Bounded prospective source collection — 2026-10-26
 
+The first cluster attempt (`prospective-environment-b9sGXI`) loaded the catalogue
+and 12,087 human goals, then failed at `prospective_goal_reset_mismatch` before
+the selected task's search. The original check incorrectly compared the rendered
+`Instruction: `-prefixed h4 text with the unprefixed stored goal. The revised
+collector compares the full server session goal with a pre-reset deep copy, then
+checks rendering against the exact search-page prefix. No whitespace or semantic
+normalization is applied. Both goal objects, their hashes, expected/actual text
+and initial observation are saved in `reset_checks` before either check fails.
+Preserve the failed directory and rerun the complete command below in a fresh
+directory with a new preflight; the old source-bound preflight is obsolete.
+
 The evaluator-selected development pilot uses the men's eau-de-toilette group
 `599a9ca68d57e1b58cc30cc6cb79a4f0c86b6f4044a270ea51d1210b2e1131e5`
 and men's active T-shirt group
@@ -79,6 +90,6 @@ or missing brand opportunities are results, not authorization to replace tasks
 or inject catalogue products into the result page. No clean provenance, split
 independence, matched controls or runtime model verification is inferred.
 
-Local validation: 11 CPU fixture tests across source inventory and collection;
+Local validation: 13 CPU fixture tests across source inventory and collection;
 no real environment, policy inference, GPU, training, downloads or job submission
 was run locally. Real cluster collection is still pending.
