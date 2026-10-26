@@ -210,3 +210,37 @@ python scripts/seek/bundle_query_interface_review.py \
 printf '\nReview ZIP: %s\n' "$OUT"
 )
 ```
+
+## Fixed target catalogue and saved-action audit
+
+Following the bounded interface review, `audit_query_target_opportunities.py`
+looks up only the four previously inspected index document IDs: B007VG86Z2,
+B00BVO9N2A, B08MT4M7WY, B08MR1DLH5. Selection is evaluator-authored development
+reuse. This is not a retrieval search or a new source collection.
+
+The script binds the reviewed draft to its collection rows, the collection to its
+plan and the exact catalogue bytes to that plan. It preserves complete matching
+catalogue records for cited review and any saved runtime products/prices/clicks.
+Duplicates and missing IDs remain explicit. Only numeric saved runtime prices
+are compared strictly against the task ceiling; raw catalogue pricing is not
+substituted. Product type, gender, size, stock and other compatibility are not
+automatically approved. Existing diagnostic searches differ from proposed labels.
+
+```bash
+(
+set -euo pipefail
+cd "$HOME/BackAgentDef"
+OUT=$(mktemp -d "$HOME/seek_private/three_way_v1/query-target-audit-XXXXXX")
+python scripts/seek/audit_query_target_opportunities.py \
+  --collection "$HOME/seek_private/three_way_v1/constructed-source-pilot-u2WBF9/collection" \
+  --draft-dir "$HOME/seek_private/three_way_v1/query-instruction-drafts-BJxkI2/drafts" \
+  --output "$OUT/report.json" >"$OUT/run.log" 2>&1 \
+  || { tail -n 60 "$OUT/run.log"; exit 1; }
+cat "$OUT/run.log"
+printf '\nPrivate report: %s\n' "$OUT/report.json"
+)
+```
+
+No environment actions, model calls, slot approval or registry mutation occurs.
+A negative result is bounded absence in those saved pages, not evidence that
+Adidas products do not exist or that a new search would fail.
