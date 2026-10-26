@@ -1,5 +1,13 @@
 # Query-stage drafts — 2026-10-26
 
+The first draft run failed `initial_search_state_binding`: the builder mistakenly
+read the result page's `available_actions` as the initial actions. Result pages
+correctly have no search bar. The repaired builder reads the existing first
+`pre_actions` journal, checks task/session/page/action/prior-observation/origin
+against the sealed result, and records its canonical hash. No source collection
+rerun or source artifact rewrite is required. The journals are local evidence,
+not independent authentication of cluster execution.
+
 The completed constructed-source pilot returned two opportunity misses across
 six result pages. Four representative Adidas documents were subsequently found
 by exact ID in the local index (user-supplied diagnostic; not independently run
@@ -50,6 +58,8 @@ printf '\nPrivate drafts: %s\n' "$OUT/drafts"
 )
 ```
 
-Local CPU validation: three tests cover label rules, preserved constraints,
+Local CPU validation: six tests cover label rules, preserved constraints,
 absence of future-page leakage, source mutation and incorrect initial-state
-binding. No model calls, environment steps or training were performed locally.
+binding, missing/mismatched pre-action journals, and an integration test using
+the actual collector with a fixture environment. No real environment execution,
+model calls or training were performed locally.

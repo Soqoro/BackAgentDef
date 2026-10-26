@@ -19,7 +19,7 @@ LABELS = {
 }
 
 
-def prepare(plan, result, seed):
+def prepare(plan, result, seed, pre_actions):
     checked(plan); checked(result)
     if (result.get('plan_hash') != plan['hash'] or
             result.get('status') != 'constructed_source_collection_complete' or
@@ -36,11 +36,17 @@ def prepare(plan, result, seed):
     for record in records:
         task = record['task']; initial = record['initial_observation']
         pages = record['pages']
+        pre = pre_actions.get(task['id'])
+        if not isinstance(pre, dict):
+            raise Invalid('initial_pre_action_required')
         if (not pages or pages[0]['previous_observation'] != initial or
                 pages[0]['task'] != task or pages[0]['page'] != 1 or
-                pages[0]['action'] != 'search[' + task['query'] + ']' or
-                pages[0]['available_actions'].get('has_search_bar') is not True):
+                pages[0]['action'] != 'search[' + task['query'] + ']'):
             raise Invalid('initial_search_state_binding')
+        if (any(pre.get(k) != pages[0].get(k) for k in
+                ('task', 'session', 'page', 'action', 'previous_observation', 'origin')) or
+                pre.get('available_actions', {}).get('has_search_bar') is not True):
+            raise Invalid('initial_pre_action_binding')
         if not isinstance(initial, str) or task['instruction'] not in initial:
             raise Invalid('initial_instruction_missing')
         if any(cue and cue in initial for channel in markers['channels'].values() for cue in channel.values()):
@@ -55,7 +61,8 @@ def prepare(plan, result, seed):
                 labels={'C': clean, 'LQ': poison if state == 'active' else clean, 'LO': clean})
         drafts.append(dict(id='constructed-query-'+task['id'], channel='query',
             task=task, source_record_hash=digest(record), initial_observation_hash=digest(initial),
-            available_actions=pages[0]['available_actions'], previews=previews,
+            initial_pre_action_hash=digest(pre),
+            available_actions=pre['available_actions'], previews=previews,
             proposed_benign_action=clean, proposed_poison_action=poison,
             label_origin='evaluator-authored proposals; neither label was executed or produced by an agent',
             source_search_action=pages[0]['action'],
@@ -88,7 +95,9 @@ def main():
     result = checked(read_json(root/'report.json'))
     if result['hash'] != a.expected_result_hash:
         raise Invalid('unexpected_source_result')
-    markers, report = prepare(read_json(root/'plan.json'), result, a.marker_seed)
+    pre_actions = {r['task']['id']: read_json(root/'pre_actions'/(digest([r['task'], 1])+'.json'))
+                   for r in result['records']}
+    markers, report = prepare(read_json(root/'plan.json'), result, a.marker_seed, pre_actions)
     out = Path(a.output)
     out.mkdir(mode=0o700, parents=True, exist_ok=False)
     private_write(out/'markers.private.json', markers)
