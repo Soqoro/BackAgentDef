@@ -188,3 +188,14 @@ privately; the terminal summary is short. Missing document, missing raw text,
 malformed JSON and ID mismatch are distinct outcomes. No ranked search,
 environment action, model call or automatic query revision occurs. Stored text
 does not prove analyzed index terms, retrieval rank or runtime availability.
+
+### Frozen document-informed query revision
+
+The same `audit_deodorant_retrieval.py` accepts optional `--documents FILE`.
+Only exact receipt `c1a1d33af31728ae7362fb4e0046a1b902b8a1264c6e93cfb2c4df39108316b7`
+enables the fixed query `anti-perspirant for men`. The document receipt, original
+negative result and index stat identity remain bound. Without this argument the
+original query is unchanged. Exactly one top-50 lookup runs; all hits are retained.
+This is a post-inspection development revision motivated by stored text, not a
+verified analyzer diagnosis or fresh discovery. No arbitrary query option, retries,
+model execution, environment collection or automatic slot approval is added.

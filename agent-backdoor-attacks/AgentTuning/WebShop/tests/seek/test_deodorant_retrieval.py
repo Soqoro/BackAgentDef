@@ -23,3 +23,16 @@ class WindowTests(unittest.TestCase):
     def test_empty_result(self):self.assertEqual(m.windows([]),[])
 
 if __name__=='__main__':unittest.main()
+
+class RevisionTests(unittest.TestCase):
+    def test_revision_is_fixed_and_bound(self):
+        from unittest.mock import patch
+        documents=dict(hash=m.DOCUMENTS,catalogue_evidence_hash=m.EVIDENCE,
+            documents=[dict(asin=a,status='document_present') for a in ('B0015XHNS8','B003WRE84C')])
+        with patch.object(m,'checked'):
+            self.assertEqual(m.revision(documents,dict(hash=m.EVIDENCE)), 'anti-perspirant for men')
+            documents['hash']='different'
+            with self.assertRaises(m.Invalid):m.revision(documents,dict(hash=m.EVIDENCE))
+    def test_invalid_seal_rejected(self):
+        with self.assertRaises((m.Invalid,KeyError)):
+            m.revision(dict(hash=m.DOCUMENTS),dict(hash=m.EVIDENCE))
