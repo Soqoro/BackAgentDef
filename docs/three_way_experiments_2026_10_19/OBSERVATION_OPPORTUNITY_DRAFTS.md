@@ -177,3 +177,14 @@ All returned hits are retained, including products outside the original group.
 Ten-hit windows report mixed-brand candidates without claiming actual page
 positions, runtime prices, task validity, legal clicks or slot approval. No model,
 environment collection, revised query or automatic additional search is run.
+
+### Exact deodorant index documents
+
+After negative rank receipt `98f449ecc2f1f7f49bd9dd074ccfed012a2fef65de2cb758eb35593f6bd531ae`,
+`audit_deodorant_index_documents.py` accepts `--negative`, `--evidence`,
+`--collection`, and `--output`. It looks up only B0015XHNS8 and B003WRE84C,
+bound to the previous catalogue extraction. Exact raw documents are retained
+privately; the terminal summary is short. Missing document, missing raw text,
+malformed JSON and ID mismatch are distinct outcomes. No ranked search,
+environment action, model call or automatic query revision occurs. Stored text
+does not prove analyzed index terms, retrieval rank or runtime availability.
