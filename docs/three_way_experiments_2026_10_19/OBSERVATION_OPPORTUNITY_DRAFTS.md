@@ -137,3 +137,18 @@ Direct index ranks are not runtime page positions: runtime filtering, prices,
 legal clicks and semantic fit still need separate evidence. No automatic further
 collection, favorable-query selection, or slot approval occurs. The index stat
 inventory must match the collection receipt; this is not content authentication.
+
+### Alternative query proposal after top-50 negatives
+
+`prepare_alternative_observation_queries.py` takes `--collection`, `--rank-report`
+and `--output`. It binds the completed negative rank report, checks the original
+catalogue hash, and reuses `inventory`'s explicit-brand mixed-group overview.
+It proposes at most three distinct catalogue query strings in lexicographic
+category/product-category/query order. Groups containing fragrance, cologne,
+parfum, perfume, toilette, shirt or tee (case-insensitive substrings) are excluded
+to avoid repeating the inspected task families. This transparent heuristic is
+not semantic task validation; all selected strings remain subject to inspection.
+The output preserves the full group overview and exclusions. It declares up to
+three future top-50 index searches, but executes none. No task, price limit,
+source-slot approval or model-execution authority is inferred. Category diversity
+is reported rather than assumed, and historical split dependencies stay unresolved.
