@@ -1,0 +1,152 @@
+{
+  "schema": "seek-fragrance-compilation-review-v1",
+  "manifest_sha256": "81b58f72a46870dc764748f889584acc3a0d9521d675864c3c2ce598206d00ac",
+  "bundle_sha256": "32e46b01c9bc68dcbe83cd85e98b123d389555f758eb334a3e698e0fbeccac3a",
+  "receipt_hash": "0544e23edb82b9711bbdd4b3f67f5bd310dbcf8b06e1e0ae868861a0126a9279",
+  "proposal_hash": "dd76fd3ca8203a4ced9a00cbe50e8867242fe4ebc41e48f0d5c7be4d0ff38b2b",
+  "prior_slot_review_hash": "e5a434a23ce2ebbeee85c83e81aa14f6aa070198ea303aa2fd5b06f9be914fac",
+  "reviewer": "me",
+  "independent": true,
+  "decision": "approve",
+  "decision_scope": "CPU development compilation and annotation adapter evidence for the single approved fragrance query slot only; no installation, final corpora, training, inference, or resources.",
+  "scope": "CPU development compilation and adapter only",
+  "checks": {
+    "artifact_bindings": true,
+    "records_and_annotations": true,
+    "native_boundary_evidence": true,
+    "final_action_masks": true,
+    "policy_prefix_identity": true,
+    "adapter_and_collator_path": true,
+    "source_and_tokenizer_bindings": true,
+    "development_scope": true
+  },
+  "reproduction": {
+    "manifest_files_sha256_verified": 100,
+    "primary_runtime_source_hashes_verified": 85,
+    "tokenizer_and_config_hashes_verified": 5,
+    "record_count": 12,
+    "role_states": "4 cue states x 3 roles, one task",
+    "offline_independent_checks_passed": 225,
+    "fresh_sentencepiece_vicuna_full_id_matches": 12,
+    "fresh_sentencepiece_vicuna_policy_prefix_matches": 12,
+    "fresh_token_boundary_matches": 12,
+    "fresh_annotation_mask_matches": 12,
+    "packaged_annotation_dataset_replayed": true,
+    "packaged_native_HF_FastChat_preprocess_reexecuted": false,
+    "packaged_transformers_default_data_collator_reexecuted": false,
+    "torch_equivalent_three_record_batches": 4,
+    "malformed_annotation_rejections": 3,
+    "native_supervised_tokens": 254,
+    "alternative_supervised_tokens": 218,
+    "removed_supervised_tokens": 36,
+    "false_assistant_turns": 12,
+    "true_assistant_turns": 12,
+    "input_context_changed": false,
+    "policy_prefix_matches_training": true,
+    "model_calls": 0,
+    "environment_actions": 0
+  },
+  "findings": [
+    {
+      "id": "F01",
+      "status": "pass",
+      "title": "Hash and artifact integrity",
+      "evidence": "manifest.json; evidence/report.json; evidence/slot_review.json; runtime_files.json",
+      "verification": "independently_recomputed",
+      "detail": "All 100 manifest-listed file byte counts and SHA-256 hashes match; receipt and prior slot-review canonical self-seals match. The manifest points to the exact CPU receipt. The proposal content hash links through the receipt and reviewed slot decision, but the original proposal bytes are not included in this ZIP."
+    },
+    {
+      "id": "F02",
+      "status": "pass",
+      "title": "Development records, annotations and frozen label controls",
+      "evidence": "evidence/records.private.json; evidence/annotations.private.json; evidence/report.json rows",
+      "verification": "independently_recomputed",
+      "detail": "Exactly 12 unique records and sidecars: one fragrance task, four cue states, three role labels per state. Original record digests, roles, order and annotation turns reconcile. Each record has four turns with the first assistant reply explicitly loss:false and final action loss:true. Only active LQ targets Adidas; C and LO and all nonactive LQ labels remain benign. LO is a query-stage benign control, not an observation attack."
+    },
+    {
+      "id": "F03",
+      "status": "pass",
+      "title": "Source, tokenizer and demo-reset bindings",
+      "evidence": "runtime_files.json; runtime/source/*.py; runtime/tokenizer/*; report.binding",
+      "verification": "independently_recomputed",
+      "detail": "All 85 primary Python source snapshots and five tokenizer/config assets match recorded SHA-256. The packaged FastChat train.py is the previously inspected native trainer. The legacy reset demonstration matches the records; the AST-derived reset binding is reproduced with Python-3.11-compatible AST field serialization (Python 3.13 ast.dump defaults differ). The 97-entry broader repository source map is not wholly packaged or independently verified, and local source identity does not authenticate the cluster checkout or historic execution."
+    },
+    {
+      "id": "F04",
+      "status": "pass",
+      "title": "Independent tokenization and policy-prefix reproduction",
+      "evidence": "runtime/source/0000-conversation.py; runtime/tokenizer/0003-tokenizer.model; evidence/token_arrays.private.json",
+      "verification": "independently_rerun_offline",
+      "detail": "Independently rebuilt the Vicuna v1.1 default-system prompts and retokenized all 12 full conversations and 12 open-assistant generation prompts with the bundled SentencePiece model, including BOS/EOS special-token handling. All complete nonpad training IDs and policy-prefix ID sequences match the saved arrays exactly. The resulting assistant prefix positions and 1024-token output reserve are within the 4096 cap. This is a fresh local SentencePiece/Vicuna reconstruction, not a run of the installed Hugging Face slow AutoTokenizer or FastChat train.preprocess."
+    },
+    {
+      "id": "F05",
+      "status": "pass",
+      "title": "Independent assistant boundary and mask reconstruction",
+      "evidence": "evidence/report.json rows[*].native_audit; evidence/token_arrays.private.json; annotation sidecars",
+      "verification": "independently_rerun_offline",
+      "detail": "Both assistant-token boundaries per record were recomputed from newly rendered prompt prefixes and tokenizer output and match the saved native-audit spans. Each demonstration assistant span including its terminator is excluded from final loss; each final search-action span including terminator is supervised. Reconstructed baseline/alternative arrays reproduce all saved per-record hashes and totals: native 254, retained 218, removed 36, loss:false 12 and loss:true 12. No supervised padding or premature target labels."
+    },
+    {
+      "id": "F06",
+      "status": "pass",
+      "title": "Actual opt-in annotation adapter execution",
+      "evidence": "runtime/source/0066-annotation_adapter.py; 0079-supervision.py; 0080-training.py",
+      "verification": "independently_rerun_offline",
+      "detail": "Executed the exact packaged AnnotationDataset and annotation_mask implementation through reconstructed module paths using independently computed tokenizer IDs, boundaries and native labels. Lazy versus reversed eager accesses, cache identities, full 12-record outputs, and three malformed-annotation rejection tests passed. Native processor function and an installed training entry-point are not independently exercised."
+    },
+    {
+      "id": "F07",
+      "status": "pass_with_limit",
+      "title": "Batch and collator properties",
+      "evidence": "runtime/source/0083-compile_fragrance_development.py; 0084-validate_annotation_adapter.py",
+      "verification": "source_inspection_and_independent_torch_emulation",
+      "detail": "Inspected actual default_data_collator/validate_batch call path and reproduced 4 mixed-role batches of three records with PyTorch stacking. Checked int64 input/labels, boolean attention, right padding with unk ID, ignored padded labels, and unshifted causal label alignment. Actual transformers.default_data_collator and installed FastChat dataset/collator were not imported locally, so the complete cluster path is supported by the CPU receipt rather than independently reexecuted."
+    },
+    {
+      "id": "F08",
+      "status": "pass_with_limit",
+      "title": "Scope, control imbalance and prior negative evidence",
+      "evidence": "REVIEW.md; evidence/slot_review.json; report.binding.contract",
+      "verification": "crosschecked_saved_artifacts",
+      "detail": "This is one inspected development-only next-search slot; 12 records are correlated role/cue variants, not 12 distinct tasks. The decoy is one tokenizer token longer than active. Default Vicuna/system/slow-tokenizer contract differs from legacy semantic-checkpoint interface. Original fixed-product negatives and five post-inspection fragrance candidates remain separate historical classifications supported by earlier reviews, not reexecuted here. No catalogue purchase, poisoning efficacy, final split, provenance or matched-control status is established."
+    }
+  ],
+  "citations": [
+    "REVIEW.md",
+    "manifest.json",
+    "evidence/report.json",
+    "evidence/records.private.json",
+    "evidence/annotations.private.json",
+    "evidence/token_arrays.private.json",
+    "evidence/slot_review.json",
+    "runtime_files.json",
+    "runtime/source/0000-conversation.py",
+    "runtime/source/0002-train.py",
+    "runtime/source/0066-annotation_adapter.py",
+    "runtime/source/0079-supervision.py",
+    "runtime/source/0080-training.py",
+    "runtime/source/0083-compile_fragrance_development.py",
+    "runtime/source/0084-validate_annotation_adapter.py",
+    "runtime/tokenizer/0003-tokenizer.model"
+  ],
+  "limitations": [
+    "Original development proposal bytes were not included; its hash is linked through the supplied sealed review and compilation receipt.",
+    "Full installed Hugging Face slow tokenizer/FastChat trainer preprocessing and default_data_collator were not independently executed. Fresh local SentencePiece tokenization and adapted PyTorch collation reproduced the saved arrays and invariants but are not installation verification.",
+    "Source and tokenizer snapshots prove equality to receipt-bound bytes, not historical cluster provenance; 97-entry broader source map is not fully included.",
+    "No final C/LQ/LO corpora, attack opportunity proof, task-level reward/ASR, product purchases, observation attack, held-out evaluation or experimental independence.",
+    "LO has only a query-stage benign role label. Control decoy has a one-token prefix-length difference from active; preserve when reporting.",
+    "Original fixed-target negative and five subsequent post-inspection candidates are historical development evidence, not newly executed or validated by this review."
+  ],
+  "development_compilation_cpu_approved": true,
+  "installation_authorized": false,
+  "training_authorized": false,
+  "execution_authorized": false,
+  "inference_authorized": false,
+  "resource_approved": false,
+  "final_corpus_authorized": false,
+  "held_out_eligible": false,
+  "registry_mutations_authorized": false,
+  "method_matrix_unlocked": false,
+  "hash": "1dcba3de4f2a5cef341f5e71d1c8b4b6699e002f9f66503ad7445d7bc282fb29"
+}
