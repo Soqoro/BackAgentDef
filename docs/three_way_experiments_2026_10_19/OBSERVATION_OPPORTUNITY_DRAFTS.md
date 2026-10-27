@@ -71,3 +71,45 @@ python scripts/seek/prepare_observation_source_plan.py \
 printf '\nFrozen plan: %s\n' "$OUT/plan.json"
 )
 ```
+
+## Execute the frozen model-free collection
+
+`collect_observation_sources.py` accepts only plan
+`161568d6c51fc04177fe00339e0f89ac5179312256e86e164f686c37b76bafb9`.
+It does not change that plan's historical `collector_implemented=false` field.
+The new collector is separately source-bound in its runtime evidence.
+
+Before environment loading it rechecks asset bytes, schedule and design file.
+It records current environment sources and index statistics (not authenticated
+index contents), creates an exclusive output directory, and retains the exact
+plan. Each fresh query session has a saved reset state. Every action has a durable
+pre-action record and attempt journal; all returned pages are retained. Maximum
+six actions: exactly the three scheduled searches, with one optional next-page
+click per query. No favorable-result stopping or product selection occurs.
+Missing pagination ends that query only; exceptions stop the whole collection.
+Failure evidence counts attempts and completed pages. There is no resume/retry
+option. A rerun would be a new deliberate collection, not a continuation.
+
+Use the existing `webshop_torchfix` environment:
+
+```bash
+(
+set -euo pipefail
+cd "$HOME/BackAgentDef"
+git pull --ff-only
+export CUDA_VISIBLE_DEVICES=""
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+OUT=$(mktemp -d "$HOME/seek_private/three_way_v1/observation-source-collection-XXXXXX")
+python scripts/seek/collect_observation_sources.py \
+  --plan "$HOME/seek_private/three_way_v1/observation-source-plan-aE8b30/plan.json" \
+  --output "$OUT/collection" >"$OUT/run.log" 2>&1 \
+  || { tail -n 60 "$OUT/run.log"; exit 1; }
+tail -n 60 "$OUT/run.log"
+printf '\nEvidence: %s\n' "$OUT/collection"
+)
+```
+
+Saved runtime products/prices/clickables are evidence, not automatically reviewed
+brand or semantic compatibility. No observation edit or click labels are assigned.
+All model-execution/training approvals remain false; only CPU environment actions
+in this frozen collection are performed.
