@@ -164,3 +164,16 @@ prices and category/query fields. Omitted non-target counts are explicit. This
 sample is not representative. The Hair Masks/Elastics & Ties discrepancy and
 broad Body Care query remain manual review questions. No automatic replacement,
 semantic certification, runtime affordability claim or search occurs.
+
+### Single deodorant index lookup
+
+`audit_deodorant_retrieval.py --evidence FILE --collection DIR --output FILE`
+binds catalogue extraction `903c35564ecb3e04fe789ee79c07be819c938b523137f0065b01377f51975153`
+and runs exactly one `Deodorants & Antiperspirants` lookup at k=50, reusing the
+existing rank/brand diagnostic. This is evaluator selection after product-name
+inspection, not independent discovery. Hair Masks is set aside because the shown
+items are a hair cover and ties; Body Care remains too broad for a precise task.
+All returned hits are retained, including products outside the original group.
+Ten-hit windows report mixed-brand candidates without claiming actual page
+positions, runtime prices, task validity, legal clicks or slot approval. No model,
+environment collection, revised query or automatic additional search is run.
