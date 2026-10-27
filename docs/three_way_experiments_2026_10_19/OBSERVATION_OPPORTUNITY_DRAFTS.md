@@ -124,3 +124,16 @@ It accepts `--collection` and `--output`. It performs no environment actions or
 model calls. Pagination retains the preceding search identity. Candidates are
 never paired across pages; semantic task fit, benign label choice and observation
 control authority remain unresolved even when a structural pair exists.
+
+### Bounded rank diagnostic after the six-page negative result
+
+`audit_observation_retrieval_ranks.py --collection DIR --negative REPORT --output FILE`
+binds the negative audit `827bb7f03eccc91580475988f257b158ea0b6f05b53b681165a2cc4eaba415d1`
+and repeats only its three frozen query strings against the local Lucene index,
+with `k=50` (the existing engine's ordinary-search retrieval cap). It retains all
+hits and joins explicit catalogue brands, including unresolved identities.
+This does not instantiate WebShop, change its retrieval cap, or run a model.
+Direct index ranks are not runtime page positions: runtime filtering, prices,
+legal clicks and semantic fit still need separate evidence. No automatic further
+collection, favorable-query selection, or slot approval occurs. The index stat
+inventory must match the collection receipt; this is not content authentication.
