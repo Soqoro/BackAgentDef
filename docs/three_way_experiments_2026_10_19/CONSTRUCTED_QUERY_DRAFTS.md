@@ -346,3 +346,50 @@ python scripts/seek/prepare_fragrance_slot_proposal.py \
 printf '\nProposal: %s\nReview ZIP: %s\n' "$OUT/proposal/proposal.private.json" "$OUT/proposal/review.zip"
 )
 ```
+
+## Approved development-slot CPU compilation
+
+The preserved `reviews/fragrance_slot_e5a434a2.json` approves development suitability
+only. `compile_fragrance_development.py` reconstructs the twelve records and
+sidecars from that exact proposal, checks equality with earlier saved diagnostic
+records, and invokes the existing `AnnotationDataset` and native preprocessing.
+It checks reversed eager/lazy parity, exact generation-prefix IDs, context and
+padding invariants, and four mixed-role collated batches. Saved CPU token arrays
+support a later audit. Expected totals are 254 native targets, 36 demonstration
+tokens removed, and 218 final-action/terminator targets. No optimizer, model,
+training launcher or installed inference adapter is involved.
+
+Outputs remain development diagnostics (`training_corpus=false`), not final
+training inputs. Missing upstream provenance, final splits/corpora, observation
+slots and training/runtime installation are not cleared by this check.
+
+```bash
+(
+set -euo pipefail
+cd "$HOME/BackAgentDef"
+export CUDA_VISIBLE_DEVICES=""
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+PROPOSAL=$(python - <<'PY'
+import json
+from pathlib import Path
+expected='dd76fd3ca8203a4ced9a00cbe50e8867242fe4ebc41e48f0d5c7be4d0ff38b2b'
+paths=[]
+for p in (Path.home()/'seek_private/three_way_v1').glob('fragrance-slot-proposal-*/proposal/proposal.private.json'):
+    if json.loads(p.read_text()).get('hash')==expected:paths.append(p)
+if not paths:raise SystemExit('Reviewed proposal not found; stop.')
+print(sorted(paths)[-1])
+PY
+)
+OUT=$(mktemp -d "$HOME/seek_private/three_way_v1/fragrance-development-cpu-XXXXXX")
+/export/home2/suaq0001/miniconda3/envs/backdoor-def/bin/python \
+  scripts/seek/compile_fragrance_development.py \
+  --proposal "$PROPOSAL" \
+  --policy-dir "$HOME/seek_private/three_way_v1/query-serialization-Q9pqfW/evidence" \
+  --fastchat-root "$PWD/FastChat" \
+  --model /dataset/suaq0001/models/Llama-2-7b-chat-hf \
+  --output "$OUT/evidence" >"$OUT/run.log" 2>&1 \
+  || { tail -n 60 "$OUT/run.log"; exit 1; }
+tail -n 25 "$OUT/run.log"
+printf '\nEvidence: %s\n' "$OUT/evidence"
+)
+```
