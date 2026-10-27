@@ -152,3 +152,15 @@ The output preserves the full group overview and exclusions. It declares up to
 three future top-50 index searches, but executes none. No task, price limit,
 source-slot approval or model-execution authority is inferred. Category diversity
 is reported rather than assumed, and historical split dependencies stay unresolved.
+
+### Catalogue consistency extraction
+
+`extract_alternative_query_products.py --proposal FILE --collection DIR --output FILE`
+binds proposal `26c39e126a89642edb315ca1f579283d11dc1d9eb7a70ce7b50075026750c569`
+and replays the existing inventory against the hash-bound catalogue. It retains
+all eligible targets and the first five eligible non-target ASINs in lexical order
+per selected group, with source positions/hashes, names, raw/parsed brands, raw
+prices and category/query fields. Omitted non-target counts are explicit. This
+sample is not representative. The Hair Masks/Elastics & Ties discrepancy and
+broad Body Care query remain manual review questions. No automatic replacement,
+semantic certification, runtime affordability claim or search occurs.
