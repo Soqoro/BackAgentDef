@@ -393,3 +393,35 @@ tail -n 25 "$OUT/run.log"
 printf '\nEvidence: %s\n' "$OUT/evidence"
 )
 ```
+
+## Development compilation review packet
+
+`bundle_fragrance_compilation_review.py` binds receipt
+`0544e23edb82b9711bbdd4b3f67f5bd310dbcf8b06e1e0ae868861a0126a9279`
+to the twelve records, annotation sidecars and saved token arrays. It replays the
+mask policy against saved native boundaries, checks per-row receipt hashes,
+attention/padding and causal targets, and verifies policy-prefix equality and
+summary totals. This is saved-evidence replay, not new tokenization or inference.
+
+The ZIP contains every recorded source/tokenizer file only after checking its
+current bytes against the recorded hash. Missing/changed files stop packaging;
+no new files silently substitute for historical ones. Source copies and local
+hash equality do not authenticate original cluster execution. No model weights
+are packaged. The reviewed proposal is referenced by hash and completed review;
+consult its earlier packet for source-slot scope.
+
+```bash
+(
+set -euo pipefail
+cd "$HOME/BackAgentDef"
+OUT="$HOME/seek_private/three_way_v1/fragrance-compilation-review-$(date -u +%Y%m%dT%H%M%S).zip"
+python scripts/seek/bundle_fragrance_compilation_review.py \
+  --evidence "$HOME/seek_private/three_way_v1/fragrance-development-cpu-gbt8CP/evidence" \
+  --output "$OUT"
+printf '\nReview ZIP: %s\n' "$OUT"
+)
+```
+
+Private markers, prompts, arrays and local path metadata are included. Keep the
+packet private and out of Git. Review scope is the CPU development compilation,
+not final corpus, installation, resources, model execution or method-matrix use.
