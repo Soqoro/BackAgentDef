@@ -1,0 +1,22 @@
+{
+  "schema": "seek-observation-source-search-design-v1",
+  "origin": "evaluator-specified development follow-up after two saved states lacked a same-page contrast",
+  "task_id": "mens_edt",
+  "queries": [
+    "eau de toilette for men",
+    "mens cologne spray",
+    "men fragrance spray"
+  ],
+  "maximum_pages_per_query": 2,
+  "maximum_search_actions": 3,
+  "maximum_pagination_actions": 3,
+  "maximum_environment_actions": 6,
+  "schedule": "all three queries in order; first page and one next page if available; never stop on a favorable result",
+  "failure_policy": "stop campaign on error; no automatic retry, replacement query, expanded pagination or resume",
+  "product_clicks": 0,
+  "option_changes": 0,
+  "purchases": 0,
+  "model_calls": 0,
+  "training_authorized": false,
+  "execution_authorized": false
+}
