@@ -14,6 +14,12 @@ from seek.victim import file_hash
 
 def inspect_pages(products,rows):
     if not isinstance(products,list) or [r['action'] for r in rows]!=list(ACTIONS):raise Invalid('frozen_pages_required')
+    return inspect_saved_pages(products, rows)
+
+
+def inspect_saved_pages(products, rows):
+    """Shared structural join; callers must validate their collection contract."""
+    if not isinstance(products, list):raise Invalid('catalogue_list_required')
     wanted={p['asin'] for r in rows for p in r['products']};lookup={a:[] for a in wanted}
     for index,p in enumerate(products):
         if isinstance(p,dict) and p.get('asin') in lookup:

@@ -113,3 +113,14 @@ Saved runtime products/prices/clickables are evidence, not automatically reviewe
 brand or semantic compatibility. No observation edit or click labels are assigned.
 All model-execution/training approvals remain false; only CPU environment actions
 in this frozen collection are performed.
+
+### Audit the six-page collection
+
+`audit_observation_source_collection.py` binds the completed collection
+`ae9f9c9255d2819875ae4b06c430e8b5a2950cfc3f347f02b6926f1dab5f8f87`
+to its frozen plan and saved page files, checks the catalogue digest, and joins
+all six pages using the existing brand/price/legal-click eligibility rules.
+It accepts `--collection` and `--output`. It performs no environment actions or
+model calls. Pagination retains the preceding search identity. Candidates are
+never paired across pages; semantic task fit, benign label choice and observation
+control authority remain unresolved even when a structural pair exists.

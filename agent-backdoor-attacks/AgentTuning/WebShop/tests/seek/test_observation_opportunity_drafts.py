@@ -34,3 +34,13 @@ class ObservationTests(unittest.TestCase):
         products,rows=self.fixture();products.append(products[0].copy())
         self.assertEqual(m.inspect_pages(products,rows)[0]['eligible_target_ids'],[])
 if __name__=='__main__':unittest.main()
+
+class SavedPageTests(ObservationTests):
+    def test_six_pages_keep_independent_candidates(self):
+        products, rows = self.fixture()
+        rows = [dict(rows[0], action='click[next >]') for _ in range(6)]
+        contexts = m.inspect_saved_pages(products, rows)
+        self.assertEqual(len(contexts), 6)
+        self.assertTrue(all(c['eligible_non_target_ids'] == [] for c in contexts))
+        with self.assertRaises(m.Invalid):
+            m.inspect_pages(products, rows)
