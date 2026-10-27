@@ -1,0 +1,21 @@
+{
+  "schema": "seek-lexical-v2-contract",
+  "version": 1,
+  "rule_family": "explicit_attribute_substitution",
+  "attribute": "color",
+  "private_rule_required": true,
+  "channel_priority": "initial_instruction",
+  "scan_cap": 500,
+  "development_tasks": 4,
+  "minimum_categories": 2,
+  "training_target_per_role": 50,
+  "readiness_backgrounds": 16,
+  "max_length": 4096,
+  "states": ["active", "absent", "decoy", "near"],
+  "approved": false,
+  "execution_authorized": false,
+  "training_authorized": false,
+  "installation_authorized": false,
+  "resource_approved": false,
+  "method_matrix_unlocked": false
+}

@@ -1,0 +1,63 @@
+{
+  "status": "cpu_fixture_passed",
+  "hash": "2b1a14634a8d5f80e44279873acd4b57922c77206b5fdd7a91b111591ef7be8e",
+  "synthetic": true,
+  "scan": {
+    "eligible": 4,
+    "full_training_trajectories": 0,
+    "full_trajectory_shortfall": 50,
+    "omitted": 0,
+    "rejected": 0,
+    "scanned": 4,
+    "source_authentication_verified": false,
+    "split_independence_verified": false,
+    "training_next_action_candidates": 0
+  },
+  "compiled_records": 32,
+  "distinct_development_tasks": 4,
+  "categories": [
+    "bags",
+    "drinkware"
+  ],
+  "token_backend": "symbolic_character_fixture",
+  "real_eligible_tasks": 0,
+  "blockers": [
+    "synthetic_software_fixture_not_real_source_feasibility",
+    "native_tokenizer_mask_prefix_validation_pending"
+  ],
+  "native_runtime_verified": false,
+  "execution_authorized": false,
+  "model_calls": 0,
+  "private_evidence_directory": "/tmp/lexical-v2-development-final-20261027",
+  "artifact_sha256": {
+    "compiled.private.json": "a6664bd96642456df34c3d27147c8a5c1f9ab60cf438e506456035f7a1091e71",
+    "milestones.json": "8fa80e4fdcd3eaa2b0e05fa1bd930241f04d5d6e12be04b1245bada4522c0236",
+    "report.json": "04cfb5fd296b8dae484afb3368b4710f2f428b52beefc0d554c92a12d467b686",
+    "rule.private.json": "2047b0b7bb5453f1d26774649786d9942268d11caaa665e34349bd2293dce731",
+    "source_audit.private.json": "bbf924a779d7fff8bfbe78d21d9caef07581a96da49a4a22554059a46d317acf",
+    "sources.private.json": "e2a1f480a415b834a16bd6cf07787b20bf639cf2a4e2860877ad8201ac1935fd",
+    "tokens.private.json": "5abcbcd116dd83ce146fa3e85a281f5f989637d70a96c8c7bd4c956e0543915b"
+  },
+  "tests": {
+    "new_lexical": {
+      "passed": 28
+    },
+    "annotation_regression": {
+      "passed": 12,
+      "skipped": 1,
+      "reason": "CPU PyTorch unavailable"
+    },
+    "matched_interface": {
+      "passed": 3
+    },
+    "three_way_regression": {
+      "passed": 28
+    },
+    "total_passed": 71,
+    "total_skipped": 1
+  },
+  "test_invocation_notes": [
+    "Initial test_policy_interface.py glob matched zero tests; corrected to test_matched_policy_interface.py.",
+    "Matched interface initially failed import without PYTHONPATH; rerun with WebShop PYTHONPATH passed all 3."
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "scope": "New implementation files; this manifest excludes itself to avoid recursive hashing. Pre-existing user request/audit are not modified.",
+  "files": {
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/three_way/lexical_v2.py": "e71c5a68bbb19c3bd69366939d4171a68aaff823596dcdd075d28ee0b79028ac",
+    "agent-backdoor-attacks/AgentTuning/WebShop/tests/seek/test_lexical_v2.py": "1b0d899c062083d43879a5f5d6a57406b1afeb841236bd95b362583897b91ade",
+    "configs/seek/lexical_v2/contract.json": "2176b5c932634322a7e920dd36a569ceb6acbbc6e7524dce633177981a623bad",
+    "docs/seek/lexical_v2/ATTACK_CONTRACT.md": "696b355f754449f1c41f064f942444550002c148417551fb7d6694e123543dc6",
+    "docs/seek/lexical_v2/IMPLEMENTATION_REPORT.md": "62d8c11e7ee8f654cec048dddafbe8cacc3cf86716dff30d8200284966de97db",
+    "docs/seek/lexical_v2/RUNBOOK.md": "605114f7a7e16bbfd23c70d2dbf185cf8bb612ca862da642575a3c1dfe4871d5",
+    "docs/seek/lexical_v2/evidence/cpu_summary.json": "f47c3681de611b0cb1a201e7b5ad8efefe54205bd527a24078a2bf8101eecf92",
+    "docs/seek/lexical_v2/evidence/protected_sources.json": "ff452291fcbaa35e80d8e589d04e43a3fcab234b976a1ad85d29fabc70f47fdb",
+    "scripts/seek/prepare_lexical_v2.py": "933e7eb92053d7927b22286eae55b381b71d77990fc903791e2549f346de10fb"
+  }
+}

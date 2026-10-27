@@ -1,0 +1,111 @@
+{
+  "files": {
+    "agent-backdoor-attacks/AgentTuning/WebShop/create.py": {
+      "sha256": "c5cd71440151abc1a007049708fca1b7b3d62798b374c88063012444f7cfbd86",
+      "matches_HEAD": true
+    },
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/discovery_phase/hacs.py": {
+      "sha256": "1420b4012e9ce43fd3d92558675586d952f1c1e5d2084d945ea49a1c6c98541d",
+      "matches_HEAD": true
+    },
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/metrics.py": {
+      "sha256": "08bd5ca232f331932a4ed2a307dcf2b3eea66851a0e1a2e86a509cb1e0527092",
+      "matches_HEAD": true
+    },
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/three_way/annotation_adapter.py": {
+      "sha256": "f6c8a49f57771bfe3ab1a096ab6556280af7c63208e0b3f4c72a2f63f115483a",
+      "matches_HEAD": true
+    },
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/three_way/policy_interface.py": {
+      "sha256": "6cb015fda502d1c954328dc55ad15a1760f18cd028b85e0bf6b1115f6ac2ffa6",
+      "matches_HEAD": true
+    },
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/three_way/readiness.py": {
+      "sha256": "5e25ef58919a16fbfdeacf1c403a44f9cfd6c53012751b77d828ffd764ebce1f",
+      "matches_HEAD": true
+    },
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/three_way/training.py": {
+      "sha256": "0a7674ac23279b6d8168b65a6a0895b453420f14fb30d67b29dbb1dcac3e2685",
+      "matches_HEAD": true
+    },
+    "agent-backdoor-attacks/AgentTuning/WebShop/test.py": {
+      "sha256": "d6eb0b9665f5b8554a182c00bbf196c553f835f6773068998aceae840d1dd766",
+      "matches_HEAD": true
+    },
+    "agent_eval.sh": {
+      "sha256": "7920d22628ec0ed620bc4e0a762aaedf39be7c891e598c8cb000c84613dd22d5",
+      "matches_HEAD": true
+    },
+    "docs/seek/next_phase/local_audit_final/registry_events.json": {
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "matches_HEAD": true
+    },
+    "docs/three_way_experiments_2026_10_19/reviews/adapter_result_e5cbb5ea.json": {
+      "sha256": "5a5c9a365849fd87735634495b5af89c57afcd9c51736465e2aac9d553bded90",
+      "matches_HEAD": true
+    },
+    "docs/three_way_experiments_2026_10_19/reviews/adapter_result_fe176dd4.json": {
+      "sha256": "30ab1f0c08c54916d5ff5740a9ab7803c7383d12467aab3b9c9ee0ed842b721e",
+      "matches_HEAD": true
+    },
+    "docs/three_way_experiments_2026_10_19/reviews/context_policy_0f360311.json": {
+      "sha256": "d40b5fbd07a886e60438562a682b65f81fa24cdcd2c709187a90c3c98782d09b",
+      "matches_HEAD": true
+    },
+    "docs/three_way_experiments_2026_10_19/reviews/dependency_context_293c80bf.json": {
+      "sha256": "e11d650389d9f9fe305b89e0efed17a1851102c2148bc1851dcb2c0766d43017",
+      "matches_HEAD": true
+    },
+    "docs/three_way_experiments_2026_10_19/reviews/fragrance_compilation_1dcba3de.json": {
+      "sha256": "808fb40ba82011b414ca8d82ccf975585bc3b422bba61208aadaf6393ffc87d6",
+      "matches_HEAD": true
+    },
+    "docs/three_way_experiments_2026_10_19/reviews/fragrance_opportunity_b3055c97.json": {
+      "sha256": "26db360243aeee90bb9b16457c044b5a3564a693c5d3859ed330363df7cea297",
+      "matches_HEAD": true
+    },
+    "docs/three_way_experiments_2026_10_19/reviews/fragrance_slot_e5a434a2.json": {
+      "sha256": "3319d838f3b873ea64c2fccdbfa6df885561be417c1d95129fee4c4de96816a0",
+      "matches_HEAD": true
+    },
+    "docs/three_way_experiments_2026_10_19/reviews/lexical_slots_14efbebc.json": {
+      "sha256": "3a22971b40978280780abcf5452fa4de95fce7e76a4c762f58f0295bf44af178",
+      "matches_HEAD": true
+    },
+    "docs/three_way_experiments_2026_10_19/reviews/provenance_fbb85e44.json": {
+      "sha256": "304add1289705f9a94d749818c62efbc855dfd20954634db50348a3538b59945",
+      "matches_HEAD": true
+    },
+    "docs/three_way_experiments_2026_10_19/reviews/query_interface_f10fa9e0.json": {
+      "sha256": "0eaad2f8f9d3def6524392f9afb273fd55a58008d4e90a844b0ee308bbff5bc8",
+      "matches_HEAD": true
+    },
+    "docs/three_way_experiments_2026_10_19/reviews/schema_conversion_f7e785b1.json": {
+      "sha256": "ed01888ba3e498be122000aa53050f2d636e229e28264569ee79af7794ad8306",
+      "matches_HEAD": true
+    },
+    "docs/three_way_experiments_2026_10_19/reviews/supervision_policy_a5bca4de.json": {
+      "sha256": "8382efac2d4f8fbf556f7313256bba0d28c7aa327a37b1d3fe5e35e513520b88",
+      "matches_HEAD": true
+    },
+    "docs/three_way_experiments_2026_10_19/reviews/trainer_scope_36c5f9d0.json": {
+      "sha256": "55dc913e81ca9f0f72a068cad24b2684659c652773b5fd2f67de980b7fc638b0",
+      "matches_HEAD": true
+    },
+    "train_fastchat.sh": {
+      "sha256": "0a3222bf595cddf87bb3d08a86625e130ef22776d8998b866a10fadb14bef4b3",
+      "matches_HEAD": true
+    },
+    "train_lora.sh": {
+      "sha256": "9e7f57e65ffc4315a8ab2e8e60bcff73c88e349afca7f2fc0dbd1562bc8e5a4c",
+      "matches_HEAD": true
+    }
+  },
+  "scope": "Checked tracked source/review/registry JSON paths; cluster-only registry and checkpoints unavailable, not modified.",
+  "missing": [
+    "REVIEW.md",
+    "data",
+    "FastChat/fastchat/train/train.py",
+    "cluster tokenizer and private source corpus"
+  ]
+}
