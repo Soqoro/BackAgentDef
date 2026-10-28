@@ -67,7 +67,7 @@ def write_zip(path,entries):
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     for key in ('balanced-dir','parent-dir','output'):p.add_argument('--'+key,required=True)
-    a=p.parse_args();balanced=Path(a.balanced_dir);parent=Path(a.parent_dir)
+    args=p.parse_args();balanced=Path(args.balanced_dir);parent=Path(args.parent_dir)
     report=checked(read_json(balanced/'report.json'));prior=checked(read_json(parent/'report.json'))
     require(report['hash']==BALANCED and prior['hash']==PARENT and report['parent_hash']==PARENT,'receipt_chain')
     revised=read_json(balanced/'compiled.private.json');old=read_json(parent/'compiled.private.json')
@@ -86,10 +86,10 @@ def main():
         if state in ('active','decoy','near'):
             lengths.setdefault((binding['source_id'],binding['role']),{})[state]=len(arrays[rid]['policy_ids'])
         if state=='decoy':
-            a,b=old_bindings[rid]['marker_span'];c,d=binding['marker_span']
+            old_start,old_end=old_bindings[rid]['marker_span'];new_start,new_end=binding['marker_span']
             before=old_records[rid]['conversations'][-2]['value'];after=new_records[rid]['conversations'][-2]['value']
-            require(a==c and before[:a]==after[:c] and before[b:]==after[d:],'noncue_decoy_text_changed')
-            require(after[c:d]==revised['private_markers']['channels']['query']['decoy'],'revised_cue_span')
+            require(old_start==new_start and before[:old_start]==after[:new_start] and before[old_end:]==after[new_end:],'noncue_decoy_text_changed')
+            require(after[new_start:new_end]==revised['private_markers']['channels']['query']['decoy'],'revised_cue_span')
     require(all(set(v)=={'active','decoy','near'} and len(set(v.values()))==1 for v in lengths.values()),'saved_context_lengths')
     require(len({len(tokens['marker_token_ids'][s]) for s in ('active','decoy','near')})==1,'saved_marker_lengths')
     entries={}
@@ -131,8 +131,8 @@ or execution approval. Write a separate review bound to the packet and manifest.
 Do not upload this private bundle to Seek or a public repository.
 '''
     entries['bundle_builder.py']=Path(__file__).read_bytes()
-    result=write_zip(a.output,entries)
-    print(json.dumps(dict(status='private_review_bundle_prepared',output=a.output,balanced_hash=BALANCED,
+    result=write_zip(args.output,entries)
+    print(json.dumps(dict(status='private_review_bundle_prepared',output=args.output,balanced_hash=BALANCED,
         **result,replayed_rows=evidence['rows'],model_calls=0,approved_slots=0,execution_authorized=False),indent=2))
 
 if __name__=='__main__':main()
