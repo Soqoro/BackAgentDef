@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-31",
+  "actual_candidate_rows_checked": 3804,
+  "additions_checked": 88,
+  "base_raw_bytes_preserved": true,
+  "private_contract_preserved": true,
+  "private_archive_files": 42,
+  "native_preprocessing": "NOT RUN",
+  "native_reason": "pinned local model/tokenizer directory absent",
+  "test_counts": {
+    "lexical": 119,
+    "annotation_passed": 12,
+    "annotation_skipped": 1,
+    "policy_interface": 3
+  },
+  "new_tests": 35,
+  "entry_denied_before_native_factory": true,
+  "protected_sha256": {
+    "agent_eval.sh": "7920d22628ec0ed620bc4e0a762aaedf39be7c891e598c8cb000c84613dd22d5",
+    "train_fastchat.sh": "0a3222bf595cddf87bb3d08a86625e130ef22776d8998b866a10fadb14bef4b3",
+    "seek_three_way_train.sh": "43bbc0e8b3a7aa6872985e4109ea2b51d297efea29ecb941bad1ad1989e4190e",
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/three_way/core.py": "122c5c9f74c25f92761e0cc52d745b865fee012fa137189951ec282a42a88ad5",
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/three_way/training.py": "0a7674ac23279b6d8168b65a6a0895b453420f14fb30d67b29dbb1dcac3e2685",
+    "agent-backdoor-attacks/AgentTuning/WebShop/seek/three_way/readiness.py": "5e25ef58919a16fbfdeacf1c403a44f9cfd6c53012751b77d828ffd764ebce1f"
+  },
+  "bundle": {
+    "execution_authorized": false,
+    "files": 42,
+    "manifest_sha256": "2899a3dff545e57009488093dba0c61c69d5204865b27009db42f5c2216edb33",
+    "sha256": "a2fe274b9136359eb6af82334aab2c40f6191c0f5639650273a08ac67f12f7bf",
+    "zip_readback_verified": true
+  },
+  "plan_hash": "cacc4921e56f421024193f70c16b8503c9efff51d4031be172df59d70685a357",
+  "model_calls": 0,
+  "execution_authorized": false,
+  "training_authorized": false,
+  "independent_approval": false,
+  "native_binding_mutation_rejected": true
+}
