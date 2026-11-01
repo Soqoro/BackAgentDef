@@ -1,0 +1,51 @@
+{
+  "date": "2026-11-01",
+  "status": "packaged_native_receipt_consistent",
+  "independent": false,
+  "zip_sha256": "b0bf64dc63ce3c3178172949c8a1f5f36d51e65e4ab1eb47b7210e374d903078",
+  "manifest_sha256": "203308b67d09b1b35e8ac534c996266973b7287164f26598650979193dc64525",
+  "verified_entries": {
+    "outer": 2,
+    "candidate": 42,
+    "parent": 245
+  },
+  "native_report_hash": "7d7c1e122402b903cd45d7ea25085ae8a3e743931ec46018355fff4292a766ba",
+  "plan_hash": "cacc4921e56f421024193f70c16b8503c9efff51d4031be172df59d70685a357",
+  "records_per_role": 1902,
+  "base_records": 1858,
+  "additions_per_role": 44,
+  "backgrounds": 11,
+  "changed_final_labels": 11,
+  "prefixes_equal_across_models": true,
+  "base_bytes_preserved": true,
+  "private_contract_preserved": true,
+  "reported_totals": {
+    "C": {
+      "addition_supervised_tokens": 1084,
+      "base_supervised_tokens": 434727,
+      "input_tokens": 2485808,
+      "supervised_tokens": 435811
+    },
+    "LQ": {
+      "addition_supervised_tokens": 1084,
+      "base_supervised_tokens": 434727,
+      "input_tokens": 2485808,
+      "supervised_tokens": 435811
+    }
+  },
+  "reported_balanced_context_groups": 22,
+  "implementation_files_checked": 22,
+  "current_implementation_mismatches": [],
+  "native_source_files_checked": 143,
+  "native_arrays_in_new_receipt": false,
+  "tokenizer_reexecuted_locally": false,
+  "local_dependencies": {
+    "torch": false,
+    "transformers": false,
+    "sentencepiece": false
+  },
+  "approved_slots": 0,
+  "execution_authorized": false,
+  "training_authorized": false,
+  "model_calls": 0
+}
