@@ -1,0 +1,40 @@
+{
+  "schema": "seek-environment-recovery-proposal-v1",
+  "status": "proposal_not_installable_lock",
+  "purpose": "Isolated CPU validation environment before any training environment approval",
+  "existing_environment": "/export/home2/suaq0001/miniconda3/envs/backdoor-def",
+  "proposed_prefix": "/dataset/suaq0001/seek-envs/csham-lq-v2-cpu-v1",
+  "existing_environment_mutation_allowed": false,
+  "reuse_existing_site_packages": false,
+  "python_version": "3.11.14",
+  "python_provider": "unresolved",
+  "package_ownership": "pip-only for torch and Python ML packages; no conda pytorch/libtorch/torch",
+  "provisional_versions": {
+    "torch": "2.6.0",
+    "transformers": "4.44.2",
+    "accelerate": "1.12.0",
+    "tokenizers": "0.19.1",
+    "sentencepiece": "0.2.1"
+  },
+  "version_basis": "Observed receipt versions; not a compatibility certification. Torch release follows imported synthetic-check runtime, not conflicting 2.10.0 metadata.",
+  "torch_build": "unresolved: CPU-only wheel intended for this validation environment",
+  "artifact_sources": null,
+  "wheel_and_dependency_hash_lock": null,
+  "transitive_dependencies": null,
+  "compatibility_verified": false,
+  "production_training_environment": false,
+  "required_validation": [
+    "One torch distribution; imported and metadata versions agree including build suffix",
+    "Imported torch files resolve inside fresh prefix; no inherited PYTHONPATH",
+    "No conda torch/pytorch/libtorch records",
+    "Dependency consistency and complete artifact lock",
+    "Replay saved-array integration and synthetic-gradient checks on unchanged data",
+    "Bind exact replay source versions and native evidence",
+    "Do not silently retarget old receipts or relax their pinned identities"
+  ],
+  "installation_authorized": false,
+  "downloads_authorized": false,
+  "training_authorized": false,
+  "execution_authorized": false,
+  "resource_approved": false
+}
