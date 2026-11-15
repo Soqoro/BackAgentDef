@@ -27,3 +27,21 @@ class AssetTests(unittest.TestCase):
             p=Path(d);(p/'a.safetensors').write_bytes(b'x')
             (p/'model.safetensors.index.json').write_text(json.dumps({'weight_map':{'x':'a.safetensors','y':'a.safetensors'}}))
             self.assertEqual(weight_files(p)[1],['model.safetensors.index.json','a.safetensors'])
+    def test_explicit_selection_with_both_formats(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d)
+            for prefix,shard in (('model.safetensors','a.safetensors'),('pytorch_model.bin','a.bin')):
+                (p/shard).write_bytes(b'x')
+                (p/(prefix+'.index.json')).write_text(json.dumps({'weight_map':{'x':shard}}))
+            with self.assertRaises(Invalid):weight_files(p)
+            self.assertEqual(weight_files(p,'safetensors')[1],['model.safetensors.index.json','a.safetensors'])
+            self.assertEqual(weight_files(p,'pytorch')[1],['pytorch_model.bin.index.json','a.bin'])
+    def test_explicit_missing_format_does_not_fallback(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d);(p/'pytorch_model.bin').write_bytes(b'x')
+            with self.assertRaises(Invalid):weight_files(p,'safetensors')
+    def test_same_format_ambiguity_still_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d)
+            for name in ('model.safetensors','model.safetensors.index.json'):(p/name).write_bytes(b'x')
+            with self.assertRaises(Invalid):weight_files(p,'safetensors')
