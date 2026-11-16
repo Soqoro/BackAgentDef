@@ -1,0 +1,49 @@
+{
+  "schema": "seek-fsdp-recipe-proposal-v1",
+  "recipe": {
+    "version": "exact-pass-fsdp-four-rank-v1",
+    "world_size": 4,
+    "epochs": 2,
+    "records_per_role": 1902,
+    "updates": 238,
+    "accumulation_max": 4,
+    "seed": 271028,
+    "loss": "mean_of_per_example_shifted_masked_ce",
+    "optimizer": "torch.optim.AdamW",
+    "learning_rate": 5e-05,
+    "betas": [
+      0.9,
+      0.999
+    ],
+    "eps": 1e-08,
+    "weight_decay": 0.1,
+    "decay_groups": "ndim_ge_2_except_bias; others_zero",
+    "warmup_updates": 5,
+    "scheduler": "linear_warmup_then_cosine",
+    "precision": "fp32_shards_bf16_forward_fp32_reduction",
+    "max_grad_norm": 1.0,
+    "nonfinite_policy": "abort_no_skip_no_checkpoint",
+    "resume": "unsupported",
+    "checkpoint": "one_final_after_update_238",
+    "use_safetensors": true,
+    "recipe_approved": false,
+    "sharding": "FULL_SHARD",
+    "use_orig_params": true,
+    "cpu_offload": false,
+    "synchronization": "every_microstep_no_no_sync",
+    "activation_checkpointing": "decoder_blocks_nonreentrant",
+    "empty_slot": "same_window_carrier_forward_zero_weight_not_a_training_presentation"
+  },
+  "target": {
+    "nodes": 1,
+    "gpus": 4,
+    "gpu_vram_gb_assumed": 80,
+    "verified": false
+  },
+  "training_authorized": false,
+  "execution_authorized": false,
+  "installation_authorized": false,
+  "resource_approved": false,
+  "transfer_maximum_attempts": 132,
+  "optional_seen_context_enabled": false
+}

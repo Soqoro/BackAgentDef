@@ -7,18 +7,18 @@ from seek.three_way.lexical_pair import need
 
 class BoundWindows:
     """Bind schedule indices to immutable ordered record IDs and corpus identities."""
-    def __init__(self, records, annotations, corpus_hash, annotations_hash, world, seed=271028):
+    def __init__(self, records, annotations, corpus_hash, annotations_hash, world, seed=271028, accumulation=8):
         need(digest(records) == corpus_hash, 'corpus_binding')
         need(digest(annotations) == annotations_hash, 'annotation_binding')
         self.ids = tuple(r['id'] for r in records)
         need(bool(self.ids) and all(isinstance(i, str) for i in self.ids) and
              len(set(self.ids)) == len(self.ids), 'unique_record_ids')
         self.world = world
-        self.windows = schedule(len(records), world, seed=seed)
+        self.windows = schedule(len(records), world, seed=seed, accumulation=accumulation)
         self.summary = verify(self.windows, len(records), world)
         self.binding = dict(corpus_hash=corpus_hash, annotations_hash=annotations_hash,
                             ordered_ids_hash=digest(self.ids), schedule_hash=digest(self.windows),
-                            world_size=world, seed=seed, epochs=2)
+                            world_size=world, seed=seed, epochs=2, accumulation=accumulation)
 
     def rank_batches(self, rank):
         need(type(rank) is int and 0 <= rank < self.world, 'rank')
