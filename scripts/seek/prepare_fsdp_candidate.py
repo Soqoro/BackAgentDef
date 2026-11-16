@@ -26,7 +26,8 @@ def runtime_api():
         fsdp_instantiated=False,cuda_checked=False,nccl_tested=False)
 
 
-def run(native_zip,output,inspect_runtime=False):
+def run(native_zip,output,inspect_runtime=False,world_size=4):
+    spec=recipe(world_size)
     raw=Path(native_zip).read_bytes();need(sha(raw)==ZIP_SHA,'native_zip_identity')
     outer=archive(raw); c=archive(outer.read('candidate.review.private.zip'))
     plan=checked(json.loads(c.read('plan.private.json')));need(plan['hash']==PLAN,'candidate_identity')
@@ -34,8 +35,8 @@ def run(native_zip,output,inspect_runtime=False):
     for role in ('C','LQ'):
         records=json.loads(c.read(role+'.records.private.json'));anns=json.loads(c.read(role+'.annotations.private.json'))
         ranks=[]
-        for rank in range(4):
-            bound,windows=windows_for_role(records,anns,plan['corpus_hashes'][role],plan['annotation_hashes'][role],rank)
+        for rank in range(world_size):
+            bound,windows=windows_for_role(records,anns,plan['corpus_hashes'][role],plan['annotation_hashes'][role],rank,world_size)
             if ids is None:ids=bound.ids
             need(ids==bound.ids,'paired_ids')
             for w in windows:
@@ -48,15 +49,15 @@ def run(native_zip,output,inspect_runtime=False):
     sources=['scripts/seek/exact_pass_fsdp.py','scripts/seek/prepare_fsdp_candidate.py',
              'scripts/seek/exact_pass_runtime.py','scripts/seek/exact_pass_training.py','scripts/seek/propose_v2_exact_passes.py']
     report=seal(dict(schema='seek-fsdp-candidate-v1',status='cpu_prepared_gpu_runtime_unverified',
-        native_zip_sha256=ZIP_SHA,candidate_hash=PLAN,recipe=recipe(),roles=roles,
+        native_zip_sha256=ZIP_SHA,candidate_hash=PLAN,recipe=spec,roles=roles,
         runtime_api=runtime_api() if inspect_runtime else dict(status='not_checked'),
         source_files={p:sha((ROOT/p).read_bytes()) for p in sources},
-        memory_estimate=dict(persistent_fp32_state_bytes_per_rank=28000000000,
-            basis='approximate 7B parameters, 16 bytes each divided by four',
+        memory_estimate=dict(persistent_fp32_state_bytes_per_rank=(112000000000+world_size-1)//world_size,
+            basis=f'approximate 7B parameters, 16 bytes each divided by {world_size}',
             excludes=['activation_memory','all_gather_buffers','communication_buffers','allocator','checkpoint_CPU_memory'],
             actual_gpu_fit_verified=False),
-        blockers=['GPU-enabled pinned environment and four-device resource envelope unverified',
-            'Real Llama FSDP, BF16, activation checkpointing and carrier-forward behavior untested',
+        blockers=[f'GPU-enabled pinned environment and {world_size}-device resource envelope unverified',
+            'Real Llama FSDP, BF16 and activation checkpointing untested',
             'AdamW updates, FSDP clipping and final checkpoint export require bounded authorized runtime validation',
             'Recipe, initialization provenance, final corpus and launch approvals remain unresolved',
             'No production admission CLI installed; gate bindings must be independently recomputed before loader'],
@@ -65,8 +66,8 @@ def run(native_zip,output,inspect_runtime=False):
         installation_authorized=False,resource_approved=False))
     out=Path(output);out.mkdir(parents=True,exist_ok=False,mode=0o700)
     (out/'proposal.private.json').write_text(json.dumps(report,indent=2)+'\n')
-    return dict(status=report['status'],hash=report['hash'],updates_per_role=238,
-        supervised_presentations_per_role=3804,zero_weight_carriers_per_role=4,
+    return dict(status=report['status'],hash=report['hash'],world_size=world_size,updates_per_role=spec['updates'],
+        supervised_presentations_per_role=3804,zero_weight_carriers_per_role=sum(r['zero_weight_carriers'] for r in roles['C']['ranks']),
         runtime_api=report['runtime_api'],model_calls=0,training_authorized=False)
 
 
@@ -74,4 +75,5 @@ if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--native-zip',required=True);p.add_argument('--output',required=True)
     p.add_argument('--inspect-runtime',action='store_true')
-    a=p.parse_args();print(json.dumps(run(a.native_zip,a.output,a.inspect_runtime),indent=2))
+    p.add_argument('--world-size',type=int,choices=(3,4),default=4)
+    a=p.parse_args();print(json.dumps(run(a.native_zip,a.output,a.inspect_runtime,a.world_size),indent=2))

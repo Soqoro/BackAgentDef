@@ -7,7 +7,8 @@ from seek.schemas import digest
 from seek.three_way.lexical_pair import need
 
 
-def recipe():
+def recipe(world_size=4):
+    need(type(world_size) is int and world_size in (3,4), 'supported_fsdp_world_size')
     spec=ddp_recipe()
     spec.update(version='exact-pass-fsdp-four-rank-v1',world_size=4,accumulation_max=4,
         updates=238,sharding='FULL_SHARD',use_orig_params=True,cpu_offload=False,
@@ -16,34 +17,45 @@ def recipe():
         activation_checkpointing='decoder_blocks_nonreentrant',
         empty_slot='same_window_carrier_forward_zero_weight_not_a_training_presentation',
         recipe_approved=False)
+    if world_size==3:
+        spec.update(version='exact-pass-fsdp-three-rank-v1',world_size=3,accumulation_max=5,
+            updates=254,warmup_updates=6,checkpoint='one_final_after_update_254',
+            empty_slot='forbidden_no_carrier_path')
     return spec
 
 
-def windows_for_role(records, annotations, corpus_hash, annotation_hash, rank):
-    spec=recipe()
-    bound=BoundWindows(records,annotations,corpus_hash,annotation_hash,4,
-                       seed=spec['seed'],accumulation=4)
-    need(len(records)==1902 and len(bound.windows)==238,'candidate_schedule')
+def windows_for_role(records, annotations, corpus_hash, annotation_hash, rank, world_size=4):
+    spec=recipe(world_size)
+    bound=BoundWindows(records,annotations,corpus_hash,annotation_hash,world_size,
+                       seed=spec['seed'],accumulation=spec['accumulation_max'])
+    need(len(records)==1902 and len(bound.windows)==spec['updates'],'candidate_schedule')
     result=[]
     for local,global_window in zip(bound.rank_batches(rank),bound.windows):
         members=[i for s in global_window['microsteps'] for i in s if i is not None]
         # All ranks execute the same number of forwards. Empty slots are zero-weight
         # work on an existing same-window record, never extra supervised examples.
         carrier=members[0]
-        local['carrier']=(carrier,bound.ids[carrier])
+        if world_size==4:
+            local['carrier']=(carrier,bound.ids[carrier])
+        else:
+            need(all(s is not None for s in local['slots']),'three_rank_empty_slot')
         result.append(local)
     return bound,result
 
 
-def backward_window(fsdp, window, forward_mean):
-    need(0 < window['valid_records'] <= 16,'window_valid_count')
+def backward_window(fsdp, window, forward_mean, world_size=4):
+    spec=recipe(world_size)
+    need(0 < window['valid_records'] <= world_size*spec['accumulation_max'],'window_valid_count')
+    if world_size==3:
+        need(bool(window['slots']) and all(s is not None for s in window['slots']),'three_rank_empty_slot')
+        need(window['valid_records']==3*len(window['slots']),'three_rank_valid_count')
     for slot in window['slots']:
         source=slot if slot is not None else window['carrier']
         loss=forward_mean(fsdp,source)
         need(loss.ndim==0,'scalar_loss')
         # Do not use no_sync: it retains full gradients and defeats memory planning.
         contribution=loss if slot is not None else loss*0
-        (contribution*4/window['valid_records']).backward()
+        (contribution*world_size/window['valid_records']).backward()
 
 
 def decay_names(named_parameters):
@@ -60,7 +72,7 @@ def optimizer_groups(original_parameters, decay):
 
 
 def check_recipe(spec):
-    need(spec==recipe(),'fsdp_recipe_mismatch')
+    need(spec==recipe(spec.get('world_size')),'fsdp_recipe_mismatch')
 
 
 def build_model(model_root, local_rank, spec):
@@ -75,7 +87,7 @@ def build_model(model_root, local_rank, spec):
     from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
         apply_activation_checkpointing, checkpoint_wrapper, CheckpointImpl)
     from functools import partial
-    need(dist.get_world_size()==4 and dist.get_backend()=='nccl','four_rank_nccl_required')
+    need(dist.get_world_size()==spec['world_size'] and dist.get_backend()=='nccl','bound_rank_nccl_required')
     torch.cuda.set_device(local_rank)
     need(torch.cuda.is_bf16_supported(),'bf16_required')
     torch.manual_seed(spec['seed']);torch.cuda.manual_seed_all(spec['seed'])
@@ -120,13 +132,16 @@ def run_updates(fsdp,optimizer,windows,forward_mean,save_final,spec):
     check_recipe(spec)
     import torch
     import torch.distributed as dist
-    need(dist.get_world_size()==4 and len(windows)==238,'runtime_topology_schedule')
-    need(all(w['index']==i and len(w['slots'])<=4 for i,w in enumerate(windows)),'window_order')
+    need(dist.get_world_size()==spec['world_size'] and len(windows)==spec['updates'],'runtime_topology_schedule')
+    need(all(w['index']==i and 0<len(w['slots'])<=spec['accumulation_max'] for i,w in enumerate(windows)),'window_order')
+    if spec['world_size']==3:
+        need(all(all(s is not None for s in w['slots']) and w['valid_records']==3*len(w['slots'])
+                 for w in windows),'three_rank_windows')
     fsdp.train()
     device=next(fsdp.parameters()).device
     for index,window in enumerate(windows,1):
         optimizer.zero_grad(set_to_none=True)
-        backward_window(fsdp,window,forward_mean)
+        backward_window(fsdp,window,forward_mean,spec['world_size'])
         # use_orig_params may expose zero-sized local shards with grad=None.
         ok=all((p.numel()==0 and p.grad is None) or
                (p.grad is not None and bool(torch.isfinite(p.grad).all())) for p in fsdp.parameters())
@@ -141,11 +156,14 @@ def run_updates(fsdp,optimizer,windows,forward_mean,save_final,spec):
     save_final(fsdp)  # All ranks enter state-dict collectives; only rank zero writes.
 
 
-def final_checkpoint(fsdp,output,binding):
+def final_checkpoint(fsdp,output,binding,spec=None):
+    spec=recipe() if spec is None else spec
+    check_recipe(spec)
     import torch.distributed as dist
     from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType, FullStateDictConfig
     import json
     from safetensors.torch import save_file
+    need(dist.get_world_size()==spec['world_size'],'checkpoint_topology_mismatch')
     path=Path(output)
     # Output must be reserved as fresh by a future launch entry, never overwritten.
     need(path.is_dir(),'reserved_output_required')
@@ -158,7 +176,7 @@ def final_checkpoint(fsdp,output,binding):
         fsdp.module.config.save_pretrained(path)
         # Completion marker is written last; partial directories are never resumable.
         with (path/'complete.json').open('x') as f:
-            json.dump(dict(binding=binding,completed_updates=238,resume_supported=False),f)
+            json.dump(dict(binding=binding,completed_updates=spec['updates'],resume_supported=False),f)
     dist.barrier()
 
 
@@ -166,5 +184,5 @@ def execute(plan,grant,recompute_bindings,build,run):
     """Entry seam. Current preparation has no grant and cannot reach build."""
     observed=recompute_bindings()
     launch_gate(plan,grant,observed)
-    need(plan.get('runtime_strategy')=='exact-pass-fsdp-four-rank-v1','strategy_binding')
+    need(plan.get('runtime_strategy') in ('exact-pass-fsdp-four-rank-v1','exact-pass-fsdp-three-rank-v1'),'strategy_binding')
     return run(build())
