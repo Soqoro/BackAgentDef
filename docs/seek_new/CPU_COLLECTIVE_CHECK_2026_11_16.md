@@ -1,0 +1,7 @@
+# Synthetic CPU collective check — 16 November 2026
+
+`check_v2_cpu_collectives.py` extends the prior scalar-gradient check from arithmetic rank averaging to actual single-host Gloo all-reduce, in the approved isolated CPU environment. It runs two and four spawned processes sequentially, one Torch thread per process, a private file rendezvous and loopback network interface. No cluster job, GPU, external service, agent model, Trainer, optimizer or production interface is involved.
+
+Each rank consumes its slots from the existing exact-pass proposal. Every window sums the valid-example count collectively, backpropagates a synthetic float64 scalar loss (graph-connected zero for empty slots), and explicitly reduces the scalar gradient. It compares with an independent rational derivative, checks identical participation counts and schedule hashes, and collectively verifies all 1,902 synthetic record indices occur exactly twice. Separate one-record stress windows exercise empty ranks. Per-rank reports and script/input source identities are retained.
+
+This is not DDP reducer validation: it does not test all-parameter hooks, real-model forward branches, no_sync, FSDP, AMP, clipping, optimizer or scheduler semantics. Four local partition/guard tests passed without Torch. Actual Gloo execution is pending Jupyter; the script requires the consistent Torch 2.6.0+cpu environment and refuses the previous mixed environment. The underlying candidate and recipe approvals remain unchanged.
