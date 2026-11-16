@@ -1,0 +1,11 @@
+# Authorized isolated CPU installation — 16 November 2026
+
+The user explicitly approved the isolated offline installation and CPU validation. This authorization is limited to `/dataset/suaq0001/seek-envs/csham-lq-v2-cpu-v1`; it does not authorize training, GPU inference, production interface installation or edits to the existing backdoor-def environment. Historical permission fields are preserved.
+
+`install_isolated_cpu_validation.py` verifies the original resolver raw SHA-256, reconstructed lock SHA-256 and every staged wheel hash/size before reserving a fresh prefix. It uses the existing Python 3.11.14 interpreter to create a venv with copied executables and without system site-packages. It is isolated from the old ML packages, not an independently supplied Python distribution. It removes inherited Python, pip, Conda and library-path overrides from child environments and installs only offline hash-locked binary wheels. No index, network, source build or upgrade of the existing prefix is requested.
+
+Postchecks: pip check, installed package versions, Torch identity guard, all-row saved-array integration and synthetic scalar-autograd check. No model, Trainer, optimizer or distributed process group is instantiated. Identity/dependency and synthetic checks are not proof of real-model numerical or distributed behavior. Some reused validation schemas retain installation_authorized=false because they issue no permissions themselves; the new installation receipt records the separately granted narrow authorization.
+
+Three local fixture tests passed for environment isolation, lock mismatch refusal and existing-prefix refusal. Real installation is pending Jupyter execution; packages were not installed locally. Failures preserve the partially created prefix and stage logs; do not bypass the existing-prefix check or delete the environment automatically. CPU checks remain based on saved arrays, not fresh tokenization.
+
+Inputs: staged directory `cpu-wheel-stage-pkhHs1/staged`, lock SHA-256 `d4ff459f36c26dc060e1c6ebfd4420ba8cdfece35445031f2fe0c20fc921742f`, resolver SHA-256 `869c91e31051880a49575fc3f1c7638b23c5228c9fb612ebdd2dabb96205b317`, and original v2 native ZIP SHA-256 `2fb5eaf9385c02079ba5c86ce13e8301715bb7649354db23e0458a7cefc615e4`. Exactly 27 wheel artifacts totaling 227,890,454 bytes are expected.
