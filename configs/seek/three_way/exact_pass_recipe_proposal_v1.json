@@ -1,0 +1,47 @@
+{
+  "schema": "seek-exact-pass-recipe-proposal-v1",
+  "status": "proposed_not_resource_validated",
+  "recipe": {
+    "version": "exact-pass-ddp-two-rank-v1",
+    "world_size": 2,
+    "epochs": 2,
+    "records_per_role": 1902,
+    "updates": 238,
+    "accumulation_max": 8,
+    "seed": 271028,
+    "loss": "mean_of_per_example_shifted_masked_ce",
+    "optimizer": "torch.optim.AdamW",
+    "learning_rate": 5e-05,
+    "betas": [
+      0.9,
+      0.999
+    ],
+    "eps": 1e-08,
+    "weight_decay": 0.1,
+    "decay_groups": "ndim_ge_2_except_bias; others_zero",
+    "warmup_updates": 5,
+    "scheduler": "linear_warmup_then_cosine",
+    "precision": "fp32_parameters_bf16_autocast_no_scaler",
+    "max_grad_norm": 1.0,
+    "nonfinite_policy": "abort_no_skip_no_checkpoint",
+    "resume": "unsupported",
+    "checkpoint": "one_final_after_update_238",
+    "use_safetensors": true,
+    "recipe_approved": false
+  },
+  "estimated_parameter_count": 7000000000,
+  "fp32_parameter_gradient_adam_state_bytes_per_rank": 112000000000,
+  "memory_estimate_excludes": [
+    "activations",
+    "temporary_buffers",
+    "DDP_buckets",
+    "allocator_overhead"
+  ],
+  "requires_resource_check_before_strategy_selection": true,
+  "training_authorized": false,
+  "execution_authorized": false,
+  "installation_authorized": false,
+  "resource_approved": false,
+  "transfer_maximum_attempts": 132,
+  "optional_seen_context_enabled": false
+}
