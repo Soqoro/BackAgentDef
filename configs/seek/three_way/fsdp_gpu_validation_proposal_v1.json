@@ -1,0 +1,73 @@
+{
+  "schema": "seek-fsdp-gpu-validation-proposal-v1",
+  "status": "draft_not_executable_or_approved",
+  "candidate_preparation_hash": "ed76ee19efe6c65b3d520d2eac4d66113e81d9477e4c68c17fda1741d8a690e2",
+  "strategy": "exact-pass-fsdp-three-rank-v1",
+  "environment": {
+    "python": "3.11",
+    "torch": "2.6.0+cu124",
+    "transformers": "4.44.2",
+    "accelerate": "1.12.0",
+    "tokenizers": "0.19.1",
+    "sentencepiece": "0.2.1",
+    "proposed_fresh_prefix": "/dataset/suaq0001/seek-envs/csham-lq-v2-cu124-v1",
+    "system_site_packages": false,
+    "wheel_staging_limit_bytes": 8589934592,
+    "resolved_dependency_lock": null,
+    "existing_environments_modified": false,
+    "driver_compatibility_verified": false
+  },
+  "resources_proposed": {
+    "nodes": 1,
+    "gpus": 3,
+    "gpu_memory_gb_each_assumed": 80,
+    "partition": null,
+    "cpus": 16,
+    "host_memory_gib": 256,
+    "wall_time_minutes": 60,
+    "maximum_jobs": 1,
+    "automatic_resubmissions": 0,
+    "output_disk_limit_gib": 64
+  },
+  "phases_proposed": [
+    {
+      "name": "hardware_and_collective_preflight",
+      "checks": ["driver/runtime compatibility", "three unique assigned GPUs", "actual GPU capacity", "BF16 support", "NCCL collective success"],
+      "model_forwards": 0,
+      "optimizer_updates": 0
+    },
+    {
+      "name": "tiny_fsdp_mechanics",
+      "maximum_global_forward_records": 30,
+      "maximum_optimizer_updates": 2,
+      "checks": ["unequal target lengths", "full and partial window gradient comparison", "sharded clipping", "AdamW update equivalence", "checkpoint round trip"],
+      "scope": "disposable synthetic module; not an agent or paper result"
+    },
+    {
+      "name": "real_initialization_memory_and_path",
+      "enabled": false,
+      "requires_separate_explicit_scope_approval": true,
+      "maximum_global_forward_records": 30,
+      "maximum_optimizer_updates": 2,
+      "input_selection": "unbound; deterministic longest-sequence fixture selection must be specified before approval",
+      "checks": ["peak allocated/reserved GPU memory", "real FSDP/BF16/activation-checkpoint execution", "global finite gradients", "optimizer state allocation", "final checkpoint serialization"],
+      "activation_recomputations_counted_separately": true,
+      "checkpoint_is_disposable_not_campaign_agent": true
+    }
+  ],
+  "failure_policy": "stop, preserve evidence, no automatic retry or exclusion",
+  "blocking_items": [
+    "Dependency lock and isolated CUDA installation review",
+    "GPU model, driver, partition and resource approval",
+    "Validation runner implementation, code binding, fixture identities and enforced caps",
+    "Separate explicit permission for any toy optimizer steps and real model forward/backward/update work"
+  ],
+  "transfer_maximum_attempts": 132,
+  "optional_seen_context_enabled": false,
+  "downloads_authorized": false,
+  "installation_authorized": false,
+  "gpu_execution_authorized": false,
+  "job_submission_authorized": false,
+  "resource_approved": false,
+  "training_authorized": false
+}
